@@ -80,6 +80,7 @@ pub struct IndexedItem {
     pub modified_at: Option<i64>,
     pub deleted: bool,
     pub music_indexed: bool,
+    pub cue_stamp: Option<String>,
 }
 
 /// An item to insert or update during a scan, keyed by `(library, path)`.
@@ -97,6 +98,8 @@ pub struct ItemUpsert {
     /// Unix milliseconds.
     pub modified_at: Option<i64>,
 }
+
+const SORT_GROUP_CUE: i32 = 2;
 
 pub fn sort_group_for(kind: ItemKind) -> i32 {
     if kind.is_folder() {
@@ -121,6 +124,7 @@ impl Items<'_> {
         let limit = query.limit.clamp(1, 1000);
         let mut condition = Condition::all()
             .add(items::Column::LibraryId.eq(query.library_id.to_string()))
+            .add(items::Column::SortGroup.lte(SORT_GROUP_LEAF))
             .add(items::Column::DeletedAt.is_null());
         condition = match query.parent_id {
             Some(parent) => condition.add(items::Column::ParentId.eq(parent.to_string())),
@@ -194,7 +198,8 @@ impl Items<'_> {
                 size_bytes: row.size_bytes,
                 modified_at: row.modified_at,
                 deleted: row.deleted_at.is_some(),
-                music_indexed: indexed.contains(&row.id),
+                music_indexed: indexed.contains_key(&row.id),
+                cue_stamp: indexed.get(&row.id).cloned().flatten(),
             });
         }
         Ok(out)
@@ -267,7 +272,11 @@ fn upsert_statement(
         title: ActiveValue::Set(u.title.clone()),
         sort_title: ActiveValue::Set(truncate_chars(&u.sort_title, SORT_TITLE_MAX_CHARS)),
         search_text: ActiveValue::Set(u.search_text.clone()),
-        sort_group: ActiveValue::Set(sort_group_for(u.kind)),
+        sort_group: ActiveValue::Set(if u.music.as_ref().is_some_and(|m| m.cue.is_some()) {
+            SORT_GROUP_CUE
+        } else {
+            sort_group_for(u.kind)
+        }),
         path: ActiveValue::Set(Some(u.path.clone())),
         path_hash: ActiveValue::Set(Some(sha256_hex(&u.path))),
         size_bytes: ActiveValue::Set(u.size_bytes),
@@ -308,7 +317,11 @@ fn to_item(row: items::Model) -> Result<Item, DbError> {
         parent_id: parse_opt_id(row.parent_id.as_deref(), "item parent id")?,
         kind: parse_kind(&row.kind)?,
         title: row.title,
-        path: row.path,
+        path: if row.sort_group == SORT_GROUP_CUE {
+            None
+        } else {
+            row.path
+        },
         size_bytes: row.size_bytes,
         modified_at: opt_ts(row.modified_at)?,
         created_at: ts(row.created_at)?,

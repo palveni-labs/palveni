@@ -21,6 +21,7 @@ import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import { LibraryMeta } from "../library-meta";
 import { useLibraryScan } from "../use-library-scan";
 import { ItemDetailsSheet } from "./item-details-sheet";
+import { AnalyzeLoudness } from "./music-loudness";
 import { MusicBrowse } from "./music-browse";
 import { SpokenBrowse } from "./spoken-browse";
 import { VideoBrowse } from "./video-browse";
@@ -409,7 +410,11 @@ export function LibraryBrowsePage() {
 function BrowseHeader({ library }: { library: Library }) {
   const isAdmin = useIsAdmin();
   const { running } = useLibraryScan(library);
+  const loudness = useFeature("musicLoudness");
   // A library that was never scanned offers the scan as the page's next step instead.
   const scan = isAdmin && (library.lastScanAt !== null || running) ? <ScanControl library={library} /> : null;
-  return <PageHeader title={library.name} summary={<LibraryMeta library={library} scanning={running} />} actions={scan} />;
+  const actions = isAdmin && loudness && library.kind === "music" && library.lastScanAt
+    ? <><AnalyzeLoudness libraryId={library.id} />{scan}</>
+    : scan;
+  return <PageHeader title={library.name} summary={<LibraryMeta library={library} scanning={running} />} actions={actions} />;
 }

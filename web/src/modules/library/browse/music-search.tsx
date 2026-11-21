@@ -10,7 +10,7 @@ import type { components } from "@/api/generated";
 import { queryKeys } from "@/api/query-keys";
 import { useFeature } from "@/modules/access";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
-import { OriginalPlayer } from "./original-player";
+import { MusicPlayer } from "./music-player";
 
 type SearchKind = components["schemas"]["MusicSearchKind"];
 type SearchPage = components["schemas"]["MusicSearchPage"];
@@ -52,7 +52,7 @@ function Results({ libraryId, q, kind }: { libraryId: string; q: string; kind: S
           </div>
           {canPlay && <Button isIconOnly variant="ghost" aria-label={t("spoken.play", { title: hit.title })} onPress={() => setPlaying(hit.id)}><Play aria-hidden /></Button>}
         </div>
-        {canPlay && playing === hit.id && <OriginalPlayer id={hit.id} title={hit.title} />}
+        {canPlay && playing === hit.id && <MusicPlayer libraryId={libraryId} id={hit.id} title={hit.title} />}
       </> : <Link to="/library/$libraryId" params={{ libraryId }} search={kind === "artist"
         ? { view: "music", artist: hit.id, artistName: hit.title }
         : { view: "music", artist: hit.artistId ?? undefined, artistName: hit.artist ?? undefined, album: hit.id, albumName: hit.title }}

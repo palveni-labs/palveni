@@ -96,6 +96,12 @@ define_id!(
     PlaylistId
 );
 
+impl ItemId {
+    pub const fn from_uuid_bytes(bytes: [u8; 16]) -> Self {
+        Self(Uuid::from_bytes(bytes))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

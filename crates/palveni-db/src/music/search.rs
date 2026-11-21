@@ -62,6 +62,7 @@ impl Music<'_> {
     ) -> Result<Vec<SearchTrack>, DbError> {
         Ok(project(
             tracks::Entity::find()
+                .filter(super::visible_recordings())
                 .filter(C::LibraryId.eq(id.to_string()))
                 .filter(C::ItemId.gt(after))
                 .order_by_asc(C::ItemId)
@@ -92,6 +93,7 @@ impl Music<'_> {
         }
         let tracks = project(
             tracks::Entity::find()
+                .filter(super::visible_recordings())
                 .filter(C::LibraryId.eq(library.to_string()))
                 .filter(C::ItemId.is_in(ids.iter().cloned()))
                 .order_by_asc(C::ItemId),
@@ -108,6 +110,7 @@ impl Music<'_> {
         album: Option<&str>,
     ) -> Result<Option<SearchTrack>, DbError> {
         let mut query = tracks::Entity::find()
+            .filter(super::visible_recordings())
             .filter(C::LibraryId.eq(library.to_string()))
             .filter(C::ArtistKey.eq(artist));
         if let Some(album) = album {

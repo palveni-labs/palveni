@@ -1,4 +1,4 @@
-import { ScanSearch, type LucideIcon } from "lucide-react";
+import { AudioLines, ScanSearch, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Task, TaskState } from "./task";
 import type { StatusTone } from "@/ui/marks";
@@ -13,12 +13,14 @@ export const STATE_TONE: Record<TaskState, StatusTone> = {
 };
 
 export const KIND_ICONS: Record<string, LucideIcon> = {
+  "music.loudness": AudioLines,
   "library.scan": ScanSearch,
 };
 
-export const TASK_KINDS = ["library.scan"] as const;
+export const TASK_KINDS = ["library.scan", "music.loudness"] as const;
 
 const KIND_LABEL_KEYS = {
+  "music.loudness": "music.loudness",
   "library.scan": "tasks.kinds.libraryScan",
 } as const;
 

@@ -18,6 +18,10 @@ pub struct Model {
     pub disc_number: Option<i64>,
     pub track_number: Option<i64>,
     pub duration_ms: Option<i64>,
+    pub cue_source: Option<String>,
+    pub cue_start: Option<i64>,
+    pub cue_end: Option<i64>,
+    pub cue_stamp: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

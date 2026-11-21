@@ -289,6 +289,7 @@ impl Videos<'_> {
         Ok(rows.into_iter().find_map(|(file, root)| {
             let relative_path = Path::new(&file).strip_prefix(&root).ok()?.to_owned();
             Some(TrackLocation {
+                cue_frames: None,
                 root: root.into(),
                 relative_path,
             })

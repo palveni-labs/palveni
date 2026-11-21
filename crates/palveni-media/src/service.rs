@@ -11,6 +11,7 @@ use tokio::sync::{Mutex, RwLock};
 use crate::report::{HardwareReport, ProbeOptions, probe_hardware};
 
 pub struct HardwareService {
+    pub audio: crate::audio::AudioTranscoder,
     db: Db,
     options: ProbeOptions,
     cache: RwLock<Option<HardwareReport>>,
@@ -20,6 +21,7 @@ pub struct HardwareService {
 impl HardwareService {
     pub fn new(db: Db, options: ProbeOptions) -> Self {
         HardwareService {
+            audio: crate::audio::AudioTranscoder::new(options.ffmpeg_path.as_deref()),
             db,
             options,
             cache: RwLock::new(None),

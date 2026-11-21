@@ -9,7 +9,7 @@ import { queryKeys } from "@/api/query-keys";
 import { useFeature } from "@/modules/access";
 import type { MusicPage } from "@/api/types";
 import { AlbumCover } from "./album-cover";
-import { OriginalPlayer } from "./original-player";
+import { MusicPlayer } from "./music-player";
 import { formatDuration } from "@/lib/format";
 import { Section } from "@/ui/section";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
@@ -50,7 +50,7 @@ export function MusicBrowse({ libraryId }: { libraryId: string }) {
           <ChevronRight className="size-4" aria-hidden /><span aria-current="page">{albumTitle}</span>
         </> : <span aria-current="page">{artistTitle}</span>}
       </nav></div>}
-      {playing && <OriginalPlayer key={playing.id} id={playing.id} title={playing.title} />}
+      {playing && <MusicPlayer libraryId={libraryId} key={playing.id} id={playing.id} title={playing.title} />}
       <Section title={group} bare>
         {listing.isPending ? <LoadingRows /> : listing.isError && entries.length === 0 ? (
           <ErrorState error={listing.error} onRetry={() => void listing.refetch()} />

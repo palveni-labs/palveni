@@ -179,6 +179,20 @@ impl Jobs<'_> {
         Ok(result.rows_affected == 1)
     }
 
+    pub async fn cancel_queued(&self, id: JobId) -> Result<bool, DbError> {
+        let now = clock::now().timestamp_millis();
+        let result = jobs::Entity::update_many()
+            .col_expr(jobs::Column::State, Expr::val(JobState::Cancelled.as_str()))
+            .col_expr(jobs::Column::FinishedAt, Expr::val(now))
+            .col_expr(jobs::Column::UpdatedAt, Expr::val(now))
+            .col_expr(jobs::Column::ActiveKey, Expr::val(Option::<String>::None))
+            .filter(jobs::Column::Id.eq(id.to_string()))
+            .filter(jobs::Column::State.eq(JobState::Queued.as_str()))
+            .exec(self.db.ops())
+            .await?;
+        Ok(result.rows_affected == 1)
+    }
+
     /// Persists a job's terminal snapshot (state, progress, step, message,
     /// error, finish time) and releases its dedupe key.
     pub async fn finish(&self, job: &Job) -> Result<(), DbError> {

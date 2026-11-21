@@ -25,6 +25,9 @@ mod m20261121_000010_subsonic;
 mod m20261121_000011_library_mounts;
 mod m20261121_000014_music_listens;
 mod m20261121_000015_music_collection_favorites;
+mod m20261121_000016_cue_tracks;
+
+mod m20261121_000017_track_loudness;
 
 pub struct MainMigrator;
 
@@ -43,6 +46,8 @@ impl MigratorTrait for MainMigrator {
             Box::new(m20261121_000011_library_mounts::Migration),
             Box::new(m20261121_000014_music_listens::Migration),
             Box::new(m20261121_000015_music_collection_favorites::Migration),
+            Box::new(m20261121_000016_cue_tracks::Migration),
+            Box::new(m20261121_000017_track_loudness::Migration),
         ]
     }
 

@@ -179,6 +179,23 @@ impl JobService {
         }
     }
 
+    pub async fn request_cancel(&self, id: JobId) -> Result<(), palveni_db::DbError> {
+        let jobs = self.shared.db.jobs();
+        let cancelled_queued = jobs.cancel_queued(id).await?;
+        let record = jobs
+            .get(id)
+            .await?
+            .ok_or(palveni_db::DbError::NotFound("job"))?;
+        if cancelled_queued {
+            self.shared.bus.publish(ServerEvent::JobUpdated(record.job));
+        } else if !record.job.state.is_terminal() && !self.cancel(id) {
+            return Err(palveni_db::DbError::Conflict(
+                "The job is running on another worker".into(),
+            ));
+        }
+        Ok(())
+    }
+
     /// Number of jobs currently executing in this process.
     pub fn running_count(&self) -> usize {
         lock(&self.shared.live).len()
@@ -218,10 +235,9 @@ async fn run_loop(shared: Arc<Shared>, shutdown: CancellationToken) {
             }
             continue;
         }
-        match claim_next(&shared).await {
-            Ok(Some((record, handler))) => {
+        match claim_next(&shared, &shutdown).await {
+            Ok(Some((record, handler, job_token))) => {
                 let job_shared = Arc::clone(&shared);
-                let job_token = shutdown.child_token();
                 let shutdown_token = shutdown.clone();
                 tasks.spawn(execute(
                     job_shared,
@@ -251,7 +267,10 @@ async fn run_loop(shared: Arc<Shared>, shutdown: CancellationToken) {
     tracing::debug!("job runner stopped");
 }
 
-async fn claim_next(shared: &Shared) -> Result<Option<(JobRecord, Arc<dyn JobHandler>)>, JobError> {
+async fn claim_next(
+    shared: &Shared,
+    shutdown: &CancellationToken,
+) -> Result<Option<(JobRecord, Arc<dyn JobHandler>, CancellationToken)>, JobError> {
     let queued = shared.db.jobs().list_queued(CLAIM_WINDOW).await?;
     for record in queued {
         let runnable_here = record
@@ -267,7 +286,19 @@ async fn claim_next(shared: &Shared) -> Result<Option<(JobRecord, Arc<dyn JobHan
             .unwrap_or_else(PoisonError::into_inner)
             .get(record.job.kind.as_str())
             .cloned();
+        let now = clock::now();
+        let id = record.job.id;
+        let token = shutdown.child_token();
+        // Expose the token before the database can report this job as running.
+        lock(&shared.cancels).insert(id, token.clone());
+        let claimed = shared.db.jobs().try_claim(id, now).await;
+        if !matches!(claimed, Ok(true)) {
+            lock(&shared.cancels).remove(&id);
+            claimed?;
+            continue;
+        }
         let Some(handler) = handler else {
+            lock(&shared.cancels).remove(&id);
             // Fail it so an unknown kind cannot block the queue forever.
             let mut job = record.job.clone();
             let error = format!("no handler for job kind `{}`", job.kind);
@@ -276,14 +307,11 @@ async fn claim_next(shared: &Shared) -> Result<Option<(JobRecord, Arc<dyn JobHan
             shared.bus.publish(ServerEvent::JobUpdated(job));
             continue;
         };
-        let now = clock::now();
-        if shared.db.jobs().try_claim(record.job.id, now).await? {
-            let mut record = record;
-            record.job.state = JobState::Running;
-            record.job.started_at = Some(now);
-            record.attempts += 1;
-            return Ok(Some((record, handler)));
-        }
+        let mut record = record;
+        record.job.state = JobState::Running;
+        record.job.started_at = Some(now);
+        record.attempts += 1;
+        return Ok(Some((record, handler, token)));
     }
     Ok(None)
 }
@@ -297,7 +325,6 @@ async fn execute(
 ) {
     let job_id = record.job.id;
     lock(&shared.live).insert(job_id, record.job.clone());
-    lock(&shared.cancels).insert(job_id, cancel.clone());
     shared
         .bus
         .publish(ServerEvent::JobUpdated(record.job.clone()));
@@ -316,7 +343,6 @@ async fn execute(
     };
 
     let snapshot = lock(&shared.live).remove(&job_id);
-    lock(&shared.cancels).remove(&job_id);
     let mut job = snapshot.unwrap_or_else(|| record.job.clone());
 
     let interrupted_by_shutdown =
@@ -326,6 +352,7 @@ async fn execute(
         if let Err(err) = shared.db.jobs().requeue(job_id).await {
             tracing::warn!(job = %job_id, error = %err, "cannot requeue interrupted job");
         }
+        lock(&shared.cancels).remove(&job_id);
         tracing::info!(job = %job_id, "job interrupted by shutdown; requeued");
         return;
     }
@@ -336,6 +363,7 @@ async fn execute(
     if let Err(err) = shared.db.jobs().finish(&job).await {
         tracing::error!(job = %job_id, error = %err, "cannot record job result");
     }
+    lock(&shared.cancels).remove(&job_id);
     shared.bus.publish(ServerEvent::JobUpdated(job));
 }
 

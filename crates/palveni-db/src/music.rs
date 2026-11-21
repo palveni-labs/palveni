@@ -1,10 +1,11 @@
 //! Album-artist, album and track views of the live music index.
 
 pub mod catalog;
+pub mod loudness;
 pub mod search;
 mod spoken;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use palveni_core::{
@@ -33,6 +34,7 @@ pub struct Music<'a> {
 }
 
 pub struct TrackLocation {
+    pub cue_frames: Option<std::ops::Range<u64>>,
     pub root: PathBuf,
     pub relative_path: PathBuf,
 }
@@ -79,6 +81,27 @@ fn group(name: Option<&str>) -> (String, String) {
     (sha256_hex(&normalized), sort_prefix(&normalized))
 }
 
+pub(crate) fn visible_recordings() -> Condition {
+    Condition::any()
+        .add(C::CueStamp.is_null())
+        .add(C::CueSource.is_not_null())
+}
+
+pub fn cue_fingerprint(text: &str) -> String {
+    sha256_hex(text)
+}
+
+/// Retain the library UUIDv7 timestamp and derive the track-specific entropy from its stable key.
+pub fn cue_id(library: LibraryId, key: &str) -> ItemId {
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(format!("palveni:cue:v1\0{library}\0{key}").as_bytes());
+    let mut bytes = *library.as_uuid().as_bytes();
+    bytes[6..].copy_from_slice(&digest[..10]);
+    bytes[6] = (bytes[6] & 0x0f) | 0x70;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    ItemId::from_uuid_bytes(bytes)
+}
+
 fn model(
     item_id: String,
     library_id: LibraryId,
@@ -120,6 +143,14 @@ fn model(
         disc_number: Set(tags.disc_number.map(i64::from)),
         track_number: Set(tags.track_number.map(i64::from)),
         duration_ms: Set(tags.duration_ms),
+        cue_source: Set(tags.cue.as_ref().map(|c| c.source.clone())),
+        cue_start: Set(tags.cue.as_ref().map(|c| c.start_frame)),
+        cue_end: Set(tags.cue.as_ref().map(|c| c.end_frame)),
+        cue_stamp: Set(if tags.cue_backing {
+            Some("backing".into())
+        } else {
+            tags.cue.as_ref().map(|c| c.stamp.clone())
+        }),
     }
 }
 
@@ -184,6 +215,10 @@ pub(crate) async fn update(
                     C::DiscNumber,
                     C::TrackNumber,
                     C::DurationMs,
+                    C::CueSource,
+                    C::CueStart,
+                    C::CueEnd,
+                    C::CueStamp,
                 ])
                 .to_owned(),
         )
@@ -232,6 +267,7 @@ impl Music<'_> {
         let ids = tracks::Entity::find()
             .select_only()
             .column(C::ItemId)
+            .filter(visible_recordings())
             .filter(C::LibraryId.eq(track.library_id))
             .filter(C::ArtistKey.eq(track.artist_key))
             .filter(C::AlbumKey.eq(track.album_key))
@@ -271,6 +307,10 @@ impl Music<'_> {
             )
         });
         let rows = items::Entity::find_by_id(id.to_string())
+            .join_rev(
+                JoinType::LeftJoin,
+                sea_orm::RelationTrait::def(&tracks::Relation::Item),
+            )
             .join(
                 JoinType::InnerJoin,
                 items::Entity::belongs_to(libraries::Entity)
@@ -292,24 +332,39 @@ impl Music<'_> {
             .select_only()
             .column_as(items::Column::Path, "file_path")
             .column_as(library_paths::Column::Path, "root_path")
-            .into_tuple::<(String, String)>()
+            .columns([C::CueSource, C::CueStart, C::CueEnd])
+            .into_tuple::<(String, String, Option<String>, Option<i64>, Option<i64>)>()
             .all(self.db.main())
             .await?;
-        Ok(rows.into_iter().find_map(|(file, root)| {
-            let relative_path = Path::new(&file).strip_prefix(&root).ok()?.to_owned();
-            Some(TrackLocation {
-                root: root.into(),
-                relative_path,
-            })
-        }))
+        Ok(rows
+            .into_iter()
+            .find_map(|(file, root, source, start, end)| {
+                let cue_frames = match (source.as_ref(), start, end) {
+                    (Some(_), Some(s), Some(e)) if s >= 0 && e > s => {
+                        Some(u64::try_from(s).ok()?..u64::try_from(e).ok()?)
+                    }
+                    (None, None, None) => None,
+                    _ => return None,
+                };
+                let file = source.unwrap_or(file);
+                let relative_path = Path::new(&file).strip_prefix(&root).ok()?.to_owned();
+                Some(TrackLocation {
+                    cue_frames,
+                    root: root.into(),
+                    relative_path,
+                })
+            }))
     }
 
-    pub async fn indexed_item_ids(&self, library: LibraryId) -> Result<HashSet<String>, DbError> {
+    pub async fn indexed_item_ids(
+        &self,
+        library: LibraryId,
+    ) -> Result<HashMap<String, Option<String>>, DbError> {
         Ok(tracks::Entity::find()
             .select_only()
-            .column(C::ItemId)
+            .columns([C::ItemId, C::CueStamp])
             .filter(C::LibraryId.eq(library.to_string()))
-            .into_tuple::<String>()
+            .into_tuple::<(String, Option<String>)>()
             .all(self.db.main())
             .await?
             .into_iter()
@@ -330,7 +385,9 @@ impl Music<'_> {
             (Some(_), None) => (C::AlbumSort, C::AlbumKey),
             (None, None) => (C::ArtistSort, C::ArtistKey),
         };
-        let mut query = tracks::Entity::find().filter(C::LibraryId.eq(library.to_string()));
+        let mut query = tracks::Entity::find()
+            .filter(visible_recordings())
+            .filter(C::LibraryId.eq(library.to_string()));
         if let Some(a) = artist {
             query = query.filter(C::ArtistKey.eq(a));
         }

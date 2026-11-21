@@ -22,6 +22,7 @@ export const queryKeys = {
     libraryLists: (libraryId: string) => ["items", "list", libraryId] as const,
     list: (libraryId: string, parentId: string | null) => ["items", "list", libraryId, parentId ?? "root"] as const,
     detail: (id: string) => ["items", "detail", id] as const,
+    loudness: (libraryId: string) => ["items", "list", libraryId, "loudness"] as const,
     ancestors: (id: string) => ["items", "ancestors", id] as const,
   },
   jobs: {

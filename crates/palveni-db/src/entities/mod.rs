@@ -31,6 +31,7 @@ pub mod settings;
 pub mod subsonic_folders;
 pub mod subsonic_plays;
 pub mod sync_state;
+pub mod track_loudness;
 pub mod track_metadata;
 pub mod users;
 pub mod video_metadata;

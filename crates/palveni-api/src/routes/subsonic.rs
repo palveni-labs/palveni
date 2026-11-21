@@ -2,7 +2,7 @@ mod auth;
 mod personal;
 mod wire;
 
-use super::playback::serve_track;
+use super::playback::{open_audio, playback_key, serve_track};
 use crate::AppState;
 pub use auth::{SubsonicPassword, SubsonicPasswordStatus, issue, revoke, status};
 use axum::{
@@ -82,6 +82,11 @@ fn song(row: CatalogSong) -> Value {
         "artist":row.artist,"album":row.album,"displayAlbumArtist":row.album_artist,"albumId":album_id(row.folder,&row.artist_key,&row.album_key),
         "track":row.track,"discNumber":row.disc,"duration":row.duration_ms.map(|ms|ms/1000),"size":row.bytes,
         "created":clock::from_millis(row.created),"suffix":suffix,"contentType":name.map(palveni_library::classify::audio_content_type)});
+    if let (Some(start), Some(end)) = (row.cue_start, row.cue_end) {
+        value["suffix"] = json!("wav");
+        value["contentType"] = json!("audio/wav");
+        value["size"] = json!(44 + (end - start) * 2352);
+    }
     if let Some(artist) = row.album_artist.as_ref() {
         value["albumArtists"] =
             json!([{"id":format!("{}.{}",row.folder,row.artist_key),"name":artist}]);
@@ -290,10 +295,10 @@ async fn media(
         .track_location(id)
         .await?
         .ok_or(NOT_FOUND)?;
-    let file = palveni_library::local::open_track(loc)
-        .await
-        .map_err(|_| NOT_FOUND)?;
-    serve_track(file, method, headers)
+    let file = open_audio(loc).await.map_err(|_| NOT_FOUND)?;
+    // Repeated ranges of one authenticated client URL share its proof; do not store the proof.
+    let key = playback_key(id, b"subsonic", p.required("t")?.as_bytes());
+    serve_track(state, file, method, headers, key)
         .await
         .map_err(|_| Failure(0, "Media unavailable"))
 }

@@ -237,6 +237,14 @@
     "noResults": "No results for “{{q}}”"
   },
   "music": {
+    "loudness": "Loudness analysis",
+    "analyzeLoudness": "Analyze loudness",
+    "stopLoudness": "Stop loudness analysis",
+    "loudnessQueued": "Loudness analysis queued",
+    "loudnessStopping": "Loudness analysis cancellation requested",
+    "loudnessPending": "Not analyzed yet",
+    "belowGate": "Below the loudness measurement gate",
+    "loudnessStale": "File changed since analysis",
     "browse": "Browse music",
     "artists": "Album artists",
     "albums": "Albums",
@@ -868,6 +876,9 @@
     "applied": "Switched to {{name}}"
   },
   "jobSteps": {
+    "loudnessAnalyzing": "{{measured}} measured, {{skipped}} already current, {{failed}} failed",
+    "loudnessSummary": "{{measured}} measured, {{skipped}} already current",
+    "loudnessTitle": "Analyze loudness in {{name}}",
     "scanTitle": "Scan “{{name}}”",
     "scanDiscovering": "Found {{found}} files",
     "scanIndexing": "Indexed {{done}} of {{total}} entries",

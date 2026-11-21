@@ -5,10 +5,12 @@
 //! capabilities is assumed: encoders are only reported as verified after a
 //! real short test encode succeeded.
 
+pub mod audio;
 mod cover;
 pub mod devices;
 pub mod discovery;
 pub mod encoders;
+pub mod loudness;
 pub mod parse;
 pub mod probe;
 pub mod process;

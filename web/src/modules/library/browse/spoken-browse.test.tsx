@@ -20,15 +20,22 @@ it.each([
     favorite: false, stars: 0, positionMs: 8000, completed: false, playbackVersion: 3, lastPlayedAt: null, playCount: 1,
   };
   const checkpoints: unknown[] = [];
+  const attempted: string[] = [];
   server.use(
     http.get(`/api/v1/libraries/${library.id}/spoken`, ({ request }) => HttpResponse.json({
       entries: new URL(request.url).searchParams.get("collection") === collection
         ? [{ kind: itemKind, id, title: "Dawn chorus", artist: null, discNumber: null, number: 2, durationMs: 120_000 }]
         : [{ kind: groupKind, id: collection, title: "Birdsong" }], nextCursor: null,
     })),
-    http.post(`/api/v1/items/${id}/playback`, () => HttpResponse.json({
-      mode: "direct", url: "/media/example.opus", expiresAt: new Date(Date.now() + 900_000).toISOString(),
-    })),
+    http.post(`/api/v1/items/${id}/playback`, ({ request }) => {
+      const query = new URL(request.url).searchParams;
+      const format = query.get("format");
+      if (format) attempted.push(format);
+      if (kind === "podcast" && format === "mp3")
+        return HttpResponse.json({ error: { code: "transcode_format_unavailable", message: "Encoder unavailable" } }, { status: 503 });
+      const url = query.has("format") ? `/media/${query.get("startMs")}.${query.get("format")}` : "/media/example.opus";
+      return HttpResponse.json({ mode: query.has("format") ? "transcode" : "direct", url, expiresAt: new Date(Date.now() + 900_000).toISOString() });
+    }),
     http.get(`/api/v1/me/items/${id}`, () => HttpResponse.json(state)),
     http.put(`/api/v1/me/items/${id}/progress`, async ({ request }) => {
       checkpoints.push(await request.json());
@@ -51,6 +58,20 @@ it.each([
   audio.currentTime = 9.75;
   fireEvent.seeked(audio);
   await waitFor(() => expect(checkpoints).toEqual([{ completed: false, positionMs: 9750, expectedVersion: 3 }]));
+
+  Object.defineProperty(audio, "error", { value: { code: 4 } });
+  Object.defineProperty(audio, "canPlayType", { value: (mime: string) => mime.startsWith("audio/") ? "probably" : "" });
+  fireEvent.error(audio);
+  const expectedFormat = kind === "podcast" ? "aac" : "mp3";
+  await waitFor(() => expect(audio).toHaveAttribute("src", `/media/9750.${expectedFormat}`));
+  expect(attempted).toEqual(kind === "podcast" ? ["mp3", "aac"] : ["mp3"]);
+  audio.currentTime = 0;
+  fireEvent.loadedMetadata(audio);
+  expect(audio.currentTime).toBe(0);
+  fireEvent.playing(audio);
+  audio.currentTime = 2;
+  fireEvent.pause(audio);
+  await waitFor(() => expect(checkpoints.at(-1)).toEqual({ completed: false, positionMs: 11750, expectedVersion: 4 }));
 
   const breadcrumb = screen.getByRole("navigation", { name: "当前位置" });
   await user.click(within(breadcrumb).getByRole("link"));

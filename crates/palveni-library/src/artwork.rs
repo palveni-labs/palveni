@@ -30,7 +30,10 @@ struct TagReader {
 impl Read for TagReader {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         if self.remaining == 0 && !buf.is_empty() {
-            return Err(io::Error::other("metadata read limit reached"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "metadata read limit reached",
+            ));
         }
         let len = buf.len().min(self.remaining);
         let n = self.file.read(&mut buf[..len])?;
@@ -42,6 +45,13 @@ impl Seek for TagReader {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         self.file.seek(pos)
     }
+}
+
+pub(crate) fn bounded_tag_reader(file: std::fs::File) -> impl Read + Seek {
+    BufReader::new(TagReader {
+        file,
+        remaining: MAX_TAG_READ,
+    })
 }
 
 const NAMES: [&str; 12] = [
@@ -152,14 +162,11 @@ async fn from_track(location: TrackLocation) -> Result<Option<Image>> {
             }
         }
         crate::tags::limit_allocations();
-        let reader = TagReader {
-            file: audio,
-            remaining: MAX_TAG_READ,
-        };
+        let reader = bounded_tag_reader(audio);
         let options = ParseOptions::new()
             .read_cover_art(true)
             .read_properties(false);
-        let Ok(tags) = Probe::new(BufReader::new(reader))
+        let Ok(tags) = Probe::new(reader)
             .options(options)
             .guess_file_type()?
             .read()
@@ -196,6 +203,7 @@ mod tests {
         let cover = b"RIFF\x10\x00\x00\x00WEBPfixture";
         fs::write(root.join("fOLDer.WeBp"), cover).unwrap();
         let location = || TrackLocation {
+            cue_frames: None,
             root: root.clone(),
             relative_path: "record.flac".into(),
         };
@@ -237,6 +245,7 @@ mod tests {
         let root = dir.path().canonicalize().unwrap();
         fs::write(root.join("song.flac"), flac).unwrap();
         let location = TrackLocation {
+            cue_frames: None,
             root,
             relative_path: "song.flac".into(),
         };

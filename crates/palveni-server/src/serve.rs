@@ -87,7 +87,7 @@ pub async fn run(cli: &Cli) -> anyhow::Result<()> {
         db.clone(),
         bus.clone(),
     ))));
-    let runner = jobs.spawn_runner(shutdown.clone());
+
     let monitor = tokio::spawn(crate::library_monitor::run(
         db.clone(),
         jobs.clone(),
@@ -104,7 +104,23 @@ pub async fn run(cli: &Cli) -> anyhow::Result<()> {
             ..ProbeOptions::default()
         },
     ));
+    jobs.register(Arc::new(crate::loudness_job::LoudnessJob {
+        db: db.clone(),
+        hardware: Arc::clone(&hardware),
+        settings: Arc::clone(&settings),
+        boot_tier: tier,
+        ffmpeg: config.ffmpeg_path.clone(),
+    }));
+    let runner = jobs.spawn_runner(shutdown.clone());
     hardware.load_persisted().await;
+    {
+        let hardware = Arc::clone(&hardware);
+        let shutdown = shutdown.clone();
+        tokio::spawn(async move {
+            shutdown.cancelled().await;
+            hardware.audio.shutdown();
+        });
+    }
     {
         let hardware = Arc::clone(&hardware);
         let settings = Arc::clone(&settings);

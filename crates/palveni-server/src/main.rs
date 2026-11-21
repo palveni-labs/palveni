@@ -4,6 +4,7 @@ mod cli;
 mod doctor;
 mod library_monitor;
 mod logging;
+mod loudness_job;
 mod scan_job;
 mod serve;
 #[cfg(feature = "embed-web")]

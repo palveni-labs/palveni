@@ -6,6 +6,8 @@ import type { TFunction } from "i18next";
 import type { Job, JobStep, JobSubject } from "./types";
 
 const STEP_KEYS = {
+  "loudness.analyzing": "jobSteps.loudnessAnalyzing",
+  "loudness.summary": "jobSteps.loudnessSummary",
   "scan.discovering": "jobSteps.scanDiscovering",
   "scan.indexing": "jobSteps.scanIndexing",
   "scan.summary": "jobSteps.scanSummary",
@@ -20,6 +22,7 @@ export function stepText(t: TFunction, step: JobStep | null | undefined, fallbac
 /** "扫描「家庭相册」" for a scan of a library; null when the job is about no known object. */
 export function subjectTitle(t: TFunction, kind: string, subject: JobSubject | null | undefined): string | null {
   if (!subject?.name) return null;
+  if (kind === "music.loudness" && subject.type === "library") return t("jobSteps.loudnessTitle", { name: subject.name });
   if (kind === "library.scan" && subject.type === "library") return t("jobSteps.scanTitle", { name: subject.name });
   return null;
 }

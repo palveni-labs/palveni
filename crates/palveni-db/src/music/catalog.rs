@@ -31,6 +31,8 @@ pub struct CatalogSong {
     pub bytes: Option<i64>,
     pub created: i64,
     pub path: Option<String>,
+    pub cue_start: Option<i64>,
+    pub cue_end: Option<i64>,
 }
 
 #[derive(FromQueryResult)]
@@ -70,6 +72,7 @@ pub struct Page {
 
 fn live(scope: &[i32]) -> Select<track::Entity> {
     let mut query = track::Entity::find()
+        .filter(super::visible_recordings())
         .select_only()
         .join(JoinType::InnerJoin, track::Relation::Item.def())
         .join(
@@ -130,7 +133,8 @@ fn song_columns(q: Select<track::Entity>) -> Select<track::Entity> {
         .column(C::DurationMs)
         .column_as(I::SizeBytes, "bytes")
         .column_as(I::CreatedAt, "created")
-        .column(I::Path)
+        .column_as(I::Path, "path")
+        .columns([C::CueStart, C::CueEnd])
 }
 
 fn album_columns(q: Select<track::Entity>) -> Select<track::Entity> {

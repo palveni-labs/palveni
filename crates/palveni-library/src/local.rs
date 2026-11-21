@@ -25,12 +25,20 @@ pub struct TrackFile {
 
 /// Reopen a scanned item only inside its registered, canonical music root.
 pub async fn open_track(location: palveni_db::music::TrackLocation) -> Result<TrackFile> {
+    if location.cue_frames.is_some() {
+        return Err(Error::invalid("A CUE track requires bounded playback"));
+    }
     let (storage, path) = track_path(location).await?;
     let content_type = crate::classify::audio_content_type(path.file_name().unwrap_or_default());
     Ok(TrackFile {
         source: storage.open_file(&path).await?,
         content_type,
     })
+}
+
+pub async fn open_audio_input(location: palveni_db::music::TrackLocation) -> Result<std::fs::File> {
+    let (storage, path) = track_path(location).await?;
+    run_blocking(move || storage.open_file_blocking(&path)).await
 }
 
 pub async fn open_video(location: palveni_db::music::TrackLocation) -> Result<TrackFile> {

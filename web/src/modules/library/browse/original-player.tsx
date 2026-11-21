@@ -13,8 +13,16 @@ type MediaState = components["schemas"]["MediaState"];
 type Opened = { ticket: Ticket; state: MediaState };
 type Props = { id: string; title: string; video?: boolean; onProgressSaved?: () => void };
 
-function ticketFor(id: string, signal?: AbortSignal) {
-  return request<Ticket>(`/items/${encodeURIComponent(id)}/playback`, {
+type AudioFormat = "mp3" | "aac" | "opus";
+const audioFormats = [
+  ["mp3", "audio/mpeg"],
+  ["aac", 'audio/mp4; codecs="mp4a.40.2"'],
+  ["opus", 'audio/ogg; codecs="opus"'],
+] as const;
+
+function ticketFor(id: string, signal?: AbortSignal, format?: AudioFormat, startMs = 0) {
+  const query = format ? `?format=${format}&startMs=${startMs}` : "";
+  return request<Ticket>(`/items/${encodeURIComponent(id)}/playback${query}`, {
     method: "POST",
     signal,
   });
@@ -29,7 +37,10 @@ function MediaSession({
   retry,
 }: Props & { opened: Opened; retry: () => void }) {
   const { t } = useTranslation();
-  const [ticket, setTicket] = useState(opened.ticket);
+  const [source, setSource] = useState<{ ticket: Ticket; format?: AudioFormat; startMs: number }>({
+    ticket: opened.ticket, startMs: 0,
+  });
+  const { ticket, startMs } = source;
   const [error, setError] = useState<unknown>();
   const [progressError, setProgressError] = useState<unknown>();
   const media = useRef<HTMLMediaElement>(null);
@@ -62,25 +73,33 @@ function MediaSession({
     };
   }, [save]);
 
-  const renew = () => {
+  const renew = async (formats: (AudioFormat | undefined)[]) => {
     if (renewal.current) return;
     const controller = new AbortController();
     renewal.current = controller;
     ready.current = false;
-    void ticketFor(id, controller.signal)
-      .then((next) => {
-        if (!controller.signal.aborted) setTicket(next);
-      })
-      .catch((cause) => {
-        if (!controller.signal.aborted) setError(cause);
-      })
-      .finally(() => {
-        if (renewal.current === controller) renewal.current = null;
-      });
+    try {
+      for (const [index, format] of formats.entries()) {
+        const startMs = format ? Math.max(0, Math.floor(last.current * 1000)) : 0;
+        try {
+          const next = await ticketFor(id, controller.signal, format, startMs);
+          if (!controller.signal.aborted) setSource({ ticket: next, format, startMs });
+          return;
+        } catch (cause) {
+          if (controller.signal.aborted) return;
+          if (!(cause instanceof ApiError && cause.code === "transcode_format_unavailable") ||
+              index === formats.length - 1) throw cause;
+        }
+      }
+    } catch (cause) {
+      setError(cause);
+    } finally {
+      if (renewal.current === controller) renewal.current = null;
+    }
   };
   const remember = (element: HTMLMediaElement) => {
     if (!ready.current || !played.current || element.ended) return;
-    last.current = element.currentTime;
+    last.current = startMs / 1000 + element.currentTime;
     save(last.current, false);
     lastReportedAt.current = Date.now();
   };
@@ -111,7 +130,7 @@ function MediaSession({
             const end = Number.isFinite(element.duration)
               ? Math.max(0, element.duration - 0.1)
               : last.current;
-            if (last.current > 0)
+            if (ticket.mode === "direct" && last.current > 0)
               element.currentTime = Math.min(last.current, end);
             ready.current = true;
           }}
@@ -127,7 +146,7 @@ function MediaSession({
               element.ended
             )
               return;
-            last.current = element.currentTime;
+            last.current = startMs / 1000 + element.currentTime;
             if (Date.now() - lastReportedAt.current >= 15_000)
               remember(element);
           }}
@@ -137,14 +156,15 @@ function MediaSession({
             last.current = 0;
             save(0, true);
           }}
-          onError={() => {
-            if (Date.now() >= Date.parse(ticket.expiresAt) - 2_000) renew();
-            else
-              setError(
-                new Error(
-                  t(video ? "video.unsupported" : "spoken.playbackFailed"),
-                ),
-              );
+          onError={(event) => {
+            if (Date.now() >= Date.parse(ticket.expiresAt) - 2_000) return void renew([source.format]);
+            const element = event.currentTarget;
+            const code = element.error?.code;
+            if (!video && ticket.mode === "direct" && (code === 3 || code === 4)) {
+              const playable = audioFormats.filter(([, mime]) => element.canPlayType(mime));
+              if (playable.length) return void renew(playable.map(([format]) => format));
+            }
+            setError(new Error(t(video ? "video.unsupported" : "spoken.playbackFailed")));
           }}
         />
       )}

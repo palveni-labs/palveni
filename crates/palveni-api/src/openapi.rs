@@ -146,8 +146,37 @@ fn parameters(cap: &Capability) -> Vec<Value> {
             params.push(parameter(name, "path", true, schema));
         }
     }
-    if matches!(cap.id, "streamTrack" | "headTrack" | "streamConnection") {
+    if matches!(
+        cap.id,
+        "streamTrack" | "headTrack" | "streamConnection" | "streamAudio" | "headAudio"
+    ) {
         params.push(parameter("ticket", "query", false, json!({"type":"string","description":"Single-entry credential from the playback URL, as an alternative to a bearer header."})));
+    }
+    if matches!(cap.id, "preparePlayback" | "streamAudio" | "headAudio") {
+        let direct = cap.id == "preparePlayback";
+        let formats = if direct {
+            json!(["original", "mp3", "aac", "opus"])
+        } else {
+            json!(["mp3", "aac", "opus"])
+        };
+        params.push(parameter(
+            "format",
+            "query",
+            !direct,
+            json!({"type":"string","enum":formats}),
+        ));
+        params.push(parameter(
+            "bitrateKbps",
+            "query",
+            false,
+            json!({"type":"integer","minimum":32,"maximum":320,"default":128}),
+        ));
+        params.push(parameter(
+            "startMs",
+            "query",
+            false,
+            json!({"type":"integer","minimum":0,"maximum":604800000,"default":0}),
+        ));
     }
     match cap.id {
         "issueSubsonicPassword" => params.push(parameter(
@@ -423,6 +452,19 @@ fn operation(endpoint: &Endpoint) -> Value {
         } else if let Some(statuses) = responses.as_object_mut() {
             for response in statuses.values_mut().filter_map(Value::as_object_mut) {
                 response.remove("content");
+            }
+        }
+    }
+    if matches!(cap.id, "streamAudio" | "headAudio") {
+        op["security"] = json!([{"bearerAuth":[]},{"mediaTicket":[]}]);
+        let responses = &mut op["responses"];
+        responses["200"]["headers"] = json!({"Accept-Ranges":{"schema":{"type":"string","const":"none"}},
+            "Cache-Control":{"schema":{"type":"string","const":"private, no-store"}}});
+        if cap.id == "streamAudio" {
+            responses["200"]["content"] = binary(&["audio/mpeg", "audio/mp4", "audio/ogg"]);
+        } else if let Some(statuses) = responses.as_object_mut() {
+            for entry in statuses.values_mut().filter_map(Value::as_object_mut) {
+                entry.remove("content");
             }
         }
     }

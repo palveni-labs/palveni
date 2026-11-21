@@ -19,6 +19,16 @@ pub struct JobList {
     jobs: Vec<Job>,
 }
 
+pub async fn cancel(
+    _admin: AdminUser,
+    State(state): State<AppState>,
+    path: Result<axum::extract::Path<String>, axum::extract::rejection::PathRejection>,
+) -> Result<axum::http::StatusCode, ApiError> {
+    let id = super::path_id(&path?.0, "Job")?;
+    state.jobs.request_cancel(id).await?;
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
 /// Most recent jobs first, with live progress for running ones.
 pub async fn list(
     _admin: AdminUser,

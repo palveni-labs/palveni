@@ -44,6 +44,7 @@ pub const ENV_OPS_DATABASE_URL: &str = "PALVENI_TEST_OPS_DATABASE_URL";
 /// be dropped in this order on backends that enforce foreign keys.
 mod broadcast;
 mod connections;
+mod loudness;
 mod music_search;
 mod video;
 
@@ -67,6 +68,7 @@ const PALVENI_TABLES: &[&str] = &[
     "music_collection_favorites",
     "subsonic_folders",
     "subsonic_plays",
+    "track_loudness",
     "track_metadata",
     "items",
     "library_mounts",
@@ -781,6 +783,25 @@ async fn conformance_jobs() {
     let stored = jobs.get(failing.id).await.unwrap().unwrap().job;
     assert_eq!(stored.error.as_deref(), Some("disk gone"));
     assert!(stored.step.is_none() && stored.message.is_none());
+
+    let queued = jobs
+        .enqueue(new(Some("cancel-pending")))
+        .await
+        .unwrap()
+        .record
+        .job;
+    assert!(jobs.cancel_queued(queued.id).await.unwrap());
+    assert!(!jobs.try_claim(queued.id, clock::now()).await.unwrap());
+    let stopped = jobs.get(queued.id).await.unwrap().unwrap().job;
+    assert_eq!(stopped.state, JobState::Cancelled);
+    assert!(stopped.finished_at.is_some());
+    assert!(!jobs.cancel_queued(queued.id).await.unwrap());
+    assert!(
+        jobs.enqueue(new(Some("cancel-pending")))
+            .await
+            .unwrap()
+            .created
+    );
 
     let recent = jobs.list_recent(2).await.unwrap();
     assert_eq!(recent.len(), 2);

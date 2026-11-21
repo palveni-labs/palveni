@@ -228,6 +228,14 @@
     "noResults": "没有找到“{{q}}”"
   },
   "music": {
+    "loudness": "响度分析",
+    "analyzeLoudness": "分析响度",
+    "stopLoudness": "停止响度分析",
+    "loudnessQueued": "响度分析已加入任务队列",
+    "loudnessStopping": "已请求停止响度分析",
+    "loudnessPending": "尚未分析",
+    "belowGate": "低于响度测量门限",
+    "loudnessStale": "文件已变更，待重新分析",
     "browse": "浏览音乐",
     "artists": "专辑艺人",
     "albums": "专辑",
@@ -843,6 +851,9 @@
     "applied": "已换成「{{name}}」"
   },
   "jobSteps": {
+    "loudnessAnalyzing": "已测量 {{measured}} 首，已有结果 {{skipped}} 首，失败 {{failed}} 首",
+    "loudnessSummary": "已测量 {{measured}} 首，已有结果 {{skipped}} 首",
+    "loudnessTitle": "分析「{{name}}」的响度",
     "scanTitle": "扫描「{{name}}」",
     "scanDiscovering": "已发现 {{found}} 个文件",
     "scanIndexing": "已索引 {{done}} / {{total}} 个条目",

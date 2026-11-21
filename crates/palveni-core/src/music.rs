@@ -4,8 +4,38 @@ use serde::Serialize;
 
 use crate::ItemId;
 
+pub const LOUDNESS_JOB_KIND: &str = "music.loudness";
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LoudnessValues {
+    pub integrated_lufs: Option<f64>,
+    pub range_lu: Option<f64>,
+    pub true_peak_dbtp: Option<f64>,
+}
+
+#[derive(utoipa::ToSchema, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LoudnessMeasurement {
+    #[schema(required = true)]
+    pub integrated_lufs: Option<f64>,
+    #[schema(required = true)]
+    pub range_lu: Option<f64>,
+    #[schema(required = true)]
+    pub true_peak_dbtp: Option<f64>,
+    pub measured_at: chrono::DateTime<chrono::Utc>,
+    pub current: bool,
+}
+
+#[derive(utoipa::ToSchema, Debug, Serialize)]
+pub struct TrackLoudness {
+    #[schema(required = true)]
+    pub measurement: Option<LoudnessMeasurement>,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct TrackTags {
+    pub cue: Option<CueSegment>,
+    pub cue_backing: bool,
     pub title: Option<String>,
     pub artist: Option<String>,
     pub album_artist: Option<String>,
@@ -15,6 +45,14 @@ pub struct TrackTags {
     pub duration_ms: Option<i64>,
     /// Local source directory or file that distinguishes identically named books and shows.
     pub spoken_location: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CueSegment {
+    pub source: String,
+    pub start_frame: i64,
+    pub end_frame: i64,
+    pub stamp: String,
 }
 
 #[derive(utoipa::ToSchema, Debug, Serialize)]

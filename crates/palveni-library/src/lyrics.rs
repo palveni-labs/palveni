@@ -187,6 +187,7 @@ mod tests {
         std::os::unix::fs::symlink(outside.join("words"), root.join("song.lrc")).unwrap();
         std::fs::write(root.join("song.lyrics.txt"), b"inside").unwrap();
         let location = || TrackLocation {
+            cue_frames: None,
             root: root.clone(),
             relative_path: "song.mp3".into(),
         };

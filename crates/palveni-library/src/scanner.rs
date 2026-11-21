@@ -11,6 +11,9 @@
 //! volume) or a directory that cannot be read keeps its existing items —
 //! only files under successfully listed directories can be tombstoned.
 
+mod cue;
+
+use palveni_core::music::TrackTags;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 
@@ -182,6 +185,7 @@ struct FoundFolder {
 
 #[derive(Clone, Debug)]
 struct FoundFile {
+    music: Option<TrackTags>,
     path: String,
     parent: Option<String>,
     name: String,
@@ -210,6 +214,7 @@ impl WalkOutcome {
         rel: &StoragePath,
         kind: ItemKind,
         entry: &DirEntry,
+        backing: bool,
     ) {
         let parent_display = |p: Option<StoragePath>| -> Option<String> {
             p.filter(|p| !p.is_root()).map(|p| storage.display_path(&p))
@@ -238,6 +243,10 @@ impl WalkOutcome {
             current = next;
         }
         self.files.push(FoundFile {
+            music: backing.then(|| TrackTags {
+                cue_backing: true,
+                ..Default::default()
+            }),
             path: storage.display_path(rel),
             parent: parent_display(rel.parent()),
             name: entry.name.clone(),
@@ -351,7 +360,7 @@ impl Scanner {
         }
         let video = std::mem::take(&mut walk.video);
         let existing = self.db.items().scan_index(library_id).await?;
-        let plan = plan_changes(walk, existing);
+        let plan = plan_changes(library_id, walk, existing);
 
         let total = plan.upserts.len() + plan.tombstones.len();
         let mut done = 0usize;
@@ -468,6 +477,12 @@ async fn walk_root(
         if kind == LibraryKind::Video {
             out.video.observe(storage, &dir, &entries);
         }
+        let mut cue_sources = HashSet::new();
+        if kind == LibraryKind::Music {
+            let (sources, files) = cue::collect(storage, &dir, &entries).await?;
+            cue_sources = sources;
+            out.files.extend(files);
+        }
         for entry in entries {
             if is_ignored_name(&entry.name) {
                 continue;
@@ -479,7 +494,13 @@ async fn walk_root(
                 EntryKind::Directory => stack.push(child),
                 EntryKind::File => {
                     if let Some(item_kind) = classify(kind, &entry.name) {
-                        out.add_file(storage, &child, item_kind, &entry);
+                        out.add_file(
+                            storage,
+                            &child,
+                            item_kind,
+                            &entry,
+                            cue_sources.contains(&entry.name),
+                        );
                     }
                 }
                 EntryKind::Other => {}
@@ -505,11 +526,20 @@ struct ChangePlan {
     summary: ScanSummary,
 }
 
-fn plan_changes(walk: WalkOutcome, existing: Vec<IndexedItem>) -> ChangePlan {
+fn plan_changes(
+    library_id: LibraryId,
+    walk: WalkOutcome,
+    existing: Vec<IndexedItem>,
+) -> ChangePlan {
     let by_path: HashMap<&str, &IndexedItem> =
         existing.iter().map(|e| (e.path.as_str(), e)).collect();
     let mut summary = ScanSummary {
-        files_seen: walk.files.len() as u64,
+        files_seen: count(
+            walk.files
+                .iter()
+                .filter(|f| f.music.as_ref().is_none_or(|m| m.cue.is_none()))
+                .count(),
+        ),
         skipped_roots: walk.skipped_roots,
         unreadable_dirs: walk.unreadable_dirs,
         ..ScanSummary::default()
@@ -563,10 +593,17 @@ fn plan_changes(walk: WalkOutcome, existing: Vec<IndexedItem>) -> ChangePlan {
         }
         let parent_id = parent_id_of(&file.parent);
         let existing = by_path.get(file.path.as_str()).copied();
+        let cue = file.music.as_ref().and_then(|t| t.cue.as_ref());
+        let cue_stamp = if file.music.as_ref().is_some_and(|t| t.cue_backing) {
+            Some("backing")
+        } else {
+            cue.map(|c| c.stamp.as_str())
+        };
         let id = match existing {
             Some(e)
                 if !e.deleted
                     && (!file.kind.is_audio() || e.music_indexed)
+                    && e.cue_stamp.as_deref() == cue_stamp
                     && e.kind == file.kind
                     && e.parent_id == parent_id
                     && e.size_bytes == file.size
@@ -585,12 +622,20 @@ fn plan_changes(walk: WalkOutcome, existing: Vec<IndexedItem>) -> ChangePlan {
             }
             None => {
                 summary.added += 1;
-                ItemId::generate()
+                if cue.is_some() {
+                    palveni_db::music::cue_id(library_id, &file.path)
+                } else {
+                    ItemId::generate()
+                }
             }
         };
-        let title = title_for_file(&file.name);
+        let title = if cue.is_some() {
+            file.name.clone()
+        } else {
+            title_for_file(&file.name)
+        };
         upserts.push(ItemUpsert {
-            music: None,
+            music: file.music.clone(),
             id,
             parent_id,
             kind: file.kind,
@@ -640,11 +685,13 @@ mod tests {
             modified_at: modified,
             deleted: false,
             music_indexed: true,
+            cue_stamp: None,
         }
     }
 
     fn file(path: &str, size: i64, modified: i64) -> FoundFile {
         FoundFile {
+            music: None,
             path: path.to_owned(),
             parent: None,
             name: path.rsplit('/').next().unwrap().to_owned(),
@@ -727,7 +774,7 @@ mod tests {
         let changed_id = existing[1].id;
         let gone_id = existing[2].id;
 
-        let plan = plan_changes(walk, existing);
+        let plan = plan_changes(LibraryId::generate(), walk, existing);
         assert_eq!(plan.summary.unchanged, 1);
         assert_eq!(plan.summary.updated, 1);
         assert_eq!(plan.summary.added, 1);
@@ -752,7 +799,7 @@ mod tests {
             indexed("/mnt/usb2/b.flac", ItemKind::Track, Some(1), Some(1)),
         ];
         let keep = existing[0].id;
-        let plan = plan_changes(walk, existing);
+        let plan = plan_changes(LibraryId::generate(), walk, existing);
         assert!(!plan.tombstones.contains(&keep));
         // `/mnt/usb2` is a different directory, not a child of `/mnt/usb`.
         assert_eq!(plan.tombstones.len(), 1);
@@ -776,7 +823,7 @@ mod tests {
             parent: Some("/m/a/b".to_owned()),
             ..file("/m/a/b/x.flac", 1, 1)
         });
-        let plan = plan_changes(walk, Vec::new());
+        let plan = plan_changes(LibraryId::generate(), walk, Vec::new());
         let kinds: Vec<ItemKind> = plan.upserts.iter().map(|u| u.kind).collect();
         assert_eq!(
             kinds,

@@ -62,6 +62,7 @@ async fn finds_only_same_video_regular_sidecars_and_reopens_with_bounds() {
     fs::create_dir(&root).unwrap();
     let root = root.canonicalize().unwrap();
     let location = || TrackLocation {
+        cue_frames: None,
         root: root.clone(),
         relative_path: Path::new("Film.2024.mp4").to_owned(),
     };

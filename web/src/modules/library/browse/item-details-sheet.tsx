@@ -6,7 +6,9 @@ import type { Item, Library } from "@/api/types";
 import { ItemArtwork } from "@/components/artwork";
 import { formatBytes, formatDateTime } from "@/lib/format";
 import { LIBRARY_KIND_META } from "@/lib/kinds";
+import { useFeature } from "@/modules/access";
 import { Measure } from "@/ui/marks";
+import { TrackLoudness } from "./music-loudness";
 import { useIsPhone } from "./use-is-phone";
 
 function Fact({ label, children, wide = false }: { label: string; children: ReactNode; wide?: boolean }) {
@@ -23,6 +25,7 @@ export function ItemDetailsSheet({ item, library, onClose }: { item: Item | null
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? "en";
   const phone = useIsPhone();
+  const loudness = useFeature("musicLoudness");
 
   return (
     <Drawer.Backdrop isOpen={item !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
@@ -53,6 +56,7 @@ export function ItemDetailsSheet({ item, library, onClose }: { item: Item | null
                   <Fact label={t("browse.details.indexed")}>
                     <span className="tabular-nums">{formatDateTime(item.createdAt, locale)}</span>
                   </Fact>
+                  {loudness && library.kind === "music" && item.kind === "track" && <Fact label={t("music.loudness")} wide><TrackLoudness id={item.id} libraryId={library.id} /></Fact>}
                   {item.path ? (
                     <Fact label={t("browse.details.path")} wide>
                       <span className="font-mono text-sm break-all">{item.path}</span>

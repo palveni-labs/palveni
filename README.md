@@ -42,6 +42,12 @@ After the first scan, Palveni watches each library for file additions, edits, re
 
 Clients can play a scanned track in its original format through the native API. Send an authenticated `GET /api/v1/items/{id}/stream` to read the file or seek with an HTTP byte range. For a player that opens URLs, send an authenticated `POST /api/v1/items/{id}/playback` and resolve the returned `url` against the server address. The link is valid for 15 minutes and can be renewed for later seeks.
 
+If the browser cannot decode an original track, the web player requests a compatible audio format. Native clients can request MP3, AAC or Opus at 32–320 kbit/s and resume at a time offset. Audio transcoding requires FFmpeg and the Lite, Standard or Performance tier.
+
+To split a continuous recording into tracks, place a UTF-8 CUE sheet beside the audio it references and scan the music library. The album view shows the individual tracks. You can play, seek and favorite each one. The original recording remains available in the file view. Playing a CUE track requires FFmpeg and at least the Lite tier.
+
+Administrators can choose **Analyze loudness** in a music library. After the job finishes, expand **Loudness analysis** in the track player or open the track’s file details to see its integrated loudness (LUFS), loudness range (LU) and true peak (dBTP), where measurable. You can stop the job and run it again to continue. Analysis reads the audio without changing it.
+
 Clients can request lyrics with an authenticated `GET /api/v1/items/{id}/lyrics`. Place a matching `.lrc`, `.LRC` or `.lyrics.txt` beside a track to override its embedded lyrics. Edits are available on the next request, and timed lyrics keep their original timestamps.
 
 Signed-in clients can favorite and rate tracks and videos, browse recently played items, and continue from the position saved on another device. Each account has its own history and ordered music playlists. The native API exposes these features under `/api/v1/me/items` and `/api/v1/me/playlists`. Playback updates and playlist edits use a version so one device can detect changes made on another. To display a playlist, use `GET /api/v1/me/playlists/{id}/tracks?version=N` to load titles, artists, albums and durations in order.

@@ -1,7 +1,7 @@
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect, useSyncExternalStore } from "react";
 import { API_BASE, handleUnauthorized } from "./client";
-import { upsertJob } from "./queries/jobs";
+import { isActiveJob, upsertJob } from "./queries/jobs";
 import { removeLibrary, upsertLibrary } from "./queries/libraries";
 import { queryKeys } from "./query-keys";
 import { getToken } from "./session";
@@ -52,7 +52,12 @@ export function applyServerEvent(queryClient: QueryClient, message: SseMessage) 
       break;
     case "job.updated": {
       const job = parseData<"job.updated">(message);
-      if (job) upsertJob(queryClient, job);
+      if (job) {
+        upsertJob(queryClient, job);
+        if (job.kind === "music.loudness" && job.subject?.type === "library" && !isActiveJob(job)) {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.items.loudness(job.subject.id) });
+        }
+      }
       break;
     }
     case "library.updated": {

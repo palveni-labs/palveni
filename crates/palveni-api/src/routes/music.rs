@@ -69,6 +69,46 @@ pub async fn list(
     ))
 }
 
+pub async fn analyze_loudness(
+    _: crate::auth::AdminUser,
+    State(state): State<AppState>,
+    path: Result<Path<String>, PathRejection>,
+) -> Result<(axum::http::StatusCode, Json<super::libraries::ScanAccepted>), ApiError> {
+    use palveni_core::{JobSubject, LibraryKind, music::LOUDNESS_JOB_KIND};
+    let id: LibraryId = path_id(&path?.0, "Library")?;
+    let library = state
+        .db
+        .libraries()
+        .get(id)
+        .await?
+        .filter(|l| l.kind == LibraryKind::Music)
+        .ok_or_else(|| ApiError::not_found("Music library not found"))?;
+    let job = state
+        .jobs
+        .enqueue(palveni_jobs::NewJob {
+            kind: LOUDNESS_JOB_KIND.into(),
+            payload: serde_json::json!(id),
+            subject: Some(JobSubject::library(id, library.name)),
+            required_capabilities: Vec::new(),
+            dedupe_key: Some(format!("{LOUDNESS_JOB_KIND}:{id}")),
+        })
+        .await?;
+    Ok((
+        axum::http::StatusCode::ACCEPTED,
+        Json(super::libraries::ScanAccepted { job_id: job.id }),
+    ))
+}
+
+pub async fn loudness(
+    _: CurrentUser,
+    State(state): State<AppState>,
+    path: Result<Path<String>, PathRejection>,
+) -> Result<Json<palveni_core::music::TrackLoudness>, ApiError> {
+    let id = path_id(&path?.0, "Track")?;
+    let measurement = state.db.music().loudness(id).await?;
+    Ok(Json(palveni_core::music::TrackLoudness { measurement }))
+}
+
 pub async fn lyrics(
     _user: CurrentUser,
     State(state): State<AppState>,

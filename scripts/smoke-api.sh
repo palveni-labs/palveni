@@ -465,6 +465,7 @@ check "items are intact after the root returns" \
 # ---------------------------------------------------------------- admin pages
 echo "Hardware, jobs, plugins"
 req GET /system/hardware
+can_transcode=$(field '.ffmpeg.found and .perfTier != "tiny"')
 check "hardware report has a performance tier" "$STATUS $(field '.perfTier != null')" "200 true"
 echo "        ffmpeg: $(field '.ffmpeg | if .found then (.version + " (" + .source + ")") else "not found" end')"
 echo "        verified encoders: $(field '[.encoders[] | select(.verified) | .id] | join(", ")')"
@@ -618,9 +619,28 @@ for spec in 'audiobook stories book chapter' 'podcast shows show episode' 'video
     group=$(field '.entries[0].id')
     req GET "/libraries/$sample_lib/spoken?collection=$group"
     check "$recording items include original playback duration" "$STATUS $(field '.entries | length') $(field '.entries[0].kind') $(field '.entries[0].durationMs')" "200 2 $recording 1000"
+    if [ "$kind" = "audiobook" ]; then
+      audio_id=$(field '.entries[0].id')
+      if [ "$can_transcode" = true ]; then
+        if PALVENI_SMOKE_BEARER="$TOKEN" python3 "$(dirname "$0")/smoke-audio.py" "$BASE" "$audio_id"; then
+          ok "signed audio streams match the expected encoders and requested start time"
+        else
+          bad "signed audio streams match the expected encoders and requested start time" "audio assertions failed"
+        fi
+      else
+        req POST "/items/$audio_id/playback?format=mp3"
+        check "transcoding reports disabled or unavailable" "$STATUS" "503"
+      fi
+    fi
   fi
   req DELETE "/libraries/$sample_lib"
 done
+if PALVENI_SMOKE_BEARER="$TOKEN" python3 "$(dirname "$0")/smoke-cue.py" "$BASE" "$MEDIA" "$can_transcode"; then
+  ok "CUE album playback, partial reads, search and rescan preserve individual tracks"
+else
+  bad "CUE album playback, partial reads, search and rescan preserve individual tracks" "CUE assertions failed"
+fi
+
 for kind in radio iptv podcast; do
   subscription=$(python3 -c 'import uuid; print(uuid.uuid4())')
   content=$'#EXTM3U\n#EXTINF:-1,Example channel\nhttps://media.example.org/channel'
@@ -645,6 +665,11 @@ check "library is deleted" "$STATUS" "204"
 req GET "/libraries/$LIB"
 check "deleted library is gone" "$STATUS" "404"
 check "library removal makes its media URL unavailable" "$(read_media "$PLAY_URL")" "404"
+if PALVENI_SMOKE_BEARER="$TOKEN" python3 "$(dirname "$0")/smoke-loudness.py" "$BASE" "$MEDIA"; then
+  ok "EBU R128 measures differing levels and silence, preserves results on failure, and cancels active analysis"
+else
+  bad "background loudness analysis" "synthetic measurement or job lifecycle check failed"
+fi
 req POST /auth/logout
 check "logout succeeds" "$STATUS" "204"
 req GET /auth/me

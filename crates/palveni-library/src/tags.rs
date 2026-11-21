@@ -69,6 +69,29 @@ fn read(file: File, kind: ItemKind) -> io::Result<TrackTags> {
     Ok(result)
 }
 
+pub(crate) fn duration_frames(file: File) -> io::Result<Option<i64>> {
+    limit_allocations();
+    let probe = Probe::new(crate::artwork::bounded_tag_reader(file))
+        .options(ParseOptions::new().read_cover_art(false).read_tags(false))
+        .guess_file_type()?;
+    let parsed = match probe.read() {
+        Ok(parsed) => parsed,
+        Err(err) => match err.kind() {
+            lofty::error::ErrorKind::Io(e)
+                if !matches!(
+                    e.kind(),
+                    io::ErrorKind::InvalidData | io::ErrorKind::UnexpectedEof
+                ) =>
+            {
+                return Err(io::Error::new(e.kind(), e.to_string()));
+            }
+            _ => return Ok(None),
+        },
+    };
+    let frames = (parsed.properties().duration().as_nanos() * 75 + 500_000_000) / 1_000_000_000;
+    Ok(i64::try_from(frames).ok().filter(|n| *n > 0))
+}
+
 pub(crate) fn limit_allocations() {
     apply_global_options(
         GlobalOptions::new()
@@ -83,7 +106,7 @@ pub(crate) fn read_batch(
 ) -> Result<Vec<ItemUpsert>, ScanError> {
     limit_allocations();
     for row in &mut rows {
-        if !row.kind.is_audio() {
+        if !row.kind.is_audio() || row.music.as_ref().is_some_and(|t| t.cue.is_some()) {
             continue;
         }
         let (root, relative) = roots
@@ -107,6 +130,7 @@ pub(crate) fn read_batch(
             .open_file_blocking(&relative)
             .map_err(|e| ScanError::Metadata(e.to_string()))?;
         let mut tags = read(file, row.kind).map_err(|e| ScanError::Metadata(e.to_string()))?;
+        tags.cue_backing = row.music.as_ref().is_some_and(|t| t.cue_backing);
         if row.kind != ItemKind::Track {
             spoken::apply(&mut tags, &relative, root.root(), &row.title, row.kind);
         }

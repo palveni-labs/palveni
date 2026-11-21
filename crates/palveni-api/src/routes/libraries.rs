@@ -184,7 +184,7 @@ pub async fn delete(
 #[derive(utoipa::ToSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanAccepted {
-    job_id: JobId,
+    pub(super) job_id: JobId,
 }
 
 /// Queues a scan. While a scan of the same library is queued or running,

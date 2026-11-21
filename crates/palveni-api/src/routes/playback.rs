@@ -1,4 +1,7 @@
 mod byte_range;
+mod cue;
+mod transcode;
+pub use transcode::audio;
 
 use axum::{
     Json,
@@ -28,6 +31,7 @@ const PRIVATE_CACHE: &str = "private, no-store";
 #[serde(rename_all = "lowercase")]
 pub enum PlaybackMode {
     Direct,
+    Transcode,
 }
 
 #[derive(Serialize, utoipa::ToSchema)]
@@ -116,11 +120,31 @@ pub(super) fn verify_ticket(
         .then_some(session)
 }
 
-async fn open_media(state: &AppState, id: ItemId) -> Result<TrackFile, ApiError> {
+pub(super) enum Media {
+    Original(TrackFile),
+    Cue(cue::Audio),
+}
+
+pub(super) async fn open_audio(
+    location: palveni_db::music::TrackLocation,
+) -> palveni_core::Result<Media> {
+    if let Some(frames) = location.cue_frames.clone() {
+        let file = palveni_library::local::open_audio_input(location).await?;
+        Ok(Media::Cue(cue::Audio::new(file, frames)?))
+    } else {
+        palveni_library::local::open_track(location)
+            .await
+            .map(Media::Original)
+    }
+}
+
+async fn open_media(state: &AppState, id: ItemId) -> Result<Media, ApiError> {
     let file = if let Some(location) = state.db.music().audio_location(id).await? {
-        palveni_library::local::open_track(location).await
+        open_audio(location).await
     } else if let Some(location) = state.db.video().location(id).await? {
-        palveni_library::local::open_video(location).await
+        palveni_library::local::open_video(location)
+            .await
+            .map(Media::Original)
     } else {
         return Err(ApiError::not_found("Media item not found"));
     };
@@ -134,11 +158,39 @@ pub async fn prepare(
     current: CurrentUser,
     State(state): State<AppState>,
     path: Result<Path<String>, PathRejection>,
+    query: Result<Query<transcode::Parameters>, QueryRejection>,
 ) -> Result<Response, ApiError> {
     let id = path_id(&path?.0, "Media item")?;
-    open_media(&state, id).await?;
+    if let Some(profile) = query?.profile()? {
+        return transcode::prepare(&state, id, current.session_id, profile).await;
+    }
+    if matches!(open_media(&state, id).await?, Media::Cue(_)) {
+        state
+            .hardware
+            .audio
+            .check_format(
+                transcode::tier(&state).await,
+                palveni_media::audio::AudioFormat::Pcm,
+            )
+            .await
+            .map_err(transcode::problem)?;
+    }
     let info = issue(&state.identity, id, current.session_id, clock::now());
     Ok(([(header::CACHE_CONTROL, PRIVATE_CACHE)], Json(info)).into_response())
+}
+
+pub(super) fn playback_key(
+    id: ItemId,
+    namespace: &[u8],
+    credential: &[u8],
+) -> palveni_media::audio::PlaybackKey {
+    let mut hash = ring::digest::Context::new(&ring::digest::SHA256);
+    hash.update(namespace);
+    hash.update(id.as_uuid().as_bytes());
+    hash.update(credential);
+    let mut key = [0; 32];
+    key.copy_from_slice(hash.finish().as_ref());
+    key
 }
 
 pub async fn stream(
@@ -148,9 +200,10 @@ pub async fn stream(
     query: Result<Query<Access>, QueryRejection>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
-    let id = if headers.contains_key(header::AUTHORIZATION) {
+    let (id, key) = if let Some(bearer) = headers.get(header::AUTHORIZATION) {
         CurrentUser::from_headers(&headers, &state).await?;
-        path_id(&path?.0, "Media item")?
+        let id = path_id(&path?.0, "Media item")?;
+        (id, playback_key(id, b"bearer", bearer.as_bytes()))
     } else {
         let ticket = query
             .map_err(|_| ApiError::unauthorized())?
@@ -166,27 +219,33 @@ pub async fn stream(
             .active_by_id(session)
             .await?
             .ok_or_else(ApiError::unauthorized)?;
-        id
+        (id, playback_key(id, b"ticket", ticket.as_bytes()))
     };
     let track = open_media(&state, id).await?;
-    serve_track(track, method, &headers).await
+    serve_track(&state, track, method, &headers, key).await
 }
 
 pub(super) async fn serve_track(
-    track: TrackFile,
+    state: &AppState,
+    track: Media,
     method: Method,
     headers: &HeaderMap,
+    key: palveni_media::audio::PlaybackKey,
 ) -> Result<Response, ApiError> {
-    let size = track.source.size();
+    let (size, content_type) = match &track {
+        Media::Original(track) => (track.source.size(), track.content_type),
+        Media::Cue(track) => (track.len(), "audio/wav"),
+    };
     let mut response = Response::builder()
         .header(header::ACCEPT_RANGES, "bytes")
-        .header(header::CONTENT_TYPE, track.content_type)
+        .header(header::CONTENT_TYPE, content_type)
         .header(header::CACHE_CONTROL, PRIVATE_CACHE);
     let selection = if method == Method::HEAD {
         Selection::Full
     } else {
         byte_range::select(headers, size)
     };
+    let is_range = matches!(&selection, Selection::Partial(_));
     let range = match selection {
         Selection::Full => 0..size,
         Selection::Partial(range) => {
@@ -209,15 +268,31 @@ pub(super) async fn serve_track(
     let body = if method == Method::HEAD || length == 0 {
         Body::empty()
     } else {
-        let reader = track
-            .source
-            .read_range(ByteRange {
-                start: range.start,
-                end: Some(range.end),
-            })
-            .await
-            .map_err(ApiError::internal)?;
-        Body::from_stream(ReaderStream::with_capacity(reader, 64 * 1024))
+        match track {
+            Media::Cue(track) => {
+                track
+                    .body(
+                        state,
+                        range,
+                        palveni_media::audio::CueRequest {
+                            key,
+                            range: is_range,
+                        },
+                    )
+                    .await?
+            }
+            Media::Original(track) => {
+                let reader = track
+                    .source
+                    .read_range(ByteRange {
+                        start: range.start,
+                        end: Some(range.end),
+                    })
+                    .await
+                    .map_err(ApiError::internal)?;
+                Body::from_stream(ReaderStream::with_capacity(reader, 64 * 1024))
+            }
+        }
     };
     response
         .header(header::CONTENT_LENGTH, length)
@@ -228,6 +303,16 @@ pub(super) async fn serve_track(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_range_handoff_is_scoped_to_the_proof_protocol_and_item() {
+        let item = ItemId::generate();
+        let a = playback_key(item, b"ticket", b"first");
+        assert_eq!(a, playback_key(item, b"ticket", b"first"));
+        assert_ne!(a, playback_key(item, b"ticket", b"second"));
+        assert_ne!(a, playback_key(item, b"bearer", b"first"));
+        assert_ne!(a, playback_key(ItemId::generate(), b"ticket", b"first"));
+    }
 
     #[test]
     fn tickets_are_bound_to_the_item_issuer_session_and_expiry() {

@@ -15,13 +15,13 @@ cd ffmpeg-src
   --disable-autodetect --disable-shared --enable-static --disable-debug \
   --disable-doc --disable-ffplay --disable-x86asm --disable-devices \
   --disable-network --disable-v4l2-m2m --disable-everything --enable-ffmpeg --enable-ffprobe \
-  --enable-protocol=file,pipe \
-  --enable-demuxer=mov,matroska,mpegts,mpegvideo,avi,aac,mp3,flac,wav,ogg,asf,ac3,hevc,h264,webvtt,srt,image2 \
-  --enable-parser=aac,h264,hevc,mpegaudio,mpegvideo,flac,av1,vp9 \
-  --enable-decoder=h264,hevc,mpeg4,mpeg2video,av1,vp8,vp9,aac,flac,mp3,opus,vorbis,ac3,eac3,pcm_s16le,pcm_s24le,mjpeg,rawvideo \
+  --enable-protocol=file,pipe,fd \
+  --enable-demuxer=dts,mov,matroska,mpegts,mpegvideo,avi,aac,mp3,flac,wav,ogg,asf,ac3,hevc,h264,webvtt,srt,image2 \
+  --enable-parser=dca,aac,h264,hevc,mpegaudio,mpegvideo,flac,av1,vp9 \
+  --enable-decoder=dca,h264,hevc,mpeg4,mpeg2video,av1,vp8,vp9,aac,flac,mp3,opus,vorbis,ac3,eac3,pcm_s16le,pcm_s24le,mjpeg,rawvideo \
   --enable-encoder=aac,flac,pcm_s16le,mjpeg,mpeg4 \
-  --enable-muxer=mp4,mov,matroska,mpegts,adts,flac,wav,null,image2 \
-  --enable-filter=scale,format,aresample,aformat,testsrc2,color,sine,anull,null --enable-avfilter
+  --enable-muxer=mp4,mov,matroska,mpegts,adts,flac,wav,pcm_s16le,null,image2 \
+  --enable-filter=apad,asetpts,atrim,loudnorm,ebur128,scale,format,aresample,aformat,testsrc2,color,sine,anull,null --enable-avfilter
 make -j"${JOBS:-2}" ffmpeg ffprobe
 mkdir ../media-tools
 cp ffmpeg ffprobe COPYING.LGPLv2.1 ../media-tools/
