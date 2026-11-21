@@ -256,6 +256,26 @@
     "more": "Load more",
     "disc": "Disc {{number}}"
   },
+  "scanReviews": {
+    "title": "Missing library entries",
+    "kept": "The last scan kept these entries in the library. Review them before removing them from the index.",
+    "missing_one": "{{count}} missing file",
+    "missing_other": "{{count}} missing files",
+    "open": "Review missing files",
+    "openScope": "Review missing files in {{scope}}",
+    "confirmHint_one": "The server will check this file again. If it is still missing, its library entry will be removed. Files on disk are preserved.",
+    "confirmHint_other": "The server will check these {{count}} missing files again. If the same files are still missing, their library entries will be removed. Files on disk are preserved.",
+    "paths": "Missing file paths",
+    "pages": "Missing file pages",
+    "previous": "Previous page",
+    "next": "Next page",
+    "range": "{{start}}–{{end}} of {{total}}",
+    "changed": "The review changed or a scan is already running. Close this dialog and reopen the current review before confirming.",
+    "busy": "A scan is running. You can confirm this review after it finishes.",
+    "confirm_one": "Remove {{count}} library entry",
+    "confirm_other": "Remove {{count}} library entries",
+    "queued": "Review queued. Follow the scan in Tasks."
+  },
   "browse": {
     "root": "All files",
     "view": "View",

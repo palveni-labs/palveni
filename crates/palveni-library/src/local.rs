@@ -199,26 +199,24 @@ impl LocalStorage {
         let reader = std::fs::read_dir(&dir).map_err(|e| map_io(e, &dir))?;
         let mut entries = Vec::new();
         for entry in reader {
-            let entry = match entry {
-                Ok(entry) => entry,
-                Err(err) => {
-                    tracing::warn!(dir = %dir.display(), error = %err, "skipping unreadable directory entry");
-                    continue;
-                }
-            };
+            let entry = entry.map_err(|e| map_io(e, &dir))?;
             let Ok(name) = entry.file_name().into_string() else {
                 tracing::warn!(path = %entry.path().display(), "skipping entry whose name is not valid UTF-8");
                 continue;
             };
-            let Ok(file_type) = entry.file_type() else {
-                continue;
-            };
+            let file_type = entry.file_type().map_err(|e| map_io(e, &entry.path()))?;
             let (kind, meta) = if file_type.is_symlink() {
-                self.follow_symlink(&entry.path())
+                self.follow_symlink(&entry.path())?
             } else if file_type.is_dir() {
-                (EntryKind::Directory, entry.metadata().ok())
+                (
+                    EntryKind::Directory,
+                    Some(entry.metadata().map_err(|e| map_io(e, &entry.path()))?),
+                )
             } else if file_type.is_file() {
-                (EntryKind::File, entry.metadata().ok())
+                (
+                    EntryKind::File,
+                    Some(entry.metadata().map_err(|e| map_io(e, &entry.path()))?),
+                )
             } else {
                 (EntryKind::Other, None)
             };
@@ -228,14 +226,21 @@ impl LocalStorage {
     }
 
     /// Symlinks are only followed to regular files that stay inside the root.
-    fn follow_symlink(&self, link: &Path) -> (EntryKind, Option<Metadata>) {
-        match std::fs::canonicalize(link) {
-            Ok(target) if target.starts_with(&self.root) => match std::fs::metadata(&target) {
-                Ok(meta) if meta.is_file() => (EntryKind::File, Some(meta)),
-                _ => (EntryKind::Other, None),
-            },
-            _ => (EntryKind::Other, None),
-        }
+    fn follow_symlink(&self, link: &Path) -> Result<(EntryKind, Option<Metadata>)> {
+        let target = match std::fs::canonicalize(link) {
+            Ok(target) if target.starts_with(&self.root) => target,
+            Ok(_) => return Ok((EntryKind::Other, None)),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                return Ok((EntryKind::Other, None));
+            }
+            Err(err) => return Err(map_io(err, link)),
+        };
+        let meta = std::fs::metadata(&target).map_err(|e| map_io(e, &target))?;
+        Ok(if meta.is_file() {
+            (EntryKind::File, Some(meta))
+        } else {
+            (EntryKind::Other, None)
+        })
     }
 
     fn stat_blocking(&self, path: &StoragePath) -> Result<FileStat> {

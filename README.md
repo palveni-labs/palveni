@@ -17,6 +17,8 @@ docker run -d --name palveni \
 
 Open the [dashboard](http://localhost:7258) and create an administrator account. Under **System → Libraries**, add `/media` and start a scan. The data volume stores accounts, the media index, device keys and installed skins. For a LAN deployment or hardware acceleration, see the [Compose example](packaging/docker/compose.yaml).
 
+If a previously populated source becomes empty or loses most of its files, its missing entries stay in the library. Open the library as an administrator, choose **Review missing files**, and inspect the paths before confirming. The server checks the source again before removing entries from the index.
+
 ## Build from source
 
 Install Node.js 24 and the [pinned Rust toolchain](rust-toolchain.toml). Install FFmpeg and FFprobe for media diagnostics. The Docker image includes both tools. At startup, Palveni checks each encoder with a short test clip and limits the threads used by each probe.

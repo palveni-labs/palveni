@@ -294,6 +294,10 @@ impl Libraries<'_> {
             .filter(items::Column::LibraryId.eq(id.to_string()))
             .exec(&txn)
             .await?;
+        crate::entities::scan_reviews::Entity::delete_many()
+            .filter(crate::entities::scan_reviews::Column::LibraryId.eq(id.to_string()))
+            .exec(&txn)
+            .await?;
         library_mounts::Entity::delete_many()
             .filter(library_mounts::Column::LibraryId.eq(id.to_string()))
             .exec(&txn)

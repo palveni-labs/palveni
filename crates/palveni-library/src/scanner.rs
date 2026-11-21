@@ -12,6 +12,7 @@
 //! only files under successfully listed directories can be tombstoned.
 
 mod cue;
+mod reviews;
 
 use palveni_core::music::TrackTags;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -158,6 +159,8 @@ pub enum ScanError {
     Metadata(String),
     #[error("mount information is unavailable or changed during the scan")]
     MountChanged,
+    #[error("the missing items changed before the review could be applied")]
+    ReviewChanged,
     #[error("scan cancelled")]
     Cancelled,
     #[error("none of the library's paths could be read")]
@@ -280,7 +283,16 @@ impl Scanner {
         library_id: LibraryId,
         observer: &dyn ScanObserver,
     ) -> Result<ScanSummary, ScanError> {
-        self.scan_with_mounts(library_id, observer, crate::mounts::snapshot)
+        self.scan_reviewed(library_id, observer, None).await
+    }
+
+    pub async fn scan_reviewed(
+        &self,
+        library_id: LibraryId,
+        observer: &dyn ScanObserver,
+        revision: Option<&str>,
+    ) -> Result<ScanSummary, ScanError> {
+        self.scan_with_mounts(library_id, observer, revision, crate::mounts::snapshot)
             .await
     }
 
@@ -288,6 +300,7 @@ impl Scanner {
         &self,
         library_id: LibraryId,
         observer: &dyn ScanObserver,
+        revision: Option<&str>,
         read_mounts: impl Fn() -> F,
     ) -> Result<ScanSummary, ScanError>
     where
@@ -301,16 +314,18 @@ impl Scanner {
             .ok_or(ScanError::LibraryNotFound)?;
         observer.progress(None, &ScanStep::Discovering { found: 0 });
 
-        let mut walk = WalkOutcome::default();
-        let sources = read_mounts()
-            .await
-            .map_err(|_| ScanError::MountChanged)?
-            .sources(&library.paths);
-        walk.protected = self
-            .db
-            .libraries()
-            .unavailable_mounts(library_id, &sources)
-            .await?;
+        let table = read_mounts().await.map_err(|_| ScanError::MountChanged)?;
+        let sources = table.sources(&library.paths);
+        let (mut scopes, protected) =
+            reviews::ReviewScopes::load(&self.db, library_id, &library.paths, &table).await?;
+        let mut walk = WalkOutcome {
+            protected,
+            ..WalkOutcome::default()
+        };
+        let mounts_changed = |current: &crate::mounts::MountTable,
+                              scopes: &reviews::ReviewScopes| {
+            current.sources(&library.paths) != sources || !scopes.unchanged(current)
+        };
         walk.unreadable_dirs = count(
             walk.protected
                 .iter()
@@ -329,9 +344,10 @@ impl Scanner {
             }
             match LocalStorage::open_registered(Path::new(root)).await {
                 Ok(storage) => {
-                    walk_root(&storage, library.kind, observer, &mut walk).await?;
-                    roots.push(storage);
-                    walked_any = true;
+                    if walk_root(&storage, library.kind, observer, &mut walk).await? {
+                        roots.push(storage);
+                        walked_any = true;
+                    }
                 }
                 Err(err) => {
                     tracing::warn!(%library_id, root = %root, error = %err, "library path unavailable; keeping its items");
@@ -350,17 +366,48 @@ impl Scanner {
                 found: count(walk.files.len()),
             },
         );
-        if read_mounts()
-            .await
-            .map_err(|_| ScanError::MountChanged)?
-            .sources(&library.paths)
-            != sources
-        {
+        if mounts_changed(
+            &read_mounts().await.map_err(|_| ScanError::MountChanged)?,
+            &scopes,
+        ) {
             return Err(ScanError::MountChanged);
         }
-        let video = std::mem::take(&mut walk.video);
         let existing = self.db.items().scan_index(library_id).await?;
-        let plan = plan_changes(library_id, walk, existing);
+        let confirmed = scopes
+            .inspect(&self.db, library_id, revision, &existing, &walk)
+            .await?;
+        let video = std::mem::take(&mut walk.video);
+        scopes.restrict(&mut walk);
+        let mut plan = plan_changes(library_id, walk, &existing, &scopes);
+        if let Some((scope, revision)) = confirmed {
+            if observer.is_cancelled() {
+                return Err(ScanError::Cancelled);
+            }
+            if mounts_changed(
+                &read_mounts().await.map_err(|_| ScanError::MountChanged)?,
+                &scopes,
+            ) {
+                return Err(ScanError::MountChanged);
+            }
+            let targets: HashSet<_> = existing
+                .iter()
+                .filter(|item| scopes.owner(&item.path) == Some(scope.as_str()))
+                .map(|item| item.id)
+                .collect();
+            let (approved, ordinary): (Vec<_>, _) = plan
+                .tombstones
+                .into_iter()
+                .partition(|id| targets.contains(id));
+            if !self
+                .db
+                .scan_reviews()
+                .apply_confirmed_on(library_id, &revision, scopes.source(&scope), &approved)
+                .await?
+            {
+                return Err(ScanError::ReviewChanged);
+            }
+            plan.tombstones = ordinary;
+        }
 
         let total = plan.upserts.len() + plan.tombstones.len();
         let mut done = 0usize;
@@ -404,7 +451,11 @@ impl Scanner {
         }
 
         if library.kind == LibraryKind::Video {
-            video.index(&self.db, library_id, roots, observer).await?;
+            video
+                .index(&self.db, library_id, roots, observer, |path| {
+                    !scopes.held(path)
+                })
+                .await?;
         }
         if !self
             .db
@@ -454,7 +505,7 @@ async fn walk_root(
     kind: LibraryKind,
     observer: &dyn ScanObserver,
     out: &mut WalkOutcome,
-) -> Result<(), ScanError> {
+) -> Result<bool, ScanError> {
     let mut stack = vec![StoragePath::root()];
     let mut next_report = DISCOVERY_REPORT_EVERY;
     while let Some(dir) = stack.pop() {
@@ -470,6 +521,10 @@ async fn walk_root(
                 let dir_path = storage.display_path(&dir);
                 tracing::warn!(dir = %dir_path, error = %err, "cannot read folder; keeping its items");
                 out.protected.push(dir_path);
+                if dir.is_root() {
+                    out.skipped_roots += 1;
+                    return Ok(false);
+                }
                 out.unreadable_dirs += 1;
                 continue;
             }
@@ -516,7 +571,7 @@ async fn walk_root(
             next_report = out.files.len() + DISCOVERY_REPORT_EVERY;
         }
     }
-    Ok(())
+    Ok(true)
 }
 
 struct ChangePlan {
@@ -529,7 +584,8 @@ struct ChangePlan {
 fn plan_changes(
     library_id: LibraryId,
     walk: WalkOutcome,
-    existing: Vec<IndexedItem>,
+    existing: &[IndexedItem],
+    scopes: &reviews::ReviewScopes,
 ) -> ChangePlan {
     let by_path: HashMap<&str, &IndexedItem> =
         existing.iter().map(|e| (e.path.as_str(), e)).collect();
@@ -648,9 +704,26 @@ fn plan_changes(
         });
     }
 
+    let mut retained_folders = HashSet::new();
+    for item in existing
+        .iter()
+        .filter(|item| !item.deleted && (walk.is_protected(&item.path) || scopes.held(&item.path)))
+    {
+        for ancestor in Path::new(&item.path).ancestors().skip(1) {
+            if !retained_folders.insert(ancestor) {
+                break;
+            }
+        }
+    }
     let tombstones: Vec<ItemId> = existing
         .iter()
-        .filter(|e| !e.deleted && !seen.contains(e.path.as_str()) && !walk.is_protected(&e.path))
+        .filter(|e| {
+            !e.deleted
+                && !seen.contains(e.path.as_str())
+                && !walk.is_protected(&e.path)
+                && !scopes.held(&e.path)
+                && (e.kind != ItemKind::Folder || !retained_folders.contains(Path::new(&e.path)))
+        })
         .map(|e| {
             if e.kind != ItemKind::Folder {
                 summary.removed += 1;
@@ -774,7 +847,12 @@ mod tests {
         let changed_id = existing[1].id;
         let gone_id = existing[2].id;
 
-        let plan = plan_changes(LibraryId::generate(), walk, existing);
+        let plan = plan_changes(
+            LibraryId::generate(),
+            walk,
+            &existing,
+            &reviews::ReviewScopes::default(),
+        );
         assert_eq!(plan.summary.unchanged, 1);
         assert_eq!(plan.summary.updated, 1);
         assert_eq!(plan.summary.added, 1);
@@ -799,7 +877,12 @@ mod tests {
             indexed("/mnt/usb2/b.flac", ItemKind::Track, Some(1), Some(1)),
         ];
         let keep = existing[0].id;
-        let plan = plan_changes(LibraryId::generate(), walk, existing);
+        let plan = plan_changes(
+            LibraryId::generate(),
+            walk,
+            &existing,
+            &reviews::ReviewScopes::default(),
+        );
         assert!(!plan.tombstones.contains(&keep));
         // `/mnt/usb2` is a different directory, not a child of `/mnt/usb`.
         assert_eq!(plan.tombstones.len(), 1);
@@ -823,7 +906,12 @@ mod tests {
             parent: Some("/m/a/b".to_owned()),
             ..file("/m/a/b/x.flac", 1, 1)
         });
-        let plan = plan_changes(LibraryId::generate(), walk, Vec::new());
+        let plan = plan_changes(
+            LibraryId::generate(),
+            walk,
+            &[],
+            &reviews::ReviewScopes::default(),
+        );
         let kinds: Vec<ItemKind> = plan.upserts.iter().map(|u| u.kind).collect();
         assert_eq!(
             kinds,

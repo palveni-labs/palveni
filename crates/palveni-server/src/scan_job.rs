@@ -45,7 +45,15 @@ impl JobHandler for ScanJobHandler {
         let payload: ScanJobPayload =
             serde_json::from_value(payload).map_err(|e| JobError::InvalidPayload(e.to_string()))?;
         let observer = JobObserver { ctx: &ctx };
-        match self.scanner.scan(payload.library_id, &observer).await {
+        match self
+            .scanner
+            .scan_reviewed(
+                payload.library_id,
+                &observer,
+                payload.review_revision.as_deref(),
+            )
+            .await
+        {
             Ok(summary) => {
                 let step = summary.step();
                 Ok(Some(JobOutcome {

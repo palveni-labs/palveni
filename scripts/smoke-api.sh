@@ -670,6 +670,63 @@ if PALVENI_SMOKE_BEARER="$TOKEN" python3 "$(dirname "$0")/smoke-loudness.py" "$B
 else
   bad "background loudness analysis" "synthetic measurement or job lifecycle check failed"
 fi
+# A readable, unexpectedly empty source must keep its media until an exact review is confirmed.
+echo "Missing media review"
+review_dir=$(mktemp -d "$MEDIA/review.XXXXXXXX") || exit 2
+chmod 755 "$review_dir"
+python3 - "$review_dir" <<'PYTHON'
+from pathlib import Path
+import sys
+import wave
+for name in ("First", "Second"):
+    with wave.open(str(Path(sys.argv[1]) / (name + ".wav")), "wb") as recording:
+        recording.setparams((1, 2, 8000, 0, "NONE", "not compressed"))
+        recording.writeframes(bytes(16000))
+PYTHON
+req POST /libraries "$(jq -nc --arg p "$review_dir" '{name:"Review sample",kind:"music",paths:[$p]}')"
+review_lib=$(field .id)
+review_base="/libraries/$review_lib/scan/reviews"
+req POST "/libraries/$review_lib/scan"; wait_for_job "$(field .jobId)"
+req GET "/items?libraryId=$review_lib"
+review_track=$(field '.items[] | select(.title=="First") | .id')
+req PUT "/me/items/$review_track/favorite" '{"favorite":true}'
+req PUT "/me/items/$review_track/progress" '{"expectedVersion":0,"positionMs":200,"completed":false}'
+mv "$review_dir/First.wav" "$review_dir/First.held"
+mv "$review_dir/Second.wav" "$review_dir/Second.held"
+req POST "/libraries/$review_lib/scan"; wait_for_job "$(field .jobId)"
+req GET "$review_base"
+review_rev=$(field '.reviews[0].revision')
+check "an empty readable media root creates one review for both missing tracks" \
+  "$STATUS $(field '.reviews | length') $(field '.reviews[0].missingCount')" "200 1 2"
+req GET "$review_base/$review_rev/items?offset=1&limit=1"
+check "review paths paginate in stable order" "$STATUS $(field .total) $(field '.paths[0] | endswith("/Second.wav")')" "200 2 true"
+req GET "/me/items/$review_track"
+check "an empty scan retains favorite and playback position" "$STATUS $(field .favorite) $(field .positionMs)" "200 true 200"
+mv "$review_dir/First.held" "$review_dir/First.wav"
+req POST "/libraries/$review_lib/scan"; wait_for_job "$(field .jobId)"
+req POST "$review_base/$review_rev/confirm"
+check "old review cannot remove a returned track" "$STATUS" "409"
+req GET "$review_base"
+review_rev=$(field '.reviews[0].revision')
+check "partial recovery keeps the remaining missing track for review" "$(field '.reviews[0].missingCount')" "1"
+# The watcher can already have queued its own scan. Retry only this same revision.
+for _ in $(seq 1 50); do
+  req POST "$review_base/$review_rev/confirm"
+  [ "$STATUS" != "409" ] && break
+  sleep 0.1
+done
+check "exact review is queued for a fresh scan" "$STATUS" "202"
+if [ "$STATUS" = "202" ]; then
+  wait_for_job "$(field .jobId)"
+  check "reviewed scan completes" "$JOB_STATE" "succeeded"
+fi
+req GET "$review_base"
+check "completed confirmation clears the missing set" "$STATUS $(field '.reviews | length')" "200 0"
+req GET "/items?libraryId=$review_lib"
+check "confirmed removal preserves the recovered track ID" "$STATUS $(field '.items | length') $(field '.items[0].id')" "200 1 $review_track"
+req GET "/me/items/$review_track"
+check "recovered track retains personal data" "$STATUS $(field .favorite) $(field .positionMs)" "200 true 200"
+req DELETE "/libraries/$review_lib"
 req POST /auth/logout
 check "logout succeeds" "$STATUS" "204"
 req GET /auth/me

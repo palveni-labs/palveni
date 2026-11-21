@@ -12,6 +12,8 @@ export const queryKeys = {
     all: ["libraries"] as const,
     list: ["libraries", "list"] as const,
     detail: (id: string) => ["libraries", "detail", id] as const,
+    scanReviews: (id: string) => ["libraries", "scan-reviews", id] as const,
+    reviewPaths: (id: string, revision: string, offset: number) => ["libraries", "scan-reviews", id, revision, offset] as const,
     /** Client-side record of the scan job last started for a library (jobs carry no library id). */
     scanJob: (id: string) => ["libraries", "scan-job", id] as const,
   },

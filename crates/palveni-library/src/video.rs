@@ -213,6 +213,7 @@ impl Inventory {
         library: LibraryId,
         roots: Arc<Vec<LocalStorage>>,
         observer: &dyn ScanObserver,
+        allowed: impl Fn(&str) -> bool,
     ) -> std::result::Result<(), ScanError> {
         let started = Instant::now();
         let indexed = db.video().scan_index(library).await?;
@@ -221,6 +222,9 @@ impl Inventory {
         for (file, (id, stamp)) in indexed {
             if observer.is_cancelled() {
                 return Err(ScanError::Cancelled);
+            }
+            if !allowed(&file) {
+                continue;
             }
             let path = Path::new(&file);
             let Some((root_idx, root)) = roots

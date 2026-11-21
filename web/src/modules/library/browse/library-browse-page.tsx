@@ -21,6 +21,7 @@ import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import { LibraryMeta } from "../library-meta";
 import { useLibraryScan } from "../use-library-scan";
 import { ItemDetailsSheet } from "./item-details-sheet";
+import { ScanReviews } from "./scan-reviews";
 import { AnalyzeLoudness } from "./music-loudness";
 import { MusicBrowse } from "./music-browse";
 import { SpokenBrowse } from "./spoken-browse";
@@ -391,6 +392,7 @@ export function LibraryBrowsePage() {
   return (
     <PageFrame>
       <BrowseHeader library={library} />
+      <ScanReviews key={library.id} library={library} />
       {collectionView && (
         <nav aria-label={t("browse.view")} className="flex flex-wrap gap-2">
           <Link to="/library/$libraryId" params={{ libraryId }} search={{ view: collectionView }} aria-current={organized ? "page" : undefined} className={buttonVariants({ variant: organized ? "secondary" : "ghost", size: "sm" })}>

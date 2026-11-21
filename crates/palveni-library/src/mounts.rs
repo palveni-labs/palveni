@@ -9,6 +9,12 @@ struct Filesystem {
     read_only: bool,
 }
 
+impl Filesystem {
+    fn identity(&self, mount: &str) -> String {
+        format!("{}\0{}\0{}\0{}", self.kind, self.source, self.root, mount)
+    }
+}
+
 #[derive(Default)]
 pub struct MountTable(BTreeMap<String, Filesystem>);
 
@@ -38,6 +44,14 @@ impl MountTable {
             .collect()
     }
 
+    pub(crate) fn covering_identity(&self, path: &str) -> String {
+        Path::new(path)
+            .ancestors()
+            .find_map(|p| self.0.get_key_value(p.to_str()?))
+            .map(|(mount, filesystem)| filesystem.identity(mount))
+            .unwrap_or_default()
+    }
+
     pub(crate) fn sources(&self, roots: &[String]) -> BTreeMap<String, String> {
         let mut out = BTreeMap::new();
         for root in roots {
@@ -57,10 +71,7 @@ impl MountTable {
                     } else {
                         Path::new(mount)
                     };
-                    out.insert(
-                        scope.to_string_lossy().into_owned(),
-                        format!("{}\0{}\0{}\0{}", fs.kind, fs.source, fs.root, mount),
-                    );
+                    out.insert(scope.to_string_lossy().into_owned(), fs.identity(mount));
                 }
             }
         }

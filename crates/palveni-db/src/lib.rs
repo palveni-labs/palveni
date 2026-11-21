@@ -36,6 +36,7 @@ pub mod music;
 pub mod personal;
 pub mod playlists;
 pub mod plugin_kv;
+pub mod scan_reviews;
 pub mod sessions;
 pub mod settings;
 pub mod users;
@@ -202,6 +203,10 @@ impl Db {
 
     pub fn video(&self) -> video::Videos<'_> {
         video::Videos { db: self }
+    }
+
+    pub fn scan_reviews(&self) -> scan_reviews::ScanReviews<'_> {
+        scan_reviews::ScanReviews { db: self }
     }
 
     pub fn items(&self) -> items::Items<'_> {

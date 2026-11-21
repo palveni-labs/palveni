@@ -9,6 +9,7 @@ pub mod music;
 pub mod personal;
 pub mod playback;
 pub mod plugins;
+pub mod scan_reviews;
 pub mod settings;
 pub mod skins;
 pub mod spoken;

@@ -18,6 +18,8 @@ import type {
   LoginResponse,
   PluginList,
   ScanResponse,
+  ScanReviewList,
+  ScanReviewPaths,
   SetupResponse,
   InstalledSkin,
   RegistrySkin,
@@ -54,6 +56,12 @@ export const api = {
     create: (body: CreateLibraryRequest) => request<Library>("/libraries", { method: "POST", body }),
     update: (id: string, body: UpdateLibraryRequest) => request<Library>(`/libraries/${enc(id)}`, { method: "PATCH", body }),
     remove: (id: string) => request<void>(`/libraries/${enc(id)}`, { method: "DELETE" }),
+    scanReviews: (id: string, signal?: AbortSignal) =>
+      request<ScanReviewList>(`/libraries/${enc(id)}/scan/reviews`, { signal }),
+    scanReviewPaths: (id: string, revision: string, offset: number, limit: number, signal?: AbortSignal) =>
+      request<ScanReviewPaths>(`/libraries/${enc(id)}/scan/reviews/${enc(revision)}/items`, { query: { offset, limit }, signal }),
+    confirmScanReview: (id: string, revision: string) =>
+      request<ScanResponse>(`/libraries/${enc(id)}/scan/reviews/${enc(revision)}/confirm`, { method: "POST" }),
     scan: (id: string) => request<ScanResponse>(`/libraries/${enc(id)}/scan`, { method: "POST" }),
   },
   items: {

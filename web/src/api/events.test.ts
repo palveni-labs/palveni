@@ -43,6 +43,20 @@ describe("applyServerEvent", () => {
     expect(jobs?.[0]?.progress).toBe(0.9);
   });
 
+  it("refreshes the affected scan review and its open page when a scan ends", () => {
+    const client = new QueryClient();
+    const list = queryKeys.libraries.scanReviews("lib-1");
+    const page = queryKeys.libraries.reviewPaths("lib-1", "revision", 50);
+    const other = queryKeys.libraries.scanReviews("another");
+    for (const key of [list, page, other]) client.setQueryData(key, {});
+    applyServerEvent(client, event("job.updated", job));
+    expect(client.getQueryState(list)?.isInvalidated).toBe(false);
+    applyServerEvent(client, event("job.updated", { ...job, state: "succeeded" }));
+    expect(client.getQueryState(list)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(page)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(other)?.isInvalidated).toBe(false);
+  });
+
   it("refreshes only this library's loudness facts after analysis, including partial failures", () => {
     const client = new QueryClient();
     const first = [...queryKeys.items.loudness("l1"), "one"];

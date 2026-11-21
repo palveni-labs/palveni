@@ -46,6 +46,7 @@ mod broadcast;
 mod connections;
 mod loudness;
 mod music_search;
+mod scan_reviews;
 mod video;
 
 const PALVENI_TABLES: &[&str] = &[
@@ -71,6 +72,8 @@ const PALVENI_TABLES: &[&str] = &[
     "track_loudness",
     "track_metadata",
     "items",
+    "scan_review_items",
+    "scan_reviews",
     "library_mounts",
     "library_paths",
     "libraries",

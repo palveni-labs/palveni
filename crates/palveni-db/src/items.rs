@@ -231,28 +231,40 @@ impl Items<'_> {
             return Err(DbError::NotFound("library"));
         }
 
-        if !upserts.is_empty() {
-            upsert_statement(library_id, upserts, now, rev)
-                .exec_without_returning(&txn)
-                .await?;
-        }
-
-        if !tombstones.is_empty() {
-            let ids: Vec<String> = tombstones.iter().map(ToString::to_string).collect();
-            items::Entity::update_many()
-                .col_expr(items::Column::DeletedAt, Expr::val(now))
-                .col_expr(items::Column::UpdatedAt, Expr::val(now))
-                .col_expr(items::Column::Revision, Expr::val(rev))
-                .filter(items::Column::Id.is_in(ids))
-                .filter(items::Column::DeletedAt.is_null())
-                .exec(&txn)
-                .await?;
-        }
-
-        crate::music::update(&txn, library_id, upserts, tombstones).await?;
+        write_scan_batch(&txn, library_id, upserts, tombstones, now, rev).await?;
         txn.commit().await?;
         Ok(())
     }
+}
+
+pub(crate) async fn write_scan_batch(
+    txn: &sea_orm::DatabaseTransaction,
+    library_id: LibraryId,
+    upserts: &[ItemUpsert],
+    tombstones: &[ItemId],
+    now: i64,
+    rev: i64,
+) -> Result<(), DbError> {
+    if !upserts.is_empty() {
+        upsert_statement(library_id, upserts, now, rev)
+            .exec_without_returning(txn)
+            .await?;
+    }
+
+    if !tombstones.is_empty() {
+        let ids: Vec<String> = tombstones.iter().map(ToString::to_string).collect();
+        items::Entity::update_many()
+            .col_expr(items::Column::DeletedAt, Expr::val(now))
+            .col_expr(items::Column::UpdatedAt, Expr::val(now))
+            .col_expr(items::Column::Revision, Expr::val(rev))
+            .filter(items::Column::LibraryId.eq(library_id.to_string()))
+            .filter(items::Column::Id.is_in(ids))
+            .filter(items::Column::DeletedAt.is_null())
+            .exec(txn)
+            .await?;
+    }
+
+    crate::music::update(txn, library_id, upserts, tombstones).await
 }
 
 /// Multi-row upsert keyed by `(library_id, path_hash)`: `ON CONFLICT … DO

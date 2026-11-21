@@ -26,6 +26,8 @@ pub mod library_mounts;
 pub mod library_paths;
 pub mod media_connections;
 pub mod music_collection_favorites;
+pub mod scan_review_items;
+pub mod scan_reviews;
 pub mod sessions;
 pub mod settings;
 pub mod subsonic_folders;

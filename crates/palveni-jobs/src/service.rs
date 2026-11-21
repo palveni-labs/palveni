@@ -108,9 +108,22 @@ impl JobService {
         id: palveni_core::LibraryId,
         name: String,
     ) -> Result<(Job, bool), JobError> {
+        self.enqueue_scan_with_review(id, name, None).await
+    }
+
+    /// A confirmed review competes for the same per-library slot as every scan.
+    pub async fn enqueue_scan_with_review(
+        &self,
+        id: palveni_core::LibraryId,
+        name: String,
+        review_revision: Option<String>,
+    ) -> Result<(Job, bool), JobError> {
         use palveni_core::model::{SCAN_JOB_KIND, ScanJobPayload};
-        let payload = serde_json::to_value(ScanJobPayload { library_id: id })
-            .map_err(|e| JobError::InvalidPayload(e.to_string()))?;
+        let payload = serde_json::to_value(ScanJobPayload {
+            library_id: id,
+            review_revision,
+        })
+        .map_err(|e| JobError::InvalidPayload(e.to_string()))?;
         self.enqueue_status(NewJob {
             kind: SCAN_JOB_KIND.to_owned(),
             subject: Some(palveni_core::JobSubject::library(id, name)),

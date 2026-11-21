@@ -318,6 +318,8 @@ pub const SCAN_JOB_KIND: &str = "library.scan";
 #[serde(rename_all = "camelCase")]
 pub struct ScanJobPayload {
     pub library_id: LibraryId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub review_revision: Option<String>,
 }
 
 /// Subject types a job can refer to. Clients treat unknown types as a

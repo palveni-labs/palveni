@@ -54,6 +54,9 @@ export function applyServerEvent(queryClient: QueryClient, message: SseMessage) 
       const job = parseData<"job.updated">(message);
       if (job) {
         upsertJob(queryClient, job);
+        if (job.kind === "library.scan" && job.subject?.type === "library" && !isActiveJob(job)) {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.libraries.scanReviews(job.subject.id) });
+        }
         if (job.kind === "music.loudness" && job.subject?.type === "library" && !isActiveJob(job)) {
           void queryClient.invalidateQueries({ queryKey: queryKeys.items.loudness(job.subject.id) });
         }

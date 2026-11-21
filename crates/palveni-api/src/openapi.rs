@@ -179,6 +179,20 @@ fn parameters(cap: &Capability) -> Vec<Value> {
         ));
     }
     match cap.id {
+        "listScanReviewPaths" => {
+            params.push(parameter(
+                "offset",
+                "query",
+                false,
+                json!({"type":"integer","minimum":0,"maximum":4294967295u64,"default":0}),
+            ));
+            params.push(parameter(
+                "limit",
+                "query",
+                false,
+                json!({"type":"integer","minimum":1,"maximum":100,"default":50}),
+            ));
+        }
         "issueSubsonicPassword" => params.push(parameter(
             "personal",
             "query",

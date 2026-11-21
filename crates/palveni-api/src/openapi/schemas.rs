@@ -88,6 +88,7 @@ use crate::routes::{
     personal::{FavoriteUpdate, PlaylistUpdate, RatingUpdate},
     playback::{PlaybackInfo, PlaybackMode},
     plugins::PluginList,
+    scan_reviews::{ScanReview, ScanReviewList, ScanReviewPaths},
     subsonic::{SubsonicPassword, SubsonicPasswordStatus},
     system::{Health, SystemInfo},
 };
@@ -163,6 +164,9 @@ use utoipa::OpenApi;
     UpdateLibraryRequest,
     Library,
     ScanAccepted,
+    ScanReview,
+    ScanReviewList,
+    ScanReviewPaths,
     ItemList,
     Lyrics,
     LyricsFormat,
