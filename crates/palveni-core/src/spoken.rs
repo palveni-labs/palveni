@@ -33,3 +33,16 @@ pub struct SpokenPage {
     #[schema(required = true)]
     pub next_cursor: Option<String>,
 }
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SpokenChapter {
+    pub start_ms: u64,
+    #[schema(required = true)]
+    pub title: Option<String>,
+}
+
+#[derive(Debug, Default, Serialize, utoipa::ToSchema)]
+pub struct SpokenChapterList {
+    pub chapters: Vec<SpokenChapter>,
+}

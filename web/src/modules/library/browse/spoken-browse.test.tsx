@@ -11,7 +11,7 @@ it.each([
   ["audiobook", "book", "chapter"],
   ["podcast", "show", "episode"],
 ] as const)("opens a %s as a regular listener and restores the recording position", async (kind, groupKind, itemKind) => {
-  const db = installMockDb({ features: [...M0_FEATURES, "spoken"] });
+  const db = installMockDb({ features: [...M0_FEATURES, "spoken", "spokenChapters"] });
   const library = db.createLibrary("Field recordings", kind, ["/media/recordings"]);
   signIn(db, MOCK_ACCOUNTS.user.username);
   const collection = "a".repeat(64);
@@ -21,7 +21,12 @@ it.each([
   };
   const checkpoints: unknown[] = [];
   const attempted: string[] = [];
+  let chapterReads = 0;
   server.use(
+    http.get(`/api/v1/items/${id}/chapters`, () => {
+      chapterReads++;
+      return HttpResponse.json({ chapters: [{ title: null, startMs: 5000 }, { title: "Night watch", startMs: 20000 }] });
+    }),
     http.get(`/api/v1/libraries/${library.id}/spoken`, ({ request }) => HttpResponse.json({
       entries: new URL(request.url).searchParams.get("collection") === collection
         ? [{ kind: itemKind, id, title: "Dawn chorus", artist: null, discNumber: null, number: 2, durationMs: 120_000 }]
@@ -58,20 +63,32 @@ it.each([
   audio.currentTime = 9.75;
   fireEvent.seeked(audio);
   await waitFor(() => expect(checkpoints).toEqual([{ completed: false, positionMs: 9750, expectedVersion: 3 }]));
+  if (kind === "audiobook") {
+    await user.selectOptions(await screen.findByRole("combobox", { name: "跳至章节" }), "20000");
+    expect(audio.currentTime).toBe(20);
+    await waitFor(() => expect(checkpoints.at(-1)).toMatchObject({ positionMs: 20000 }));
+  }
 
   Object.defineProperty(audio, "error", { value: { code: 4 } });
   Object.defineProperty(audio, "canPlayType", { value: (mime: string) => mime.startsWith("audio/") ? "probably" : "" });
   fireEvent.error(audio);
+  if (kind === "audiobook")
+    expect(screen.getByRole("combobox", { name: "跳至章节" })).toBeDisabled();
   const expectedFormat = kind === "podcast" ? "aac" : "mp3";
-  await waitFor(() => expect(audio).toHaveAttribute("src", `/media/9750.${expectedFormat}`));
+  await waitFor(() => expect(audio).toHaveAttribute("src", `/media/${kind === "audiobook" ? 20000 : 9750}.${expectedFormat}`));
   expect(attempted).toEqual(kind === "podcast" ? ["mp3", "aac"] : ["mp3"]);
+  if (kind === "audiobook") {
+    await user.selectOptions(screen.getByRole("combobox", { name: "跳至章节" }), screen.getByRole("option", { name: "第 1 章" }));
+    await waitFor(() => expect(audio).toHaveAttribute("src", "/media/5000.mp3"));
+  }
   audio.currentTime = 0;
   fireEvent.loadedMetadata(audio);
   expect(audio.currentTime).toBe(0);
   fireEvent.playing(audio);
   audio.currentTime = 2;
   fireEvent.pause(audio);
-  await waitFor(() => expect(checkpoints.at(-1)).toEqual({ completed: false, positionMs: 11750, expectedVersion: 4 }));
+  await waitFor(() => expect(checkpoints.at(-1)).toEqual({ completed: false, positionMs: kind === "audiobook" ? 7000 : 11750, expectedVersion: 4 }));
+  expect(chapterReads).toBe(kind === "audiobook" ? 1 : 0);
 
   const breadcrumb = screen.getByRole("navigation", { name: "当前位置" });
   await user.click(within(breadcrumb).getByRole("link"));

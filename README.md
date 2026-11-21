@@ -67,7 +67,7 @@ Add a **Video** library and scan its folders to browse a poster wall. Search tit
 
 Open **Subtitles** in the player to select a language or turn captions off. Palveni reads matching SRT and WebVTT files beside the video, such as `Film.en.srt`. It can also read text tracks embedded in MP4 and Matroska when the server’s FFmpeg build can decode the track and write WebVTT.
 
-Choose **Audiobooks** or **Podcasts** for a folder of spoken audio. The dashboard groups the files into books or shows. Each file is a chapter or episode, and each listener can return to the position they last played.
+Choose **Audiobooks** or **Podcasts** for a folder of spoken audio. The dashboard groups the files into books or shows. Each file is a chapter or episode, and each listener can return to the position they last played. For M4B audiobooks with embedded chapters, select a chapter in the player to jump to its start.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/video-library-dark.png">

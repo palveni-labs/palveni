@@ -34,29 +34,3 @@ fn reports_only_text_streams_convertible_with_the_installed_tools() {
             .is_empty()
     );
 }
-
-#[cfg(unix)]
-#[tokio::test]
-async fn subprocess_output_and_time_are_bounded() {
-    let echo = || {
-        let mut cmd = Command::new("/bin/echo");
-        cmd.arg("subtitle");
-        cmd
-    };
-    assert_eq!(
-        bounded_output(echo(), 9, Duration::from_secs(1))
-            .await
-            .unwrap(),
-        b"subtitle\n"
-    );
-    assert_eq!(
-        bounded_output(echo(), 8, Duration::from_secs(1)).await,
-        Err(SubtitleError::Invalid)
-    );
-    let mut sleep = Command::new("/bin/sleep");
-    sleep.arg("5");
-    assert_eq!(
-        bounded_output(sleep, 8, Duration::from_millis(30)).await,
-        Err(SubtitleError::Timeout)
-    );
-}

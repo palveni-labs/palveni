@@ -132,6 +132,8 @@ pub(super) fn endpoints() -> Vec<Endpoint> {
             "Browse the album artists, albums and tracks in a music library.", None, 200 Json("MusicPage"), [400,404]),
         endpoint!(browseSpoken, spoken, GET "/libraries/{id}/spoken", routes::spoken::list, Authenticated, Read, false,
             "Browse books, shows, chapters and episodes.", None, 200 Json("SpokenPage"), [400,404]),
+        endpoint!(listSpokenChapters, spokenChapters, GET "/items/{id}/chapters", routes::spoken::chapters, Authenticated, Read, false,
+            "Read embedded chapter markers for an indexed audiobook recording.", None, 200 Json("SpokenChapterList"), [404,503]),
         endpoint!(prepareBookDownload, bookDownloads, POST "/items/{id}/book-download", routes::books::prepare, Authenticated, Read, false,
             "Prepare a download of an original ebook.", None, 200 Json("BookDownload"), [404]),
         endpoint!(downloadBook, bookDownloads, GET "/items/{id}/book-download", routes::books::download, Authenticated, Read, false,

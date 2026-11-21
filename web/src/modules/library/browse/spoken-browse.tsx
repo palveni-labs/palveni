@@ -40,7 +40,7 @@ function SpokenCollection({ libraryId, kind, collection, collectionName }: Brows
         <Link to="/library/$libraryId" params={{ libraryId }} search={{ view: "spoken" }}>{shelf}</Link>
         <ChevronRight className="size-4 shrink-0" aria-hidden /><span aria-current="page">{collectionName || title}</span>
       </nav>}
-      {selected && <SpokenPlayer key={selected.id} id={selected.id} title={selected.title} />}
+      {selected && <SpokenPlayer key={selected.id} id={selected.id} title={selected.title} audiobook={kind === "audiobook"} />}
       <Section title={collection ? title : shelf} bare>
         {result.isPending ? <LoadingRows /> : result.isError && !entries.length ? (
           <ErrorState error={result.error} onRetry={() => void result.refetch()} />

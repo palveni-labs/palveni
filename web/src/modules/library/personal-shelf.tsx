@@ -125,7 +125,7 @@ export function PersonalShelf({ libraries }: { libraries: Library[] }) {
               <Modal.CloseTrigger aria-label={t("connections.close")} />
               <Modal.Body>
                 <OriginalPlayer key={playing.itemId} id={playing.itemId} title={playing.title}
-                  video={playing.kind === "video"} onProgressSaved={() => { void refresh(); }} />
+                  video={playing.kind === "video"} audiobook={playing.kind === "chapter"} onProgressSaved={() => { void refresh(); }} />
               </Modal.Body>
             </Modal.Dialog>
           </Modal.Container>

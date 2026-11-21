@@ -111,7 +111,9 @@ use palveni_core::personal::{
     MediaState, MediaView, PersonalItem, PersonalItemPage, PlaybackUpdate, Playlist, PlaylistPage,
     PlaylistSummary, PlaylistTrack, PlaylistTrackPage,
 };
-use palveni_core::spoken::{SpokenEntry, SpokenPage, SpokenRecording};
+use palveni_core::spoken::{
+    SpokenChapter, SpokenChapterList, SpokenEntry, SpokenPage, SpokenRecording,
+};
 use palveni_core::video::{
     SubtitleFormat, SubtitleList, SubtitleTrack, VideoEntry, VideoKind, VideoPage,
 };
@@ -134,6 +136,8 @@ use utoipa::OpenApi;
     ConnectionSummary,
     CreateConnection,
     BookDownload,
+    SpokenChapter,
+    SpokenChapterList,
     SpokenEntry,
     SpokenPage,
     SpokenRecording,

@@ -6,12 +6,13 @@ import { ApiError } from "@/api/errors";
 import type { components } from "@/api/generated";
 import { ErrorState, LoadingRows } from "@/ui/states";
 import { VideoSubtitles } from "./video-subtitles";
+import { SpokenChapters } from "./spoken-chapters";
 import { spokenProgress } from "./spoken-progress";
 
 type Ticket = components["schemas"]["PlaybackInfo"];
 type MediaState = components["schemas"]["MediaState"];
 type Opened = { ticket: Ticket; state: MediaState };
-type Props = { id: string; title: string; video?: boolean; onProgressSaved?: () => void };
+type Props = { id: string; title: string; video?: boolean; audiobook?: boolean; onProgressSaved?: () => void };
 
 type AudioFormat = "mp3" | "aac" | "opus";
 const audioFormats = [
@@ -32,17 +33,19 @@ function MediaSession({
   id,
   title,
   video,
+  audiobook,
   onProgressSaved,
   opened,
   retry,
 }: Props & { opened: Opened; retry: () => void }) {
   const { t } = useTranslation();
-  const [source, setSource] = useState<{ ticket: Ticket; format?: AudioFormat; startMs: number }>({
+  const [source, setSource] = useState<{ ticket: Ticket; format?: AudioFormat; startMs: number; keepPaused?: boolean }>({
     ticket: opened.ticket, startMs: 0,
   });
   const { ticket, startMs } = source;
   const [error, setError] = useState<unknown>();
   const [progressError, setProgressError] = useState<unknown>();
+  const [changingSource, setChangingSource] = useState(false);
   const media = useRef<HTMLMediaElement>(null);
   const Element = video ? "video" : "audio";
   const last = useRef(opened.state.positionMs / 1000);
@@ -73,17 +76,26 @@ function MediaSession({
     };
   }, [save]);
 
-  const renew = async (formats: (AudioFormat | undefined)[]) => {
-    if (renewal.current) return;
+  const renew = async (formats: (AudioFormat | undefined)[], chapterMs?: number) => {
+    if (renewal.current && chapterMs === undefined) return;
+    renewal.current?.abort();
     const controller = new AbortController();
     renewal.current = controller;
+    setChangingSource(true);
     ready.current = false;
+    const keepPaused = chapterMs !== undefined && media.current?.paused;
     try {
       for (const [index, format] of formats.entries()) {
-        const startMs = format ? Math.max(0, Math.floor(last.current * 1000)) : 0;
+        const startMs = format ? chapterMs ?? Math.max(0, Math.floor(last.current * 1000)) : 0;
         try {
           const next = await ticketFor(id, controller.signal, format, startMs);
-          if (!controller.signal.aborted) setSource({ ticket: next, format, startMs });
+          if (!controller.signal.aborted) {
+            if (chapterMs !== undefined) {
+              last.current = chapterMs / 1000;
+              save(last.current, false);
+            }
+            setSource({ ticket: next, format, startMs, keepPaused });
+          }
           return;
         } catch (cause) {
           if (controller.signal.aborted) return;
@@ -94,8 +106,19 @@ function MediaSession({
     } catch (cause) {
       setError(cause);
     } finally {
-      if (renewal.current === controller) renewal.current = null;
+      if (renewal.current === controller && !controller.signal.aborted) {
+        renewal.current = null;
+        setChangingSource(false);
+      }
     }
+  };
+  const seekChapter = (startMs: number) => {
+    const element = media.current;
+    if (!element) return;
+    if (source.format) return void renew([source.format], startMs);
+    last.current = startMs / 1000;
+    if (ready.current) element.currentTime = last.current;
+    save(last.current, false);
   };
   const remember = (element: HTMLMediaElement) => {
     if (!ready.current || !played.current || element.ended) return;
@@ -118,7 +141,7 @@ function MediaSession({
           }}
           controls
           playsInline={video}
-          autoPlay
+          autoPlay={!source.keepPaused}
           preload="metadata"
           src={ticket.url}
           aria-label={title}
@@ -169,6 +192,7 @@ function MediaSession({
         />
       )}
       {video && !error && <VideoSubtitles id={id} media={media} />}
+      {audiobook && !error && <SpokenChapters id={id} disabled={changingSource} onSeek={seekChapter} />}
       {progressError instanceof ApiError && progressError.status === 409 ? (
         <p role="alert" className="text-sm">
           {t("spoken.progressConflict")}{" "}
@@ -187,6 +211,7 @@ function OpenRecording({
   id,
   title,
   video,
+  audiobook,
   onProgressSaved,
   retry,
 }: Props & { retry: () => void }) {
@@ -214,6 +239,7 @@ function OpenRecording({
       id={id}
       title={title}
       video={video}
+      audiobook={audiobook}
       onProgressSaved={onProgressSaved}
       opened={opened}
       retry={retry}
@@ -221,7 +247,7 @@ function OpenRecording({
   );
 }
 
-export function OriginalPlayer({ id, title, video, onProgressSaved }: Props) {
+export function OriginalPlayer({ id, title, video, audiobook, onProgressSaved }: Props) {
   const [attempt, setAttempt] = useState(0);
   return (
     <OpenRecording
@@ -229,6 +255,7 @@ export function OriginalPlayer({ id, title, video, onProgressSaved }: Props) {
       id={id}
       title={title}
       video={video}
+      audiobook={audiobook}
       onProgressSaved={onProgressSaved}
       retry={() => setAttempt((n) => n + 1)}
     />

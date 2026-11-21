@@ -47,3 +47,40 @@ pub async fn list(
         .map(Json)
         .ok_or_else(|| ApiError::not_found("Spoken library not found"))
 }
+
+pub async fn chapters(
+    _: CurrentUser,
+    State(state): State<AppState>,
+    path: Result<Path<String>, PathRejection>,
+) -> Result<Json<palveni_core::spoken::SpokenChapterList>, ApiError> {
+    let id = path_id(&path?.0, "Recording")?;
+    let location = state
+        .db
+        .music()
+        .audiobook_location(id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Audiobook recording not found"))?;
+    let m4b = location
+        .relative_path
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("m4b"));
+    let file = palveni_library::local::open_audio_input(location)
+        .await
+        .map_err(|_| ApiError::not_found("Audiobook file unavailable"))?;
+    if !m4b {
+        return Ok(Json(Default::default()));
+    }
+    state
+        .hardware
+        .chapters
+        .list(file)
+        .await
+        .map(Json)
+        .map_err(|_| {
+            ApiError::new(
+                axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                "unavailable",
+                "Chapter lookup temporarily unavailable",
+            )
+        })
+}

@@ -6,6 +6,7 @@
 //! real short test encode succeeded.
 
 pub mod audio;
+pub mod chapters;
 mod cover;
 pub mod devices;
 pub mod discovery;

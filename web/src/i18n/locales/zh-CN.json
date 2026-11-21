@@ -898,6 +898,8 @@
     "shelf": "书架",
     "shows": "节目",
     "chapters": "章节",
+    "jumpToChapter": "跳至章节",
+    "numberedChapter": "第 {{number}} 章",
     "episodes": "单集",
     "play": "播放《{{title}}》",
     "empty": "暂无音频",

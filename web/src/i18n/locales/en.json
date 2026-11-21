@@ -928,6 +928,8 @@
     "shelf": "Bookshelf",
     "shows": "Shows",
     "chapters": "Chapters",
+    "jumpToChapter": "Jump to chapter",
+    "numberedChapter": "Chapter {{number}}",
     "episodes": "Episodes",
     "play": "Play {{title}}",
     "empty": "No audio yet",

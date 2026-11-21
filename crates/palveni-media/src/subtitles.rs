@@ -8,14 +8,16 @@ use std::{
 
 use serde::Deserialize;
 use tokio::{
-    io::{AsyncReadExt, AsyncSeekExt},
+    io::AsyncSeekExt,
     process::Command,
     sync::{OnceCell, Semaphore},
 };
 
-use crate::discovery::locate;
+use crate::{
+    discovery::locate,
+    process::{FILE_INPUT as INPUT, bounded_output, configure_file_input},
+};
 
-const INPUT: &str = if cfg!(windows) { "handle" } else { "fd" };
 const MAX_PROBE_BYTES: usize = 128 * 1024;
 const MAX_VTT_BYTES: usize = 2 * 1024 * 1024;
 const TEXT_CODECS: [&str; 5] = ["subrip", "ass", "ssa", "mov_text", "webvtt"];
@@ -100,7 +102,7 @@ impl EmbeddedSubtitles {
         file.rewind().await.map_err(|_| SubtitleError::Missing)?;
         let mut cmd = Command::new(&tools.ffmpeg);
         cmd.args(["-nostdin", "-xerror"]);
-        configure_input(&mut cmd, capabilities);
+        configure_file_input(&mut cmd, &capabilities.demuxers);
         cmd.args([
             "-i",
             &format!("{INPUT}:"),
@@ -117,7 +119,9 @@ impl EmbeddedSubtitles {
             "pipe:1",
         ])
         .stdin(Stdio::from(file.into_std().await));
-        bounded_output(cmd, MAX_VTT_BYTES, Duration::from_secs(60)).await
+        bounded_output(cmd, MAX_VTT_BYTES, Duration::from_secs(60))
+            .await
+            .map_err(Into::into)
     }
 }
 
@@ -148,7 +152,7 @@ impl Tools {
         cmd.args(["-hide_banner", flag]).stdin(Stdio::null());
         match bounded_output(cmd, 256 * 1024, Duration::from_secs(3)).await {
             Ok(output) => Ok(String::from_utf8_lossy(&output).into_owned()),
-            Err(SubtitleError::Timeout) => Err(SubtitleError::Timeout),
+            Err(err) if err.kind() == std::io::ErrorKind::TimedOut => Err(SubtitleError::Timeout),
             Err(_) => Ok(String::new()),
         }
     }
@@ -162,14 +166,14 @@ impl Tools {
             return Ok(Vec::new());
         }
         let mut cmd = Command::new(&self.ffprobe);
-        configure_input(&mut cmd, capabilities);
+        configure_file_input(&mut cmd, &capabilities.demuxers);
         cmd.args(["-nofind_stream_info", "-select_streams", "s", "-show_entries",
             "stream=index,codec_type,codec_name:stream_disposition=forced,hearing_impaired:stream_tags=language",
             "-of", "json", "-i", &format!("{INPUT}:")])
             .stdin(Stdio::from(file));
         match bounded_output(cmd, MAX_PROBE_BYTES, Duration::from_secs(5)).await {
             Ok(output) => Ok(parse_tracks(&output, capabilities)),
-            Err(SubtitleError::Timeout) => Err(SubtitleError::Timeout),
+            Err(err) if err.kind() == std::io::ErrorKind::TimedOut => Err(SubtitleError::Timeout),
             // Unsupported containers and tool builds leave standalone sidecars usable.
             Err(_) => Ok(Vec::new()),
         }
@@ -210,27 +214,6 @@ fn capabilities(formats: &str, codecs: &str) -> Capabilities {
             .map(str::to_owned)
             .collect(),
     }
-}
-
-fn configure_input(cmd: &mut Command, capabilities: &Capabilities) {
-    cmd.args([
-        "-v",
-        "error",
-        "-threads",
-        "1",
-        "-max_alloc",
-        "67108864",
-        "-max_streams",
-        "256",
-        "-probesize",
-        "2097152",
-        "-analyzeduration",
-        "2000000",
-        "-protocol_whitelist",
-        INPUT,
-        "-format_whitelist",
-        &capabilities.demuxers,
-    ]);
 }
 
 #[derive(Deserialize)]
@@ -283,37 +266,14 @@ fn parse_tracks(output: &[u8], capabilities: &Capabilities) -> Vec<EmbeddedTrack
         .collect()
 }
 
-async fn bounded_output(
-    mut cmd: Command,
-    limit: usize,
-    deadline: Duration,
-) -> Result<Vec<u8>, SubtitleError> {
-    let mut child = cmd
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .kill_on_drop(true)
-        .spawn()
-        .map_err(|_| SubtitleError::Missing)?;
-    let stdout = child.stdout.take().ok_or(SubtitleError::Invalid)?;
-    let run = async {
-        let mut output = Vec::new();
-        stdout
-            .take(limit as u64 + 1)
-            .read_to_end(&mut output)
-            .await
-            .map_err(|_| SubtitleError::Invalid)?;
-        if output.len() > limit || !child.wait().await.is_ok_and(|status| status.success()) {
-            return Err(SubtitleError::Invalid);
+impl From<std::io::Error> for SubtitleError {
+    fn from(error: std::io::Error) -> Self {
+        match error.kind() {
+            std::io::ErrorKind::TimedOut => Self::Timeout,
+            std::io::ErrorKind::NotFound => Self::Missing,
+            _ => Self::Invalid,
         }
-        Ok(output)
-    };
-    let result = tokio::time::timeout(deadline, run)
-        .await
-        .unwrap_or(Err(SubtitleError::Timeout));
-    if result.is_err() {
-        let _ = child.kill().await;
     }
-    result
 }
 
 #[cfg(test)]

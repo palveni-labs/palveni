@@ -1,10 +1,69 @@
-//! Running external tools safely: argument vectors only, no stdin, output
-//! captured, hard timeout, child killed when the future is dropped.
+//! External tools use argument vectors, captured output and hard deadlines.
+//! Media probes read an already-open file through the child's standard input.
 
-use std::ffi::OsString;
 use std::path::Path;
 use std::process::Stdio;
 use std::time::Duration;
+use std::{ffi::OsString, io};
+
+use tokio::{io::AsyncReadExt, process::Command};
+
+pub(crate) const FILE_INPUT: &str = if cfg!(windows) { "handle" } else { "fd" };
+
+pub(crate) fn configure_file_input(cmd: &mut Command, demuxers: &str) {
+    cmd.args([
+        "-v",
+        "error",
+        "-threads",
+        "1",
+        "-max_alloc",
+        "67108864",
+        "-max_streams",
+        "256",
+        "-probesize",
+        "2097152",
+        "-analyzeduration",
+        "2000000",
+        "-protocol_whitelist",
+        FILE_INPUT,
+        "-format_whitelist",
+        demuxers,
+    ]);
+}
+
+pub(crate) async fn bounded_output(
+    mut cmd: Command,
+    limit: usize,
+    deadline: Duration,
+) -> io::Result<Vec<u8>> {
+    let mut child = cmd
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .kill_on_drop(true)
+        .spawn()?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| io::Error::other("missing tool output"))?;
+    let run = async {
+        let mut output = Vec::new();
+        stdout
+            .take(limit as u64 + 1)
+            .read_to_end(&mut output)
+            .await?;
+        if output.len() > limit || !child.wait().await.is_ok_and(|status| status.success()) {
+            return Err(io::Error::other("invalid or oversized tool output"));
+        }
+        Ok(output)
+    };
+    let result = tokio::time::timeout(deadline, run)
+        .await
+        .unwrap_or_else(|_| Err(io::Error::new(io::ErrorKind::TimedOut, "tool timed out")));
+    if result.is_err() {
+        let _ = child.kill().await;
+    }
+    result
+}
 
 #[derive(Clone, Debug)]
 pub struct CommandOutput {
@@ -80,6 +139,38 @@ pub fn summarize_stderr(stderr: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn subprocess_output_and_time_are_bounded() {
+        let echo = || {
+            let mut cmd = Command::new("/bin/echo");
+            cmd.arg("subtitle");
+            cmd
+        };
+        assert_eq!(
+            bounded_output(echo(), 9, Duration::from_secs(1))
+                .await
+                .unwrap(),
+            b"subtitle\n"
+        );
+        assert_eq!(
+            bounded_output(echo(), 8, Duration::from_secs(1))
+                .await
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::Other
+        );
+        let mut sleep = Command::new("/bin/sleep");
+        sleep.arg("5");
+        assert_eq!(
+            bounded_output(sleep, 8, Duration::from_millis(30))
+                .await
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::TimedOut
+        );
+    }
 
     #[test]
     fn summary_takes_last_non_empty_line() {

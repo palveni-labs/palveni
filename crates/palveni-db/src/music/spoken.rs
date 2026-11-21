@@ -44,6 +44,13 @@ impl MusicCursor {
 }
 
 impl Music<'_> {
+    pub async fn audiobook_location(
+        &self,
+        id: palveni_core::ItemId,
+    ) -> Result<Option<super::TrackLocation>, DbError> {
+        self.location_in(id, &[LibraryKind::Audiobook]).await
+    }
+
     pub async fn browse_spoken(
         &self,
         library: LibraryId,

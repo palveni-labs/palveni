@@ -12,6 +12,7 @@ use crate::report::{HardwareReport, ProbeOptions, probe_hardware};
 
 pub struct HardwareService {
     pub audio: crate::audio::AudioTranscoder,
+    pub chapters: crate::chapters::AudiobookChapters,
     pub subtitles: crate::subtitles::EmbeddedSubtitles,
     db: Db,
     options: ProbeOptions,
@@ -23,6 +24,7 @@ impl HardwareService {
     pub fn new(db: Db, options: ProbeOptions) -> Self {
         HardwareService {
             audio: crate::audio::AudioTranscoder::new(options.ffmpeg_path.as_deref()),
+            chapters: crate::chapters::AudiobookChapters::new(options.ffmpeg_path.as_deref()),
             subtitles: crate::subtitles::EmbeddedSubtitles::new(options.ffmpeg_path.as_deref()),
             db,
             options,
