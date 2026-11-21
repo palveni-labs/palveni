@@ -74,6 +74,10 @@ Choose **Audiobooks** or **Podcasts** for a folder of spoken audio. The dashboar
   <img src="docs/images/video-library-light.png" alt="A poster wall with seven fictional films and a two-episode series in the video library.">
 </picture>
 
+## Books and OPDS readers
+
+Add a **Books** library, scan its folders, then open a book’s file details and choose **Download original**. To browse from an OPDS reader, open **System → Settings → Account → OPDS readers** and enter the catalog address and credentials shown there in your reader. Signing out of that dashboard session revokes its reader credentials.
+
 ## Network sources and subscriptions
 
 To index media on a NAS, mount its share on the host and expose it read-only to the container. Choose that directory when adding a library. For on-demand browsing, open **Network sources** and add an SMB3 or WebDAV directory, or connect a Jellyfin, Emby or Plex server using its access token. Members can browse and play from a connection. Palveni encrypts the saved credentials with the installation's node key. For a binary installation, place `palveni-smb-helper` beside `palveni`. The Docker image includes both.

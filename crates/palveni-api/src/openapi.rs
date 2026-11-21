@@ -45,7 +45,7 @@ pub fn openapi_document() -> &'static Value {
                 "schemas":schemas::components(),
                 "securitySchemes":{
                     "bearerAuth":{"type":"http","scheme":"bearer"},
-                    "mediaTicket":{"type":"apiKey","in":"query","name":"ticket","description":"Time-limited signature for a single track and session."}
+                    "mediaTicket":{"type":"apiKey","in":"query","name":"ticket","description":"Time-limited signature for one media entry, operation and session."}
                 }
             }
         })
@@ -97,6 +97,7 @@ fn success(output: Output) -> Value {
         Output::Preview => binary(&["image/png"]),
         Output::Tar => binary(&["application/x-tar"]),
         Output::Audio => binary(&["audio/*", "video/*", "application/octet-stream"]),
+        Output::Attachment => binary(&["application/octet-stream"]),
         Output::WebVtt => content("text/vtt", json!({"type":"string"})),
         Output::Poster => binary(&["image/jpeg", "image/png", "image/webp"]),
         Output::Document => json_content(json!({"type":"object","additionalProperties":true})),
@@ -148,9 +149,15 @@ fn parameters(cap: &Capability) -> Vec<Value> {
     }
     if matches!(
         cap.id,
-        "streamTrack" | "headTrack" | "streamConnection" | "streamAudio" | "headAudio"
+        "streamTrack"
+            | "headTrack"
+            | "streamConnection"
+            | "streamAudio"
+            | "headAudio"
+            | "downloadBook"
+            | "headBook"
     ) {
-        params.push(parameter("ticket", "query", false, json!({"type":"string","description":"Single-entry credential from the playback URL, as an alternative to a bearer header."})));
+        params.push(parameter("ticket", "query", false, json!({"type":"string","description":"Short-lived credential issued for this file and session, as an alternative to a bearer header."})));
     }
     if matches!(cap.id, "preparePlayback" | "streamAudio" | "headAudio") {
         let direct = cap.id == "preparePlayback";
@@ -406,7 +413,7 @@ fn parameters(cap: &Capability) -> Vec<Value> {
             false,
             json!({"type":"string","pattern":"^[0-9]+$"}),
         )),
-        "streamTrack" => {
+        "streamTrack" | "downloadBook" => {
             params.push(parameter("Range", "header", false, json!({"type":"string","description":"One HTTP byte range, for example bytes=0-1."})));
             params.push(parameter("If-Range", "header", false, json!({"type":"string","description":"Returns the full representation because this endpoint supplies no entity validator."})));
         }
@@ -447,17 +454,27 @@ fn operation(endpoint: &Endpoint) -> Value {
     if cap.permission != Permission::Public {
         op["security"] = json!([{"bearerAuth":[]}]);
     }
-    if matches!(cap.id, "streamTrack" | "headTrack" | "streamConnection") {
+    if cap.id == "getOpdsAccess" {
+        op["responses"]["200"]["headers"]["Cache-Control"] =
+            json!({"schema":{"type":"string","const":"private, no-store"}});
+    }
+    if matches!(
+        cap.id,
+        "streamTrack" | "headTrack" | "streamConnection" | "downloadBook" | "headBook"
+    ) {
         op["security"] = json!([{"bearerAuth":[]},{"mediaTicket":[]}]);
-        let headers = json!({
+        let mut headers = json!({
             "Accept-Ranges":{"schema":{"type":"string","const":"bytes"}},
             "Content-Length":{"schema":{"type":"integer","minimum":0}},
             "Content-Type":{"schema":{"type":"string"}},
             "Cache-Control":{"schema":{"type":"string","const":"private, no-store"}}
         });
+        if matches!(cap.id, "downloadBook" | "headBook") {
+            headers["Content-Disposition"] = json!({"description":"An attachment with the book's download filename.","schema":{"type":"string"}});
+        }
         let responses = &mut op["responses"];
         responses["200"]["headers"] = headers;
-        if matches!(cap.id, "streamTrack" | "streamConnection") {
+        if matches!(cap.id, "streamTrack" | "streamConnection" | "downloadBook") {
             responses["206"] = responses["200"].clone();
             responses["206"]["description"] = json!("Partial content");
             let content_range = json!({"schema":{"type":"string"}});

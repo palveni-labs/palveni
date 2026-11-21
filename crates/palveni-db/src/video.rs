@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use palveni_core::{
-    ItemId, ItemKind, LibraryId,
+    ItemId, ItemKind, LibraryId, LibraryKind,
     video::{VideoEntry, VideoKind, VideoOrder, VideoPage, WorkKind},
 };
 use sea_orm::sea_query::{BinOper, Expr, ExprTrait, Func, OnConflict};
@@ -17,7 +17,7 @@ use crate::{
     Db, DbError,
     convert::{parse_id, sha256_hex},
     entities::{
-        items, libraries, library_paths,
+        items, libraries,
         video_metadata::{self as video, Column as C},
     },
     music::TrackLocation,
@@ -261,39 +261,10 @@ impl Videos<'_> {
     }
 
     pub async fn location(&self, id: ItemId) -> Result<Option<TrackLocation>, DbError> {
-        let rows = items::Entity::find_by_id(id.to_string())
-            .join(
-                JoinType::InnerJoin,
-                items::Entity::belongs_to(libraries::Entity)
-                    .from(items::Column::LibraryId)
-                    .to(libraries::Column::Id)
-                    .into(),
-            )
-            .join_rev(
-                JoinType::InnerJoin,
-                library_paths::Entity::belongs_to(libraries::Entity)
-                    .from(library_paths::Column::LibraryId)
-                    .to(libraries::Column::Id)
-                    .into(),
-            )
-            .filter(items::Column::Kind.eq("video"))
-            .filter(items::Column::DeletedAt.is_null())
-            .filter(libraries::Column::Kind.eq("video"))
-            .filter(libraries::Column::DeletedAt.is_null())
-            .select_only()
-            .column_as(items::Column::Path, "file_path")
-            .column_as(library_paths::Column::Path, "root_path")
-            .into_tuple::<(String, String)>()
-            .all(self.db.main())
-            .await?;
-        Ok(rows.into_iter().find_map(|(file, root)| {
-            let relative_path = Path::new(&file).strip_prefix(&root).ok()?.to_owned();
-            Some(TrackLocation {
-                cue_frames: None,
-                root: root.into(),
-                relative_path,
-            })
-        }))
+        self.db
+            .items()
+            .original_location(id, LibraryKind::Video)
+            .await
     }
 
     pub async fn poster_location(

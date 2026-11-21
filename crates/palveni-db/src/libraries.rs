@@ -35,7 +35,43 @@ fn name_key(name: &str) -> String {
     name.trim().to_lowercase()
 }
 
+pub struct BookShelf {
+    pub id: LibraryId,
+    pub name: String,
+    pub updated_at: DateTime<Utc>,
+}
+
 impl Libraries<'_> {
+    /// Library metadata for reader catalogs, without filesystem paths or per-library counts.
+    pub async fn book_shelves(&self, id: Option<LibraryId>) -> Result<Vec<BookShelf>, DbError> {
+        use sea_orm::QuerySelect;
+        let mut query = libraries::Entity::find()
+            .filter(libraries::Column::DeletedAt.is_null())
+            .filter(libraries::Column::Kind.eq(LibraryKind::Book.as_str()));
+        if let Some(id) = id {
+            query = query.filter(libraries::Column::Id.eq(id.to_string()));
+        }
+        query
+            .order_by_asc(libraries::Column::NameKey)
+            .order_by_asc(libraries::Column::Id)
+            .select_only()
+            .column(libraries::Column::Id)
+            .column(libraries::Column::Name)
+            .column(libraries::Column::UpdatedAt)
+            .into_tuple::<(String, String, i64)>()
+            .all(self.db.main())
+            .await?
+            .into_iter()
+            .map(|(id, name, updated)| {
+                Ok(BookShelf {
+                    id: parse_id(&id, "library id")?,
+                    name,
+                    updated_at: ts(updated)?,
+                })
+            })
+            .collect()
+    }
+
     /// Live libraries ordered by name.
     pub async fn list(&self) -> Result<Vec<Library>, DbError> {
         let rows = libraries::Entity::find()

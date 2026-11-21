@@ -1,17 +1,18 @@
 //! Library items (main store).
 
-use palveni_core::{Item, ItemId, ItemKind, LibraryId, clock};
+use palveni_core::{Item, ItemId, ItemKind, LibraryId, LibraryKind, clock};
 use sea_orm::sea_query::{Expr, OnConflict};
 use sea_orm::{
-    ActiveValue, ColumnTrait, Condition, EntityTrait, InsertMany, QueryFilter, QueryOrder,
-    QuerySelect, TransactionTrait,
+    ActiveValue, ColumnTrait, Condition, EntityTrait, InsertMany, JoinType, QueryFilter,
+    QueryOrder, QuerySelect, TransactionTrait,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::Db;
 use crate::convert::{opt_ts, parse_id, parse_opt_id, sha256_hex, truncate_chars, ts};
-use crate::entities::{items, libraries};
+use crate::entities::{items, libraries, library_paths};
 use crate::error::DbError;
+use crate::music::TrackLocation;
 use crate::revision;
 
 /// Folders sort before everything else.
@@ -119,17 +120,88 @@ impl Items<'_> {
             .transpose()
     }
 
+    pub async fn original_location(
+        &self,
+        id: ItemId,
+        kind: LibraryKind,
+    ) -> Result<Option<TrackLocation>, DbError> {
+        let rows = items::Entity::find_by_id(id.to_string())
+            .join(
+                JoinType::InnerJoin,
+                items::Entity::belongs_to(libraries::Entity)
+                    .from(items::Column::LibraryId)
+                    .to(libraries::Column::Id)
+                    .into(),
+            )
+            .join_rev(
+                JoinType::InnerJoin,
+                library_paths::Entity::belongs_to(libraries::Entity)
+                    .from(library_paths::Column::LibraryId)
+                    .to(libraries::Column::Id)
+                    .into(),
+            )
+            .filter(items::Column::Kind.eq(kind.leaf_item_kind().as_str()))
+            .filter(items::Column::SortGroup.eq(SORT_GROUP_LEAF))
+            .filter(items::Column::Path.is_not_null())
+            .filter(items::Column::DeletedAt.is_null())
+            .filter(libraries::Column::Kind.eq(kind.as_str()))
+            .filter(libraries::Column::DeletedAt.is_null())
+            .select_only()
+            .column_as(items::Column::Path, "file_path")
+            .column_as(library_paths::Column::Path, "root_path")
+            .into_tuple::<(String, String)>()
+            .all(self.db.main())
+            .await?;
+        Ok(rows.into_iter().find_map(|(file, root)| {
+            let relative_path = std::path::Path::new(&file)
+                .strip_prefix(&root)
+                .ok()?
+                .to_owned();
+            Some(TrackLocation {
+                cue_frames: None,
+                root: root.into(),
+                relative_path,
+            })
+        }))
+    }
+
     /// One page of live items; folders first, then by title.
     pub async fn list(&self, query: &ItemQuery) -> Result<ItemPage, DbError> {
+        self.list_in(query, true).await
+    }
+
+    /// All book files in the library, including those nested inside folders.
+    pub async fn book_catalog(
+        &self,
+        library_id: LibraryId,
+        limit: u32,
+        cursor: Option<ItemCursor>,
+    ) -> Result<ItemPage, DbError> {
+        self.list_in(
+            &ItemQuery {
+                library_id,
+                kind: Some(ItemKind::Book),
+                parent_id: None,
+                limit,
+                cursor,
+            },
+            false,
+        )
+        .await
+    }
+
+    async fn list_in(&self, query: &ItemQuery, one_folder: bool) -> Result<ItemPage, DbError> {
         let limit = query.limit.clamp(1, 1000);
         let mut condition = Condition::all()
             .add(items::Column::LibraryId.eq(query.library_id.to_string()))
             .add(items::Column::SortGroup.lte(SORT_GROUP_LEAF))
             .add(items::Column::DeletedAt.is_null());
-        condition = match query.parent_id {
-            Some(parent) => condition.add(items::Column::ParentId.eq(parent.to_string())),
-            None => condition.add(items::Column::ParentId.is_null()),
-        };
+        if one_folder {
+            condition = match query.parent_id {
+                Some(parent) => condition.add(items::Column::ParentId.eq(parent.to_string())),
+                None => condition.add(items::Column::ParentId.is_null()),
+            };
+        }
         if let Some(kind) = query.kind {
             condition = condition.add(items::Column::Kind.eq(kind.as_str()));
         }

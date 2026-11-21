@@ -8,6 +8,7 @@ import { formatBytes, formatDateTime } from "@/lib/format";
 import { LIBRARY_KIND_META } from "@/lib/kinds";
 import { useFeature } from "@/modules/access";
 import { Measure } from "@/ui/marks";
+import { BookDownloadButton } from "./book-download";
 import { TrackLoudness } from "./music-loudness";
 import { useIsPhone } from "./use-is-phone";
 
@@ -25,6 +26,8 @@ export function ItemDetailsSheet({ item, library, onClose }: { item: Item | null
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? "en";
   const phone = useIsPhone();
+  const downloads = useFeature("bookDownloads");
+  const canDownload = downloads && item?.kind === "book" && library.kind === "book";
   const loudness = useFeature("musicLoudness");
 
   return (
@@ -67,6 +70,11 @@ export function ItemDetailsSheet({ item, library, onClose }: { item: Item | null
                   </Fact>
                 </dl>
               </Drawer.Body>
+              {canDownload && (
+                <Drawer.Footer className="border-t border-line px-6 py-4">
+                  <BookDownloadButton key={item.id} id={item.id} />
+                </Drawer.Footer>
+              )}
             </>
           ) : null}
         </Drawer.Dialog>

@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod books;
 pub mod broadcast;
 pub mod connections;
 pub mod events;
@@ -6,6 +7,7 @@ pub mod items;
 pub mod jobs;
 pub mod libraries;
 pub mod music;
+pub mod opds;
 pub mod personal;
 pub mod playback;
 pub mod plugins;
@@ -18,6 +20,7 @@ pub mod subsonic;
 pub mod subtitles;
 pub mod system;
 pub mod video;
+mod xml;
 
 use std::str::FromStr;
 

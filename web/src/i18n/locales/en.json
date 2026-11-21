@@ -307,6 +307,7 @@
     "select": "Select",
     "selected_other": "{{count}} selected",
     "selectLoaded": "Select loaded",
+    "downloadBook": "Download original",
     "selected_one": "{{count}} selected",
     "files": "Files",
     "up": "Up one level",
@@ -717,6 +718,12 @@
       "openHardware": "Open hardware & transcoding",
       "openLibraries": "Open library settings"
     }
+  },
+  "opdsReaders": {
+    "password": "Reader password",
+    "title": "OPDS readers",
+    "show": "Show reader credentials",
+    "session": "These credentials expire when you sign out of this session."
   },
   "musicClients": {
     "grantPersonal": "Allow players to manage my favorites, playlists, ratings and listening history",

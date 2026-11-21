@@ -48,6 +48,7 @@ pub fn router(state: AppState) -> Router {
         .fallback(not_found);
     Router::new()
         .nest("/api/v1", v1)
+        .merge(routes::opds::router())
         .route(
             "/rest/{method}",
             axum::routing::get(routes::subsonic::handle),

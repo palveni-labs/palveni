@@ -46,11 +46,13 @@ export default defineConfig(() => {
       fs: { allow: [import.meta.dirname, path.resolve(import.meta.dirname, "../plugins")] },
       proxy: {
         "/api": { target: API_TARGET, changeOrigin: false },
+        "/opds": { target: API_TARGET, changeOrigin: false },
       },
     },
     preview: {
       proxy: {
         "/api": { target: API_TARGET, changeOrigin: false },
+        "/opds": { target: API_TARGET, changeOrigin: false },
       },
     },
     build: {

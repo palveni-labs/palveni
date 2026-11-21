@@ -232,10 +232,67 @@ pub(super) async fn serve_track(
     headers: &HeaderMap,
     key: palveni_media::audio::PlaybackKey,
 ) -> Result<Response, ApiError> {
-    let (size, content_type) = match &track {
-        Media::Original(track) => (track.source.size(), track.content_type),
-        Media::Cue(track) => (track.len(), "audio/wav"),
-    };
+    match track {
+        Media::Original(file) => serve_original(file, method, headers).await,
+        Media::Cue(track) => {
+            serve_range(
+                method,
+                headers,
+                track.len(),
+                "audio/wav",
+                move |range, is_range| async move {
+                    track
+                        .body(
+                            state,
+                            range,
+                            palveni_media::audio::CueRequest {
+                                key,
+                                range: is_range,
+                            },
+                        )
+                        .await
+                },
+            )
+            .await
+        }
+    }
+}
+
+pub(super) async fn serve_original(
+    file: TrackFile,
+    method: Method,
+    headers: &HeaderMap,
+) -> Result<Response, ApiError> {
+    serve_range(
+        method,
+        headers,
+        file.source.size(),
+        file.content_type,
+        move |range, _| async move {
+            let reader = file
+                .source
+                .read_range(ByteRange {
+                    start: range.start,
+                    end: Some(range.end),
+                })
+                .await
+                .map_err(ApiError::internal)?;
+            Ok(Body::from_stream(ReaderStream::with_capacity(
+                reader,
+                64 * 1024,
+            )))
+        },
+    )
+    .await
+}
+
+async fn serve_range<F: Future<Output = Result<Body, ApiError>>>(
+    method: Method,
+    headers: &HeaderMap,
+    size: u64,
+    content_type: &'static str,
+    read: impl FnOnce(std::ops::Range<u64>, bool) -> F,
+) -> Result<Response, ApiError> {
     let mut response = Response::builder()
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::CONTENT_TYPE, content_type)
@@ -268,31 +325,7 @@ pub(super) async fn serve_track(
     let body = if method == Method::HEAD || length == 0 {
         Body::empty()
     } else {
-        match track {
-            Media::Cue(track) => {
-                track
-                    .body(
-                        state,
-                        range,
-                        palveni_media::audio::CueRequest {
-                            key,
-                            range: is_range,
-                        },
-                    )
-                    .await?
-            }
-            Media::Original(track) => {
-                let reader = track
-                    .source
-                    .read_range(ByteRange {
-                        start: range.start,
-                        end: Some(range.end),
-                    })
-                    .await
-                    .map_err(ApiError::internal)?;
-                Body::from_stream(ReaderStream::with_capacity(reader, 64 * 1024))
-            }
-        }
+        read(range, is_range).await?
     };
     response
         .header(header::CONTENT_LENGTH, length)

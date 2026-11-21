@@ -295,6 +295,7 @@
     "select": "选择",
     "selected_other": "已选 {{count}} 项",
     "selectLoaded": "全选已加载",
+    "downloadBook": "下载原件",
     "files": "文件",
     "up": "回到上一级",
     "hiddenFolders": "中间的文件夹",
@@ -692,6 +693,12 @@
       "openHardware": "打开硬件与转码",
       "openLibraries": "打开媒体库设置"
     }
+  },
+  "opdsReaders": {
+    "password": "阅读器口令",
+    "title": "OPDS 阅读器",
+    "show": "显示阅读器连接信息",
+    "session": "退出本次登录后，这组凭据将失效。"
   },
   "musicClients": {
     "grantPersonal": "允许播放器管理我的收藏、歌单、评分和播放记录",

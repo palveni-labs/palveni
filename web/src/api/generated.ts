@@ -291,6 +291,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/items/{id}/book-download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an indexed ebook in its original format. */
+        get: operations["downloadBook"];
+        put?: never;
+        /** @description Prepare a download of an original ebook. */
+        post: operations["prepareBookDownload"];
+        delete?: never;
+        options?: never;
+        /** @description Read the size and download name of an indexed ebook. */
+        head: operations["headBook"];
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/items/{id}/loudness": {
         parameters: {
             query?: never;
@@ -713,6 +732,23 @@ export interface paths {
         get?: never;
         /** @description Rate a track or video from one to five stars, or clear its rating with zero. */
         put: operations["setRating"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/opds-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get OPDS reader credentials scoped to the current session. */
+        get: operations["getOpdsAccess"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1151,6 +1187,11 @@ export interface components {
             index?: number;
             path?: string;
         };
+        BookDownload: {
+            /** Format: date-time */
+            expiresAt: string;
+            url: string;
+        };
         BroadcastEntry: {
             current?: null | components["schemas"]["BroadcastProgramme"];
             favorite: boolean;
@@ -1516,6 +1557,10 @@ export interface components {
         MusicSearchPage: {
             entries: components["schemas"]["MusicSearchHit"][];
             nextCursor: string | null;
+        };
+        OpdsAccess: {
+            password: string;
+            username: string;
         };
         /** @enum {string} */
         PerfTier: "tiny" | "lite" | "standard" | "performance";
@@ -3305,6 +3350,219 @@ export interface operations {
             };
             /** @description Service Unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    downloadBook: {
+        parameters: {
+            query?: {
+                ticket?: string;
+            };
+            header?: {
+                Range?: string;
+                "If-Range"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    "Accept-Ranges"?: "bytes";
+                    "Cache-Control"?: "private, no-store";
+                    /** @description An attachment with the book's download filename. */
+                    "Content-Disposition"?: string;
+                    "Content-Length"?: number;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description Partial content */
+            206: {
+                headers: {
+                    "Accept-Ranges"?: "bytes";
+                    "Cache-Control"?: "private, no-store";
+                    /** @description An attachment with the book's download filename. */
+                    "Content-Disposition"?: string;
+                    "Content-Length"?: number;
+                    "Content-Range"?: string;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unsatisfiable byte range */
+            416: {
+                headers: {
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    prepareBookDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookDownload"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    headBook: {
+        parameters: {
+            query?: {
+                ticket?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    "Accept-Ranges"?: "bytes";
+                    "Cache-Control"?: "private, no-store";
+                    /** @description An attachment with the book's download filename. */
+                    "Content-Disposition"?: string;
+                    "Content-Length"?: number;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal Server Error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5394,6 +5652,56 @@ export interface operations {
             /** @description Not Found */
             404: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    getOpdsAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpdsAccess"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
                     [name: string]: unknown;
                 };
                 content: {

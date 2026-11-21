@@ -670,6 +670,11 @@ if PALVENI_SMOKE_BEARER="$TOKEN" python3 "$(dirname "$0")/smoke-music-search.py"
 else
   bad "global music search" "source, playback or cursor check failed"
 fi
+if PALVENI_SMOKE_BEARER="$TOKEN" python3 "$(dirname "$0")/smoke-book-download.py" "$BASE" "$MEDIA"; then
+  ok "download an indexed ebook by filename and byte range"
+else
+  bad "original ebook download" "file, range or authorization check failed"
+fi
 if PALVENI_SMOKE_BEARER="$TOKEN" python3 "$(dirname "$0")/smoke-loudness.py" "$BASE" "$MEDIA"; then
   ok "EBU R128 measures differing levels and silence, preserves results on failure, and cancels active analysis"
 else

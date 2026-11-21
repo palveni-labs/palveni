@@ -82,9 +82,11 @@ use crate::routes::connections::{ConnectionList, ConnectionPlayback};
 use crate::routes::storage::{MountList, MountProtocol, MountedDirectory, StorageFolders};
 use crate::routes::{
     auth::{LoginRequest, LoginResponse, SetupRequest, SetupResponse},
+    books::BookDownload,
     items::ItemList,
     jobs::JobList,
     libraries::{CreateLibraryRequest, LibraryList, ScanAccepted, UpdateLibraryRequest},
+    opds::OpdsAccess,
     personal::{FavoriteUpdate, PlaylistUpdate, RatingUpdate},
     playback::{PlaybackInfo, PlaybackMode},
     plugins::PluginList,
@@ -131,6 +133,7 @@ use utoipa::OpenApi;
     ConnectionPlayback,
     ConnectionSummary,
     CreateConnection,
+    BookDownload,
     SpokenEntry,
     SpokenPage,
     SpokenRecording,
@@ -157,6 +160,7 @@ use utoipa::OpenApi;
     SetupResponse,
     LoginRequest,
     LoginResponse,
+    OpdsAccess,
     SubsonicPassword,
     SubsonicPasswordStatus,
     User,

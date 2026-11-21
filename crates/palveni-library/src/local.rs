@@ -41,6 +41,19 @@ pub async fn open_audio_input(location: palveni_db::music::TrackLocation) -> Res
     run_blocking(move || storage.open_file_blocking(&path)).await
 }
 
+pub async fn open_book(location: palveni_db::music::TrackLocation) -> Result<(TrackFile, String)> {
+    let (storage, path) = track_path(location).await?;
+    let name = path.file_name().unwrap_or_default();
+    if crate::classify::classify(palveni_core::LibraryKind::Book, name).is_none() {
+        return Err(Error::invalid("Unrecognized book file"));
+    }
+    let file = TrackFile {
+        source: storage.open_file(&path).await?,
+        content_type: "application/octet-stream",
+    };
+    Ok((file, name.to_owned()))
+}
+
 pub async fn open_video(location: palveni_db::music::TrackLocation) -> Result<TrackFile> {
     let (storage, path) = track_path(location).await?;
     let content_type = video_content_type(path.file_name().unwrap_or_default());
