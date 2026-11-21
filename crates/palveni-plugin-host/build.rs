@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
+const OFFICIAL_PACKAGES_REVISION: &str = "9cdfb5a2ecf4f725ae6024b588cf0af0f183d570";
+
 fn collect(root: &Path, dir: &Path, names: &mut Vec<PathBuf>) -> io::Result<()> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
@@ -70,7 +72,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             "name": manifest["name"], "description": manifest["description"], "version": version,
             "sizeBytes": bytes.len(), "previewUrl": format!("/api/v1/skins/registry/{id}/preview"),
             "publishedAt": "2026-11-21T00:00:00Z", "sha256": hex::encode(Sha256::digest(&bytes)),
-            "downloadUrl": format!("https://github.com/palveni-labs/plugins/releases/download/skins-v{version}/{filename}"),
+            "downloadUrl": format!("https://raw.githubusercontent.com/palveni-labs/plugins/{OFFICIAL_PACKAGES_REVISION}/packages/{filename}"),
             "filename": filename, "preview": preview.ok_or("missing official preview")?
         }));
     }
