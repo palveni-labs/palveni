@@ -16,6 +16,8 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 TARGETS = {"x86_64-unknown-linux-musl": ("x86_64", 62), "aarch64-unknown-linux-musl": ("armv8", 183)}
 FFMPEG_SHA256 = "7367430190d99cd756470e24d9cb5f64e1f60977d226c3cbcf41c79151e20ab9"
+ZLIB_ARCHIVE = "zlib-1.3.2.tar.gz"
+ZLIB_SHA256 = "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16"
 
 
 def digest(path, algorithm="sha256"):
@@ -73,6 +75,11 @@ def pack(args):
         check_elf(path, machine)
     if digest(args.ffmpeg_source) != FFMPEG_SHA256:
         raise ValueError("FFmpeg source archive differs from the pinned source")
+    zlib_source = args.media_dir / ZLIB_ARCHIVE
+    if digest(zlib_source) != ZLIB_SHA256:
+        raise ValueError("zlib source archive differs from the pinned source")
+    with tarfile.open(zlib_source) as sources:
+        zlib_license = sources.extractfile("zlib-1.3.2/LICENSE").read()
     registry = json.loads(args.skin_registry.read_text())
     if len(registry) != 3 or {r["id"] for r in registry} != {"native", "ink", "gear"}:
         raise ValueError("expected all three official skins")
@@ -103,7 +110,9 @@ def pack(args):
                 add(archive, f"ui/images/palveni_{size}.png", path)
             add(archive, "share/licenses/Palveni-MPL-2.0", ROOT / "LICENSE")
             add(archive, "share/licenses/FFmpeg-LGPL-2.1", args.media_dir / "COPYING.LGPLv2.1")
+            add(archive, "share/licenses/zlib", zlib_license)
             add(archive, "share/src/jellyfin-ffmpeg.tar.gz", args.ffmpeg_source)
+            add(archive, "share/src/" + ZLIB_ARCHIVE, zlib_source)
             add(archive, "share/src/build-ffmpeg.sh", HERE / "build-ffmpeg.sh", 0o755)
         fields = {"package": "Palveni", "version": version, "displayname": "Palveni",
                   "description": "Self-hosted media server for music, films and TV.",

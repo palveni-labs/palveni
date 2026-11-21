@@ -12,13 +12,56 @@ import sys
 import tarfile
 import tempfile
 import threading
+import time
 import urllib.request
-import wave
 from pathlib import Path
+
+from verify_audio import verify_audio
+from verify_covers import verify_cover_api, verify_covers
 
 
 def command(*args, **kwargs):
     return subprocess.run(args, check=True, capture_output=True, **kwargs)
+
+
+def verify_video(bin_dir, temp):
+    for codec in ("h263", "mpeg4"):
+        output = temp / f"{codec}.mov"
+        command(bin_dir / "ffmpeg", "-nostdin", "-v", "error", "-filter_complex",
+                "testsrc2=size=176x144:rate=4", "-frames:v", "3", "-threads", "1",
+                "-c:v", codec, output, timeout=10)
+        probe = command(bin_dir / "ffprobe", "-v", "error", "-count_frames", "-show_entries",
+                        "stream=codec_name,width,height,nb_read_frames", "-of", "json", output,
+                        timeout=10)
+        assert json.loads(probe.stdout)["streams"] == [
+            {"codec_name": codec, "width": 176, "height": 144, "nb_read_frames": "3"}
+        ], (codec, probe.stdout)
+
+
+def verify_playback(api, opener, url, token, temp, formats, ffprobe):
+    media = temp / "media"
+    media.mkdir()
+    (temp / "levels.flac").rename(media / "levels.flac")
+    api("system/settings", {"serverName": None, "perfTier": "lite"}, method="PUT")
+    library = api("libraries", {"name": "Synthesized recording", "kind": "music", "paths": [str(media)]})
+    job = api(f"libraries/{library['id']}/scan", method="POST")["jobId"]
+    deadline = time.monotonic() + 20
+    while time.monotonic() < deadline:
+        state = next((row["state"] for row in api("jobs?limit=20")["jobs"] if row["id"] == job), None)
+        if state == "succeeded":
+            break
+        assert state in (None, "queued", "running"), state
+        time.sleep(0.1)
+    else:
+        raise TimeoutError("The synthetic recording was not indexed")
+    item, = api(f"items?libraryId={library['id']}")["items"]
+    credentials = api("me/subsonic-password", method="POST")
+    verify_cover_api(opener, url, credentials, item["id"], media, temp, ffprobe)
+    scripts = Path(__file__).resolve().parents[2] / "scripts"
+    env = dict(os.environ, PALVENI_SMOKE_BEARER=token, PALVENI_SMOKE_AUDIO_FORMATS=",".join(sorted(formats)),
+               no_proxy="127.0.0.1", NO_PROXY="127.0.0.1")
+    subprocess.run([sys.executable, scripts / "smoke-audio.py", url, item["id"]], env=env, check=True, timeout=90)
+    subprocess.run([sys.executable, scripts / "smoke-cue.py", url, temp, "true"], env=env, check=True, timeout=90)
 
 
 def verify(package, temp):
@@ -40,6 +83,10 @@ def verify(package, temp):
         directory.mkdir()
     with tarfile.open(payload) as contents:
         contents.extractall(target, filter="data")
+    verify_covers(target / "bin", temp)
+    verify_video(target / "bin", temp)
+    formats = verify_audio(target / "bin/ffmpeg", target / "bin/ffprobe", temp)
+    assert formats == {"aac"}, f"Unexpected live encoding profile in SPK: {formats}"
     ui = target / info["dsmuidir"].strip('"')
     menu = json.loads((ui / "config").read_text())[".url"][info["dsmappname"].strip('"')]
     for field, info_field in (("protocol", "adminprotocol"), ("port", "adminport"), ("url", "adminurl")):
@@ -88,14 +135,12 @@ def verify(package, temp):
         assert pidfile.read_text() == before
         assert api("system/health")["status"] == "ok"
         assert b"<html" in opener.open(url, timeout=5).read().lower()
-        with wave.open(str(temp / "test.wav"), "wb") as sample:
-            sample.setparams((1, 2, 8000, 0, "NONE", ""))
-            sample.writeframes(bytes(16000))
-        assert b"pcm_s16le" in command(target / "bin/ffprobe", "-v", "error", "-show_streams", temp / "test.wav").stdout
-        command(target / "bin/ffmpeg", "-nostdin", "-v", "error", "-i", temp / "test.wav", "-c:a", "flac", temp / "test.flac")
-        assert b"flac" in command(target / "bin/ffprobe", "-v", "error", "-show_streams", temp / "test.flac").stdout
         assert api("setup", admin)["user"]["role"] == "admin"
         token = api("auth/login", admin)["accessToken"]
+        hardware = api("system/hardware")
+        for tool in ("ffmpeg", "ffprobe"):
+            assert Path(hardware[tool]["path"]).samefile(target / "bin" / tool), hardware[tool]
+        verify_playback(api, opener, url, token, temp, formats, target / "bin/ffprobe")
         skins = api("skins/registry")["skins"]
         assert {s["id"] for s in skins} == {"native", "ink", "gear"}
         for skin in skins:
@@ -126,7 +171,9 @@ def verify(package, temp):
     finally:
         control("stop")
     control("status", 3)
-    print("PASS: non-root startup, health, dashboard, occupied port, idempotence, media encode/probe, offline skins, stale PID isolation, account and skin persistence after target replacement, stop")
+    print("PASS: packaged media pipelines, non-root startup, health, dashboard, occupied port, "
+          "idempotence, offline skins, stale PID isolation, account and skin persistence after "
+          "target replacement, stop")
 
 
 def md5(path):
