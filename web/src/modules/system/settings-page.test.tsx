@@ -27,11 +27,13 @@ it("shows a member's music password once and confirms rotation and revocation", 
   signIn(db, "family");
   renderApp("/system/settings");
   const user = userEvent.setup();
+  await user.click(await screen.findByRole("checkbox", { name: /允许播放器管理/ }));
   await user.click(await screen.findByRole("button", { name: "创建口令" }));
   const first = (await screen.findByRole<HTMLInputElement>("textbox", { name: "音乐客户端口令" })).value;
   expect(first).toBeTruthy();
   await user.click(screen.getByRole("button", { name: "关闭" }));
   expect(screen.queryByDisplayValue(first)).toBeNull();
+  expect(screen.getByText("播放器可管理你的个人音乐数据。")).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "更换口令" }));
   await user.click(screen.getByRole("button", { name: "取消" }));
   await user.click(screen.getByRole("button", { name: "更换口令" }));

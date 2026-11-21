@@ -67,7 +67,7 @@ impl Music<'_> {
         let mut entries = Vec::with_capacity(page.entries.len());
         for entry in page.entries {
             entries.push(match entry {
-                MusicEntry::Album { id, name } => {
+                MusicEntry::Album { id, name, .. } => {
                     let title = name.ok_or_else(|| {
                         DbError::Corrupt("missing spoken collection title".into())
                     })?;

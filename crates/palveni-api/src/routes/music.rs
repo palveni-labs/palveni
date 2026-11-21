@@ -177,3 +177,25 @@ pub async fn search(
         next_cursor,
     }))
 }
+
+pub async fn artwork(
+    _: CurrentUser,
+    State(state): State<AppState>,
+    path: Result<Path<String>, PathRejection>,
+) -> Result<axum::response::Response, ApiError> {
+    use axum::{body::Body, http::header, response::Response};
+    let id = path_id(&path?.0, "Track")?;
+    let (mime, data) = palveni_library::artwork::open(&state.db, id)
+        .await
+        .map_err(|e| match e {
+            palveni_core::Error::Internal(_) => ApiError::internal(e),
+            _ => ApiError::not_found("Artwork unavailable"),
+        })?;
+    Response::builder()
+        .header(header::CONTENT_TYPE, mime)
+        .header(header::CONTENT_LENGTH, data.len())
+        .header(header::CACHE_CONTROL, "private, no-cache")
+        .header(header::X_CONTENT_TYPE_OPTIONS, "nosniff")
+        .body(Body::from(data))
+        .map_err(ApiError::internal)
+}

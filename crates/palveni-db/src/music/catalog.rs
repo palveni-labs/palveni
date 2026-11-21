@@ -15,7 +15,7 @@ type C = track::Column;
 type I = items::Column;
 type F = folders::Column;
 
-#[derive(FromQueryResult)]
+#[derive(Clone, FromQueryResult)]
 pub struct CatalogSong {
     pub id: String,
     pub folder: i32,
@@ -35,6 +35,7 @@ pub struct CatalogSong {
 
 #[derive(FromQueryResult)]
 pub struct CatalogAlbum {
+    pub artwork_id: String,
     pub folder: i32,
     pub artist_key: String,
     pub album_key: String,
@@ -138,6 +139,7 @@ fn album_columns(q: Select<track::Entity>) -> Select<track::Entity> {
     q.column_as(F::Id, "folder")
         .column(C::ArtistKey)
         .column(C::AlbumKey)
+        .column_as(C::ItemId.min(), "artwork_id")
         .column_as(C::AlbumArtist.min(), "artist")
         .column_as(C::Album.min(), "name")
         .column_as(C::ItemId.count().cast_as("CHAR(24)"), "count")
@@ -147,6 +149,22 @@ fn album_columns(q: Select<track::Entity>) -> Select<track::Entity> {
         .group_by(C::ArtistKey)
         .group_by(C::AlbumKey)
 }
+
+fn artist_columns(q: Select<track::Entity>) -> Select<track::Entity> {
+    q.column_as(F::Id, "folder")
+        .column(C::ArtistKey)
+        .column_as(C::AlbumArtist.min(), "name")
+        .column_as(
+            Expr::col((track::Entity, C::AlbumKey))
+                .count_distinct()
+                .cast_as("CHAR(24)"),
+            "album_count",
+        )
+        .group_by(F::Id)
+        .group_by(C::ArtistKey)
+}
+
+mod favorites;
 
 impl Music<'_> {
     pub async fn catalog_scan_status(&self) -> Result<(bool, u64, Option<i64>), DbError> {
@@ -215,6 +233,28 @@ impl Music<'_> {
         .await?)
     }
 
+    pub async fn catalog_by_ids(
+        &self,
+        ids: &[palveni_core::ItemId],
+    ) -> Result<Vec<CatalogSong>, DbError> {
+        let mut found = std::collections::HashMap::new();
+        for chunk in ids.chunks(200) {
+            let rows = song_columns(
+                live(&[]).filter(C::ItemId.is_in(chunk.iter().map(ToString::to_string))),
+            )
+            .into_model::<CatalogSong>()
+            .all(self.db.main())
+            .await?;
+            for row in rows {
+                found.insert(row.id.clone(), row);
+            }
+        }
+        Ok(ids
+            .iter()
+            .filter_map(|id| found.get(&id.to_string()).cloned())
+            .collect())
+    }
+
     pub async fn catalog_song(&self, id: &str) -> Result<Option<CatalogSong>, DbError> {
         Ok(song_columns(live(&[]).filter(C::ItemId.eq(id)))
             .into_model()
@@ -250,26 +290,17 @@ impl Music<'_> {
         term: &str,
         page: Page,
     ) -> Result<Vec<CatalogArtist>, DbError> {
-        Ok(criteria(live(scope), term, &[C::AlbumArtist])
-            .column_as(F::Id, "folder")
-            .column(C::ArtistKey)
-            .column_as(C::AlbumArtist.min(), "name")
-            .column_as(
-                Expr::col((track::Entity, C::AlbumKey))
-                    .count_distinct()
-                    .cast_as("CHAR(24)"),
-                "album_count",
-            )
-            .group_by(F::Id)
-            .group_by(C::ArtistKey)
-            .order_by_asc(C::ArtistSort.min())
-            .order_by_asc(F::Id)
-            .order_by_asc(C::ArtistKey)
-            .offset(page.offset)
-            .limit(page.count)
-            .into_model()
-            .all(self.db.main())
-            .await?)
+        Ok(
+            artist_columns(criteria(live(scope), term, &[C::AlbumArtist]))
+                .order_by_asc(C::ArtistSort.min())
+                .order_by_asc(F::Id)
+                .order_by_asc(C::ArtistKey)
+                .offset(page.offset)
+                .limit(page.count)
+                .into_model()
+                .all(self.db.main())
+                .await?,
+        )
     }
 
     pub async fn catalog_album(&self, key: &AlbumKey<'_>) -> Result<Option<CatalogAlbum>, DbError> {

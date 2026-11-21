@@ -31,6 +31,8 @@ pub enum MusicEntry {
     },
     Album {
         id: String,
+        #[serde(rename = "artworkItemId")]
+        artwork_item_id: ItemId,
         #[schema(required = true)]
         name: Option<String>,
     },

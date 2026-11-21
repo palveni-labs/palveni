@@ -31,7 +31,7 @@ const enc = encodeURIComponent;
 export const api = {
   subsonicPassword: {
     status: (signal?: AbortSignal) => request<SubsonicPasswordStatus>("/me/subsonic-password", { signal }),
-    issue: () => request<SubsonicPassword>("/me/subsonic-password", { method: "POST" }),
+    issue: (personal: boolean) => request<SubsonicPassword>("/me/subsonic-password", { method: "POST", query: { personal } }),
     revoke: () => request<void>("/me/subsonic-password", { method: "DELETE" }),
   },
   system: {

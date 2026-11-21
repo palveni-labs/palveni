@@ -1,5 +1,6 @@
 //! Storage providers, media discovery and incremental audio tag indexing.
 
+pub mod artwork;
 pub mod broadcast;
 pub mod classify;
 pub mod local;

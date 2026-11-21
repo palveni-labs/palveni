@@ -97,6 +97,7 @@ fn success(output: Output) -> Value {
         Output::Preview => binary(&["image/png"]),
         Output::Tar => binary(&["application/x-tar"]),
         Output::Audio => binary(&["audio/*", "video/*", "application/octet-stream"]),
+        Output::WebVtt => content("text/vtt", json!({"type":"string"})),
         Output::Poster => binary(&["image/jpeg", "image/png", "image/webp"]),
         Output::Document => json_content(json!({"type":"object","additionalProperties":true})),
         Output::SkinManifest => json_content(reference("SkinManifest")),
@@ -149,6 +150,12 @@ fn parameters(cap: &Capability) -> Vec<Value> {
         params.push(parameter("ticket", "query", false, json!({"type":"string","description":"Single-entry credential from the playback URL, as an alternative to a bearer header."})));
     }
     match cap.id {
+        "issueSubsonicPassword" => params.push(parameter(
+            "personal",
+            "query",
+            false,
+            json!({"type":"boolean","default":false}),
+        )),
         "browseSpoken" | "browseVideos" => {
             let fields: &[&str] = if cap.id == "browseSpoken" {
                 &["collection", "cursor"]

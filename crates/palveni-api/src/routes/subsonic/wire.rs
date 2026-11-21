@@ -14,6 +14,14 @@ pub(super) const UNSUPPORTED: Failure = Failure(0, "This operation is not suppor
 
 impl From<palveni_db::DbError> for Failure {
     fn from(err: palveni_db::DbError) -> Self {
+        match err {
+            palveni_db::DbError::NotFound(_) => return NOT_FOUND,
+            palveni_db::DbError::Invalid(_) => return MISSING,
+            palveni_db::DbError::Conflict(_) => {
+                return Failure(0, "Data changed; refresh and retry");
+            }
+            _ => {}
+        }
         tracing::error!(error=%err, "Music catalog query failed");
         Failure(0, "Internal server error")
     }
@@ -51,7 +59,11 @@ fn element(output: &mut String, name: &str, value: &Value) {
     }
     if let Some(fields) = value.as_object() {
         for (key, value) in fields {
-            if value.is_null() || value.is_object() || value.is_array() {
+            if value.is_null()
+                || value.is_object()
+                || value.is_array()
+                || (name == "line" && key == "value")
+            {
                 continue;
             }
             let value = value
@@ -61,6 +73,11 @@ fn element(output: &mut String, name: &str, value: &Value) {
             let _ = write!(output, " {key}=\"{value}\"");
         }
         output.push('>');
+        if name == "line"
+            && let Some(text) = fields.get("value").and_then(Value::as_str)
+        {
+            output.push_str(&escape(text));
+        }
         for (key, value) in fields {
             if value.is_object() || value.is_array() {
                 element(output, key, value)
@@ -68,7 +85,11 @@ fn element(output: &mut String, name: &str, value: &Value) {
         }
         let _ = write!(output, "</{name}>");
     } else {
-        output.push_str("/>");
+        let text = value
+            .as_str()
+            .map(escape)
+            .unwrap_or_else(|| value.to_string());
+        let _ = write!(output, ">{text}</{name}>");
     }
 }
 

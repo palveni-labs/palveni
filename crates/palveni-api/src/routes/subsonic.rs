@@ -1,4 +1,5 @@
 mod auth;
+mod personal;
 mod wire;
 
 use super::playback::serve_track;
@@ -77,7 +78,7 @@ fn song(row: CatalogSong) -> Value {
     let suffix = name
         .and_then(|n| FilePath::new(n).extension()?.to_str())
         .map(str::to_lowercase);
-    let mut value = json!({"id":row.id,"isDir":false,"type":"music","isVideo":false,"title":row.title,
+    let mut value = json!({"id":row.id,"coverArt":row.id,"isDir":false,"type":"music","isVideo":false,"title":row.title,
         "artist":row.artist,"album":row.album,"displayAlbumArtist":row.album_artist,"albumId":album_id(row.folder,&row.artist_key,&row.album_key),
         "track":row.track,"discNumber":row.disc,"duration":row.duration_ms.map(|ms|ms/1000),"size":row.bytes,
         "created":clock::from_millis(row.created),"suffix":suffix,"contentType":name.map(palveni_library::classify::audio_content_type)});
@@ -96,7 +97,7 @@ fn integer(text: &str) -> i64 {
 }
 
 fn album(row: CatalogAlbum) -> Value {
-    json!({"id":album_id(row.folder,&row.artist_key,&row.album_key),"name":row.name.unwrap_or_else(||"Unknown Album".into()),
+    json!({"id":album_id(row.folder,&row.artist_key,&row.album_key),"coverArt":row.artwork_id,"name":row.name.unwrap_or_else(||"Unknown Album".into()),
         "artist":row.artist.unwrap_or_else(||"Unknown Artist".into()), "artistId":format!("{}.{}",row.folder,row.artist_key),
         "songCount":integer(&row.count),"duration":row.duration_ms.as_deref().map(integer).unwrap_or(0)/1000,
         "created":clock::from_millis(row.created)})
@@ -107,7 +108,12 @@ fn artist(row: CatalogArtist) -> Value {
         "albumCount":integer(&row.album_count)})
 }
 
-async fn browse(state: &AppState, name: &str, p: &Params) -> Result<Value, Failure> {
+async fn browse(
+    state: &AppState,
+    name: &str,
+    p: &Params,
+    client: &auth::Client,
+) -> Result<Value, Failure> {
     let music = state.db.music();
     match name {
         "ping" => Ok(json!({})),
@@ -123,12 +129,23 @@ async fn browse(state: &AppState, name: &str, p: &Params) -> Result<Value, Failu
             50,
             "Use the administrator dashboard to scan libraries",
         )),
-        "getOpenSubsonicExtensions" => Ok(json!({"openSubsonicExtensions":[]})),
+        "getOpenSubsonicExtensions" => {
+            Ok(json!({"openSubsonicExtensions":[{"name":"songLyrics","versions":[1]}]}))
+        }
+        "getLyricsBySongId" => personal::lyrics(state, p).await,
         "getMusicFolders" => Ok(
             json!({"musicFolders":{"musicFolder":music.catalog_folders().await?.into_iter().map(|(id,name)|json!({"id":id,"name":name})).collect::<Vec<_>>()}}),
         ),
         "getSong" => {
-            Ok(json!({"song":song(music.catalog_song(p.required("id")?).await?.ok_or(NOT_FOUND)?)}))
+            let row = music
+                .catalog_song(p.required("id")?)
+                .await?
+                .ok_or(NOT_FOUND)?;
+            let entry = personal::songs(state, client, vec![row])
+                .await?
+                .pop()
+                .ok_or(NOT_FOUND)?;
+            Ok(json!({"song":entry}))
         }
         "getAlbumList2" => {
             let by_artist = match p.required("type")? {
@@ -156,7 +173,7 @@ async fn browse(state: &AppState, name: &str, p: &Params) -> Result<Value, Failu
                     "Use a paged catalog request for albums over 10000 tracks",
                 ));
             }
-            let songs: Vec<_> = songs.into_iter().map(song).collect();
+            let songs = personal::songs(state, client, songs).await?;
             value["songCount"] = json!(songs.len());
             value["song"] = json!(songs);
             Ok(json!({"album":value}))
@@ -192,19 +209,65 @@ async fn browse(state: &AppState, name: &str, p: &Params) -> Result<Value, Failu
                 );
             }
             if songs.count > 0 {
-                found["song"] = json!(
-                    music
-                        .catalog_songs(&scope, query, songs)
-                        .await?
-                        .into_iter()
-                        .map(song)
-                        .collect::<Vec<_>>()
-                );
+                let rows = music.catalog_songs(&scope, query, songs).await?;
+                found["song"] = json!(personal::songs(state, client, rows).await?);
             }
             Ok(json!({"searchResult3":found}))
         }
-        _ => Err(UNSUPPORTED),
+        _ => personal::dispatch(state, name, p, client).await,
     }
+}
+
+async fn cover_art(state: &AppState, method: Method, p: &Params) -> Result<Response, Failure> {
+    use axum::http::header;
+    static SCALER: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(1);
+    let id: ItemId = p.required("id")?.parse().map_err(|_| NOT_FOUND)?;
+    let size = p
+        .value("size")
+        .map(|s| {
+            s.parse::<u16>()
+                .ok()
+                .filter(|n| (1..=1024).contains(n))
+                .ok_or(MISSING)
+        })
+        .transpose()?;
+    let _permit = if size.is_some() {
+        Some(
+            SCALER
+                .acquire()
+                .await
+                .map_err(|_| Failure(0, "Thumbnail unavailable"))?,
+        )
+    } else {
+        None
+    };
+    let (mut mime, mut image) = palveni_library::artwork::open(&state.db, id)
+        .await
+        .map_err(|_| NOT_FOUND)?;
+    if let Some(size) = size {
+        image = state
+            .hardware
+            .cover_thumbnail(&image, mime, size)
+            .await
+            .map_err(|_| Failure(0, "Thumbnail unavailable"))?;
+        mime = "image/jpeg";
+    }
+    let length = image.len();
+    let body = if method == Method::HEAD {
+        Vec::new()
+    } else {
+        image
+    };
+    Ok((
+        [
+            (header::CONTENT_TYPE, mime.to_owned()),
+            (header::CONTENT_LENGTH, length.to_string()),
+            (header::CACHE_CONTROL, "private, no-cache".into()),
+            (header::X_CONTENT_TYPE_OPTIONS, "nosniff".into()),
+        ],
+        body,
+    )
+        .into_response())
 }
 
 async fn media(
@@ -291,21 +354,28 @@ pub async fn handle(
         return fail(MISSING);
     };
     let verified = auth::verify(&state, user, salt, token).await;
-    match verified {
-        Ok(valid) => {
-            attempt.finish(valid);
-            if !valid {
-                return fail(DENIED);
-            }
+    let client = match verified {
+        Ok(Some(client)) => {
+            attempt.finish(true);
+            client
+        }
+        Ok(None) => {
+            attempt.finish(false);
+            return fail(DENIED);
         }
         Err(_) => return fail(Failure(0, "Internal server error")),
-    }
+    };
     let name = name.strip_suffix(".view").unwrap_or(&name);
-    if matches!(name, "stream" | "download") {
+    if method == Method::HEAD && !matches!(name, "stream" | "download" | "getCoverArt") {
+        return fail(UNSUPPORTED);
+    }
+    if name == "getCoverArt" {
+        cover_art(&state, method, &p).await.unwrap_or_else(fail)
+    } else if matches!(name, "stream" | "download") {
         media(&state, method, &headers, name, &p)
             .await
             .unwrap_or_else(fail)
     } else {
-        wire::reply(as_json, browse(&state, name, &p).await)
+        wire::reply(as_json, browse(&state, name, &p, &client).await)
     }
 }

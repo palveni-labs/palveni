@@ -163,6 +163,29 @@ impl LocalStorage {
         }
     }
 
+    pub(crate) fn directory_entries(&self, path: &StoragePath) -> Result<std::fs::ReadDir> {
+        let dir = self.resolve(path)?;
+        std::fs::read_dir(&dir).map_err(|error| map_io(error, &dir))
+    }
+
+    pub(crate) fn open_subtitle_file(
+        &self,
+        parent: &StoragePath,
+        name: &str,
+    ) -> Result<std::fs::File> {
+        let path = parent.join(name)?;
+        let local = self.resolve(parent)?.join(name);
+        let regular = || std::fs::symlink_metadata(&local).is_ok_and(|m| m.is_file());
+        if !regular() {
+            return Err(Error::not_found("Subtitle"));
+        }
+        let file = self.open_file_blocking(&path)?;
+        if !regular() {
+            return Err(Error::not_found("Subtitle"));
+        }
+        Ok(file)
+    }
+
     fn list_dir_blocking(&self, path: &StoragePath) -> Result<Vec<DirEntry>> {
         let dir = self.resolve(path)?;
         let reader = std::fs::read_dir(&dir).map_err(|e| map_io(e, &dir))?;

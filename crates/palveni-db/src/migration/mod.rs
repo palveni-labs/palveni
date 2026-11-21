@@ -23,6 +23,8 @@ mod m20261121_000007_media_connections;
 mod m20261121_000009_music_search;
 mod m20261121_000010_subsonic;
 mod m20261121_000011_library_mounts;
+mod m20261121_000014_music_listens;
+mod m20261121_000015_music_collection_favorites;
 
 pub struct MainMigrator;
 
@@ -39,6 +41,8 @@ impl MigratorTrait for MainMigrator {
             Box::new(m20261121_000009_music_search::Migration),
             Box::new(m20261121_000010_subsonic::Migration),
             Box::new(m20261121_000011_library_mounts::Migration),
+            Box::new(m20261121_000014_music_listens::Migration),
+            Box::new(m20261121_000015_music_collection_favorites::Migration),
         ]
     }
 

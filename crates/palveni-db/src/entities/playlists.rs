@@ -8,6 +8,9 @@ pub struct Model {
     pub user_id: String,
     pub name: String,
     pub version: i64,
+    pub comment: Option<String>,
+    pub created_at: Option<i64>,
+    pub changed_at: Option<i64>,
     pub deleted: bool,
 }
 

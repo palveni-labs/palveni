@@ -17,6 +17,7 @@ export function MusicClientAccess({ user }: { user: User }) {
   const status = useQuery({ queryKey: key, queryFn: ({ signal }) => api.subsonicPassword.status(signal) });
   const [issued, setIssued] = useState<SubsonicPassword | null>(null);
   const [confirm, setConfirm] = useState<"replace" | "revoke" | null>(null);
+  const [personal, setPersonal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
@@ -25,13 +26,13 @@ export function MusicClientAccess({ user }: { user: User }) {
     setError(null);
     try {
       if (action === "replace") {
-        const password = await api.subsonicPassword.issue();
+        const password = await api.subsonicPassword.issue(personal);
         setIssued(password);
       } else {
         await api.subsonicPassword.revoke();
         setIssued(null);
       }
-      queryClient.setQueryData(key, { enabled: action === "replace" });
+      queryClient.setQueryData(key, { enabled: action === "replace", personal: action === "replace" && personal });
       setConfirm(null);
     } catch (cause) {
       setError(cause);
@@ -40,6 +41,12 @@ export function MusicClientAccess({ user }: { user: User }) {
     }
   }
 
+  const permission = (
+    <label className="flex items-center gap-2 text-sm text-fg">
+      <input type="checkbox" checked={personal} disabled={busy} onChange={(event) => setPersonal(event.target.checked)} />
+      {t("musicClients.grantPersonal")}
+    </label>
+  );
   return (
     <li className={cn("grid gap-2 py-3.5", inset)}>
       <span className="text-base text-fg">{t("musicClients.title")}</span>
@@ -60,18 +67,31 @@ export function MusicClientAccess({ user }: { user: User }) {
       ) : confirm ? (
         <div className="grid gap-2">
           <p>{t(confirm === "revoke" ? "musicClients.confirmRevoke" : "musicClients.confirmReplace")}</p>
+          {confirm === "replace" && permission}
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" isDisabled={busy} onPress={() => setConfirm(null)}>{t("common.cancel")}</Button>
             <Button size="sm" isPending={busy} onPress={() => void apply(confirm)}>{t(confirm === "revoke" ? "musicClients.revoke" : "musicClients.replace")}</Button>
           </div>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div className="grid gap-2">
+          {status.data.enabled
+            ? <span className="text-sm text-fg-muted">{t(status.data.personal ? "musicClients.personalEnabled" : "musicClients.browseOnly")}</span>
+            : permission}
+          <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" isPending={busy}
-            onPress={() => status.data.enabled ? setConfirm("replace") : void apply("replace")}>
+            onPress={() => {
+              if (status.data.enabled) {
+                setPersonal(status.data.personal);
+                setConfirm("replace");
+              } else {
+                void apply("replace");
+              }
+            }}>
             {t(status.data.enabled ? "musicClients.replace" : "musicClients.create")}
           </Button>
           {status.data.enabled && <Button size="sm" variant="outline" onPress={() => setConfirm("revoke")}>{t("musicClients.revoke")}</Button>}
+          </div>
         </div>
       )}
       {error != null && <p role="alert">{errorText(t, error)}</p>}

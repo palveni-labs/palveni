@@ -220,6 +220,31 @@ impl Music<'_> {
         self.location_in(id, &[LibraryKind::Music]).await
     }
 
+    /// Candidate tracks for albums where artwork was embedded in only one file.
+    pub async fn artwork_siblings(&self, id: ItemId) -> Result<Vec<ItemId>, DbError> {
+        let Some(track) = tracks::Entity::find_by_id(id.to_string())
+            .filter(C::Album.is_not_null())
+            .one(self.db.main())
+            .await?
+        else {
+            return Ok(Vec::new());
+        };
+        let ids = tracks::Entity::find()
+            .select_only()
+            .column(C::ItemId)
+            .filter(C::LibraryId.eq(track.library_id))
+            .filter(C::ArtistKey.eq(track.artist_key))
+            .filter(C::AlbumKey.eq(track.album_key))
+            .filter(C::ItemId.ne(id.to_string()))
+            .order_by_asc(C::TrackSort)
+            .order_by_asc(C::ItemId)
+            .limit(2)
+            .into_tuple::<String>()
+            .all(self.db.main())
+            .await?;
+        ids.iter().map(|id| parse_id(id, "track id")).collect()
+    }
+
     pub async fn audio_location(&self, id: ItemId) -> Result<Option<TrackLocation>, DbError> {
         self.location_in(
             id,
@@ -353,17 +378,22 @@ impl Music<'_> {
                 .column(order)
                 .column(key)
                 .column_as(name.min(), "name")
+                .column_as(C::ItemId.min(), "representative")
                 .group_by(order)
                 .group_by(key)
-                .into_tuple::<(String, String, Option<String>)>()
+                .into_tuple::<(String, String, Option<String>, String)>()
                 .all(self.db.main())
                 .await?;
-            for (sort, id, name) in groups {
+            for (sort, id, name, representative) in groups {
                 if entries.len() == limit - 1 {
                     position = Some((sort, id.clone()));
                 }
                 entries.push(if artist.is_some() {
-                    MusicEntry::Album { id, name }
+                    MusicEntry::Album {
+                        id,
+                        name,
+                        artwork_item_id: parse_id(&representative, "track id")?,
+                    }
                 } else {
                     MusicEntry::Artist { id, name }
                 });

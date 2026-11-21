@@ -108,7 +108,9 @@ use palveni_core::personal::{
     PlaylistSummary, PlaylistTrack, PlaylistTrackPage,
 };
 use palveni_core::spoken::{SpokenEntry, SpokenPage, SpokenRecording};
-use palveni_core::video::{VideoEntry, VideoKind, VideoPage};
+use palveni_core::video::{
+    SubtitleFormat, SubtitleList, SubtitleTrack, VideoEntry, VideoKind, VideoPage,
+};
 use palveni_core::{
     Item, ItemKind, Job, Library, User, features::Capability, settings::RuntimeSettings,
 };
@@ -133,6 +135,9 @@ use utoipa::OpenApi;
     VideoEntry,
     VideoKind,
     VideoPage,
+    SubtitleList,
+    SubtitleTrack,
+    SubtitleFormat,
     MountedDirectory,
     MountList,
     MountProtocol,

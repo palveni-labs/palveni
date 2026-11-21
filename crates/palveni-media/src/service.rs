@@ -27,6 +27,10 @@ impl HardwareService {
         }
     }
 
+    pub(crate) fn configured_ffmpeg(&self) -> Option<&std::path::Path> {
+        self.options.ffmpeg_path.as_deref()
+    }
+
     /// Loads the report persisted by a previous run, if any.
     pub async fn load_persisted(&self) {
         let stored = match self.db.settings().get(KEY_HARDWARE_REPORT).await {

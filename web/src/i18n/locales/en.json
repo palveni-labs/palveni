@@ -688,6 +688,9 @@
     }
   },
   "musicClients": {
+    "grantPersonal": "Allow players to manage my favorites, playlists, ratings and listening history",
+    "personalEnabled": "Players can manage your personal music data.",
+    "browseOnly": "Players can browse and stream music.",
     "title": "OpenSubsonic music clients",
     "hint": "Connect a music player with your server address, username and a dedicated password.",
     "create": "Create password",
@@ -889,6 +892,15 @@
     "empty": "No audio yet",
     "progressConflict": "Playback progress changed on another device. Reopen to resume.",
     "playbackFailed": "Could not play this audio"
+  },
+  "videoSubtitles": {
+    "label": "External subtitles",
+    "off": "Subtitles off",
+    "unspecified": "Unspecified language",
+    "forced": "Forced",
+    "sdh": "Hard of hearing",
+    "limited": "Only some subtitle tracks in this directory are shown.",
+    "unreadable": "Could not load this subtitle track"
   },
   "video": {
     "findTitle": "Find a title",

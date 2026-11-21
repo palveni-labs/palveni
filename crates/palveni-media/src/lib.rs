@@ -5,6 +5,7 @@
 //! capabilities is assumed: encoders are only reported as verified after a
 //! real short test encode succeeded.
 
+mod cover;
 pub mod devices;
 pub mod discovery;
 pub mod encoders;

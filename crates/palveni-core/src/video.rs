@@ -54,3 +54,27 @@ pub struct VideoPage {
     #[schema(required = true)]
     pub next_cursor: Option<String>,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum SubtitleFormat {
+    Srt,
+    Vtt,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SubtitleTrack {
+    pub id: String,
+    #[schema(required = true)]
+    pub language: Option<String>,
+    pub forced: bool,
+    pub hearing_impaired: bool,
+    pub format: SubtitleFormat,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct SubtitleList {
+    pub tracks: Vec<SubtitleTrack>,
+    pub truncated: bool,
+}

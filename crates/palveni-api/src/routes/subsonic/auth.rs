@@ -1,18 +1,19 @@
 use crate::{ApiError, AppState, auth::CurrentUser, routes::audit};
 use axum::{
     Json,
-    extract::State,
+    extract::{Query, State},
     http::{StatusCode, header},
     response::{IntoResponse, Response},
 };
 use md5::{Digest, Md5};
+use palveni_core::UserId;
 use palveni_db::audit::AuditEntry;
 use palveni_link::NodeIdentity;
 use ring::{
     digest, hmac,
     rand::{SecureRandom, SystemRandom},
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, utoipa::ToSchema)]
 pub struct SubsonicPassword {
@@ -23,21 +24,23 @@ pub struct SubsonicPassword {
 #[derive(Serialize, utoipa::ToSchema)]
 pub struct SubsonicPasswordStatus {
     enabled: bool,
+    personal: bool,
 }
 
 pub async fn status(
     current: CurrentUser,
     State(state): State<AppState>,
 ) -> Result<Response, ApiError> {
-    let enabled = state
+    let identity = state
         .db
         .users()
         .subsonic_identity(&current.user.username)
-        .await?
-        .is_some();
+        .await?;
+    let enabled = identity.is_some();
+    let personal = identity.is_some_and(|(_, generation)| generation.starts_with('p'));
     Ok((
         [(header::CACHE_CONTROL, "private, no-store")],
-        Json(SubsonicPasswordStatus { enabled }),
+        Json(SubsonicPasswordStatus { enabled, personal }),
     )
         .into_response())
 }
@@ -48,15 +51,26 @@ fn password(node: &NodeIdentity, user: &str, generation: &str) -> String {
     hex::encode(digest::digest(&digest::SHA256, &signature))
 }
 
+#[derive(Deserialize)]
+pub struct IssueOptions {
+    #[serde(default)]
+    personal: bool,
+}
+
 pub async fn issue(
     current: CurrentUser,
     State(state): State<AppState>,
+    Query(options): Query<IssueOptions>,
 ) -> Result<Response, ApiError> {
     let mut random = [0; 32];
     SystemRandom::new()
         .fill(&mut random)
         .map_err(|_| ApiError::internal("Cannot generate music client password"))?;
-    let generation = hex::encode(random);
+    let generation = if options.personal {
+        format!("p{}", hex::encode(&random[..31]))
+    } else {
+        hex::encode(random)
+    };
     let password = password(&state.identity, &current.user.id.to_string(), &generation);
     state
         .db
@@ -106,18 +120,23 @@ pub async fn revoke(
     Ok(StatusCode::NO_CONTENT)
 }
 
+pub(super) struct Client {
+    pub id: UserId,
+    pub personal: bool,
+}
+
 pub(super) async fn verify(
     state: &AppState,
     username: &str,
     salt: &str,
     token: &str,
-) -> Result<bool, ApiError> {
+) -> Result<Option<Client>, ApiError> {
     let mut supplied = [0; 16];
     if !(6..=256).contains(&salt.chars().count())
         || username.len() > 256
         || hex::decode_to_slice(token, &mut supplied).is_err()
     {
-        return Ok(false);
+        return Ok(None);
     }
     let identity = state.db.users().subsonic_identity(username).await?;
     let (user, generation) = identity
@@ -133,5 +152,15 @@ pub(super) async fn verify(
     let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
     let tag = hmac::sign(&key, &expected);
     let matches = hmac::verify(&key, &supplied, tag.as_ref()).is_ok();
-    Ok(matches && identity.is_some())
+    if !matches {
+        return Ok(None);
+    }
+    identity
+        .map(|(id, generation)| {
+            Ok(Client {
+                id: id.parse().map_err(ApiError::internal)?,
+                personal: generation.starts_with('p'),
+            })
+        })
+        .transpose()
 }

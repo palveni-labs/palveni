@@ -112,7 +112,7 @@ it("opens a music library at its artists, plays an album track, and keeps the or
     http.get(`/api/v1/libraries/${library.id}/music`, ({ request }) => {
       const q = new URL(request.url).searchParams;
       const entry = q.get("album") ? { kind: "track", title: "Sunrise", id: track, artist: "Ensemble", durationMs: 60000, trackNumber: 1 }
-        : q.get("artist") ? { kind: "album", name: "Skies", id: album } : { kind: "artist", name: "Ensemble", id: artist };
+        : q.get("artist") ? { kind: "album", name: "Skies", id: album, artworkItemId: track } : { kind: "artist", name: "Ensemble", id: artist };
       return HttpResponse.json({ entries: [entry], nextCursor: null });
     }),
     http.post(`/api/v1/items/${track}/playback`, () => HttpResponse.json({ mode: "direct", url: "/track.wav", expiresAt: "2099-01-01T00:00:00Z" })),

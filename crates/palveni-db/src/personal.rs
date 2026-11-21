@@ -26,6 +26,7 @@ pub struct PersonalMedia<'a> {
 #[derive(Clone, Copy)]
 pub enum MediaChange {
     Favorite(bool),
+    Scrobble { at: i64, submitted: bool },
     Rating(i32),
     Progress(PlaybackUpdate),
 }
@@ -94,6 +95,26 @@ impl PersonalMedia<'_> {
         media_state(&load(self.db.main(), user, id).await?.0)
     }
 
+    pub async fn states_for(
+        &self,
+        user: UserId,
+        ids: &[String],
+    ) -> Result<std::collections::HashMap<String, MediaState>, DbError> {
+        let mut result = std::collections::HashMap::new();
+        for chunk in ids.chunks(200) {
+            let rows = state::Entity::find()
+                .filter(C::UserId.eq(user.to_string()))
+                .filter(C::ItemId.is_in(chunk.iter().cloned()))
+                .all(self.db.main())
+                .await?;
+            for row in rows {
+                let item = media_state(&row)?;
+                result.insert(row.item_id, item);
+            }
+        }
+        Ok(result)
+    }
+
     pub async fn update(
         &self,
         user: UserId,
@@ -109,6 +130,32 @@ impl PersonalMedia<'_> {
                     return media_state(&row);
                 }
                 row.favorite_order = value.then_some(revision);
+            }
+            MediaChange::Scrobble { at, submitted } => {
+                use crate::entities::subsonic_plays as plays;
+                use sea_orm::Set;
+                if submitted {
+                    if plays::Entity::find_by_id((user.to_string(), id.to_string(), at))
+                        .one(&txn)
+                        .await?
+                        .is_some()
+                    {
+                        return media_state(&row);
+                    }
+                    plays::Entity::insert(plays::ActiveModel {
+                        user_id: Set(user.to_string()),
+                        item_id: Set(id.to_string()),
+                        played_at: Set(at),
+                    })
+                    .exec_without_returning(&txn)
+                    .await?;
+                    row.play_count = row.play_count.saturating_add(1);
+                }
+                if row.last_played_at.is_none_or(|last| last <= at) {
+                    row.previous_version = Some(row.playback_version);
+                    row.playback_version = revision;
+                    row.last_played_at = Some(at);
+                }
             }
             MediaChange::Rating(value) => {
                 if !(0..=5).contains(&value) {

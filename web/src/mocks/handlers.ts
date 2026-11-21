@@ -49,7 +49,7 @@ function decodeCursor(cursor: string): number | null {
 }
 
 export function createHandlers(db: MockDb, options: HandlerOptions = {}) {
-  const musicClientUsers = new Set<string>();
+  const musicClientUsers = new Map<string, boolean>();
   const latency = options.latency ?? 0;
   const wait = () => (latency > 0 ? delay(latency + Math.round(Math.random() * latency)) : Promise.resolve());
 
@@ -145,12 +145,12 @@ export function createHandlers(db: MockDb, options: HandlerOptions = {}) {
 
     http.get(`${BASE}/me/subsonic-password`, ({ request }) => {
       const auth = authenticate(request);
-      return "response" in auth ? auth.response : HttpResponse.json({ enabled: musicClientUsers.has(auth.user.id) });
+      return "response" in auth ? auth.response : HttpResponse.json({ enabled: musicClientUsers.has(auth.user.id), personal: musicClientUsers.get(auth.user.id) ?? false });
     }),
     http.post(`${BASE}/me/subsonic-password`, ({ request }) => {
       const auth = authenticate(request);
       if ("response" in auth) return auth.response;
-      musicClientUsers.add(auth.user.id);
+      musicClientUsers.set(auth.user.id, new URL(request.url).searchParams.get("personal") === "true");
       return HttpResponse.json({ username: auth.user.username, password: crypto.randomUUID() }, { status: 201 });
     }),
     http.delete(`${BASE}/me/subsonic-password`, ({ request }) => {

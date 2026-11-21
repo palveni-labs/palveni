@@ -64,7 +64,9 @@ const PALVENI_TABLES: &[&str] = &[
     "broadcast_sources",
     "video_metadata",
     "media_connections",
+    "music_collection_favorites",
     "subsonic_folders",
+    "subsonic_plays",
     "track_metadata",
     "items",
     "library_mounts",
@@ -1041,6 +1043,27 @@ async fn conformance_music_backfill_pagination_and_removal() {
     assert_eq!(groups.len(), 1);
     assert_eq!(groups[0]["kind"], "album");
     assert_eq!(groups[0]["name"], "Sessions");
+    let representative = first.id.to_string().min(second.id.to_string());
+    assert_eq!(groups[0]["artworkItemId"], representative);
+    let albums = db
+        .music()
+        .catalog_albums(
+            &[],
+            "Sessions",
+            crate::music::catalog::Page {
+                count: 10,
+                offset: 0,
+            },
+            false,
+        )
+        .await
+        .unwrap();
+    assert_eq!(albums.len(), 1);
+    assert_eq!(albums[0].artwork_id, representative);
+    assert_eq!(
+        db.music().artwork_siblings(first.id).await.unwrap(),
+        vec![second.id]
+    );
     let album = groups[0]["id"].as_str().unwrap();
     let page = db
         .music()
@@ -1120,6 +1143,29 @@ async fn conformance_music_backfill_pagination_and_removal() {
     };
     let tracks = catalog.catalog_album_songs(&record).await.unwrap();
     assert_eq!(tracks[0].id, first.id.to_string());
+    let listener = db
+        .users()
+        .create("collector", "x", Role::User)
+        .await
+        .unwrap()
+        .id;
+    for key in [None, Some(album)] {
+        catalog
+            .set_collection_favorite(listener, folder, artist, key, true)
+            .await
+            .unwrap();
+    }
+    let (saved_artists, saved_albums) = catalog
+        .favorite_collections(listener, &[folder])
+        .await
+        .unwrap();
+    assert_eq!(saved_artists[0].name.as_deref(), Some("Ensemble"));
+    assert_eq!(saved_albums[0].name.as_deref(), Some("Sessions"));
+    let (hidden_artists, hidden_albums) = catalog
+        .favorite_collections(palveni_core::UserId::generate(), &[])
+        .await
+        .unwrap();
+    assert!(hidden_artists.is_empty() && hidden_albums.is_empty());
     let second_id = second.id;
     second.music.as_mut().unwrap().album = Some("Encore".into());
     db.items()
@@ -1159,6 +1205,9 @@ async fn conformance_music_backfill_pagination_and_removal() {
             .is_empty()
     );
     assert!(catalog.catalog_album(&record).await.unwrap().is_none());
+    let (removed_artists, removed_albums) =
+        catalog.favorite_collections(listener, &[]).await.unwrap();
+    assert!(removed_artists.is_empty() && removed_albums.is_empty());
     assert!(
         catalog
             .catalog_song(&second_id.to_string())
@@ -1417,6 +1466,18 @@ async fn conformance_personal_media_isolation_retries_and_paging() {
         b
     );
     assert_eq!(media.get(other, b).await.unwrap(), MediaState::default());
+    let shared_ids = [b.to_string()];
+    assert_eq!(
+        media.states_for(user, &shared_ids).await.unwrap()[&shared_ids[0]],
+        finished
+    );
+    assert!(
+        media
+            .states_for(other, &shared_ids)
+            .await
+            .unwrap()
+            .is_empty()
+    );
     assert!(
         media
             .list(other, MediaView::Recent, None, 10)
@@ -1478,6 +1539,15 @@ async fn conformance_playlists_order_atomic_edits_and_ownership() {
         .await
         .unwrap();
     let v = created.summary.version;
+    let headers = repo.client_headers(owner, Some(id)).await.unwrap();
+    assert_eq!(headers.len(), 1);
+    assert_eq!(headers[0].count.trim(), "3");
+    assert!(
+        repo.client_headers(other, Some(id))
+            .await
+            .unwrap()
+            .is_empty()
+    );
     let page = repo.tracks(owner, id, v, None, 2).await.unwrap();
     assert_eq!(page.next_after, Some(1));
     assert_eq!(page.tracks[0].title, "b");

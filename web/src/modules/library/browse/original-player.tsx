@@ -5,6 +5,7 @@ import { request } from "@/api/client";
 import { ApiError } from "@/api/errors";
 import type { components } from "@/api/generated";
 import { ErrorState, LoadingRows } from "@/ui/states";
+import { VideoSubtitles } from "./video-subtitles";
 import { spokenProgress } from "./spoken-progress";
 
 type Ticket = components["schemas"]["PlaybackInfo"];
@@ -147,6 +148,7 @@ function MediaSession({
           }}
         />
       )}
+      {video && !error && <VideoSubtitles id={id} media={media} />}
       {progressError instanceof ApiError && progressError.status === 409 ? (
         <p role="alert" className="text-sm">
           {t("spoken.progressConflict")}{" "}

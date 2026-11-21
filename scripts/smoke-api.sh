@@ -356,11 +356,35 @@ check "deleted playlist disappears" "$STATUS" "404"
 echo "Original music playback"
 ORIGINAL="$MEDIA/Album A/track 1.flac"
 SIZE=$(wc -c < "$ORIGINAL" | tr -d ' ')
+COVER="$MEDIA/Album A/Cover.PNG"
+python3 - "$COVER" <<'PYART'
+import struct
+import sys
+import zlib
+from pathlib import Path
+
+
+def chunk(kind, payload):
+    length = struct.pack(">I", len(payload))
+    checksum = struct.pack(">I", zlib.crc32(kind + payload))
+    return length + kind + payload + checksum
+
+
+header = struct.pack(">IIBBBBB", 32, 16, 8, 2, 0, 0, 0)
+row = bytes([0]) + bytes((198, 80, 34)) * 32
+png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(row * 16)) + chunk(b"IEND", b"")
+Path(sys.argv[1]).write_bytes(png)
+PYART
+check "music artwork requires an account" "$(curl -sS -o /dev/null -w '%{http_code}' "$API/items/$TRACK/artwork")" 401
+check "music artwork returns the original directory image" "$(curl -sS -H "Authorization: Bearer $TOKEN" -o "$PRIVATE_TMP/cover" -w '%{http_code} %{content_type}' "$API/items/$TRACK/artwork")" "200 image/png"
+cmp -s "$PRIVATE_TMP/cover" "$COVER" && ok "directory cover bytes are preserved" || bad "directory cover bytes are preserved" "media differed"
 if PALVENI_SMOKE_BEARER="$TOKEN" python3 "$(dirname "$0")/smoke-subsonic.py" "$BASE" "$USERNAME" "$TRACK" "$FOLDER" "$ORIGINAL"; then
   ok "music client authentication, catalog, playback ranges and revocation"
 else
   bad "music client authentication, catalog, playback ranges and revocation" "protocol assertions failed"
 fi
+rm "$COVER"
+check "removing the only cover yields 404" "$(curl -sS -H "Authorization: Bearer $TOKEN" -o /dev/null -w '%{http_code}' "$API/items/$TRACK/artwork")" 404
 req POST "/items/$FOLDER/playback"
 check "folders cannot issue a playback URL" "$STATUS" "404"
 req POST "/items/$TRACK/playback"
@@ -542,6 +566,8 @@ for directory in ["stories/Volume","shows/Program"]:
             wav.setparams((1,2,8000,0,"NONE",""))
             wav.writeframes(struct.pack("<h",0)*8000)
 (root/"film"/"film.mp4").write_bytes(b"smoke-video-range-fixture")
+(root/"film"/"film.zh-Hans.forced.srt").write_text("1\n00:00:00,300 --> 00:00:02,500\nSample & captions\n",encoding="utf-8")
+(root/"film"/"film.en.sdh.vtt").write_text("WEBVTT\n\n00:00.300 --> 00:02.500\nExample\n",encoding="utf-8")
 (root/"film"/"film.nfo").write_text("<movie><title>Sample Film</title><year>2024</year></movie>")
 (root/"film"/"Archive"/"archive.mp4").write_bytes(b"other-video")
 (root/"film"/"Archive"/"archive.nfo").write_text("<movie><title>Archive</title></movie>")
@@ -563,6 +589,17 @@ for spec in 'audiobook stories book chapter' 'podcast shows show episode' 'video
     check "film wall includes the NFO title and year" "$STATUS $(field '.entries[0] | [.kind,.title,.year] | join("|")')" "200 movie|Sample Film|2024"
     poster_id=$(field '.entries[0].posterItemId')
     wall_cursor=$(field .nextCursor)
+    film_id=$(field '.entries[0].itemId')
+    req GET "/items/$film_id/subtitles"
+    check "indexed film lists matching sidecar languages and flags" "$STATUS $(field '.tracks | map([.language,.forced,.hearingImpaired] | join(":")) | join("|")')" "200 en:false:true|zh-Hans:true:false"
+    req GET "/items/$film_id/subtitles/zh-Hans.forced.srt"
+    check "external SRT is served as timed WebVTT" "$STATUS $(head -1 <<<"$BODY") $(awk '/-->/ {print}' <<<"$BODY")" "200 WEBVTT 00:00:00.300 --> 00:00:02.500"
+    check "subtitle text escapes raw ampersands" "$(awk '/Sample/ {print}' <<<"$BODY")" 'Sample &amp; captions'
+    req GET "/items/$film_id/subtitles/en.sdh.vtt"
+    check "native WebVTT keeps its cue text" "$STATUS $(awk '/Example/ {print}' <<<"$BODY")" '200 Example'
+    check "reading a subtitle requires a current session" "$(curl -sS -o /dev/null -w '%{http_code}' "$API/items/$film_id/subtitles/en.sdh.vtt")" 401
+    req GET "/items/$film_id/subtitles/fr.srt"
+    check "absent subtitles do not return another track" "$STATUS" "404"
     req GET "/libraries/$sample_lib/videos?order=title&cursor=$wall_cursor"
     check "film wall cursor rejects a different sort order" "$STATUS" "400"
     req GET "/libraries/$sample_lib/videos?order=poster&limit=1&cursor=$wall_cursor"

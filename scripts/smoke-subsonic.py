@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import sys
+import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from urllib.parse import urlencode
@@ -14,8 +15,8 @@ bearer = os.environ["PALVENI_SMOKE_BEARER"]
 original = Path(media_file).read_bytes()
 
 
-def manage(method):
-    request = Request(base + "/api/v1/me/subsonic-password", method=method,
+def manage(method, *, personal=False):
+    request = Request(base + "/api/v1/me/subsonic-password" + ("?personal=true" if personal else ""), method=method,
                       headers={"Authorization": "Bearer " + bearer})
     with urlopen(request, timeout=15) as response:
         if response.status == 204:
@@ -33,7 +34,7 @@ def auth(secret):
 def call(method, creds, *, params=None, headers=None, verb="GET", binary=False):
     query = dict(creds)
     query.update(params or {})
-    request = Request(base + "/rest/" + method + "?" + urlencode(query), method=verb, headers=headers or {})
+    request = Request(base + "/rest/" + method + "?" + urlencode(query, doseq=True), method=verb, headers=headers or {})
     with urlopen(request, timeout=15) as response:
         if binary:
             return response.status, response.headers, response.read()
@@ -41,11 +42,11 @@ def call(method, creds, *, params=None, headers=None, verb="GET", binary=False):
 
 
 def check():
-    assert manage("GET") == {"enabled": False}
+    assert manage("GET") == {"enabled": False, "personal": False}
     issued = manage("POST")
     assert issued["username"] == username
     creds = auth(issued["password"])
-    assert manage("GET") == {"enabled": True}
+    assert manage("GET") == {"enabled": True, "personal": False}
     assert call("ping.view", creds)["status"] == "ok"
     assert call("ping", {**creds, "t": "0" * 32})["error"]["code"] == 40
     assert call("ping", {"u": username, "p": issued["password"], "c": "test", "v": "1.16.1", "f": "json"})["error"]["code"] == 42
@@ -82,12 +83,64 @@ def check():
     assert call("download.view", creds, params={"id": track}, binary=True)[2] == original
     assert call("stream.view", creds, params={"id": track}, verb="HEAD", binary=True)[1]["Content-Length"] == str(len(original))
     assert call("stream.view", creds, params={"id": track, "format": "mp3"})["status"] == "failed"
-    next_creds = auth(manage("POST")["password"])
+    cover = Path(media_file).with_name("Cover.PNG").read_bytes()
+    for cover_id in (song["coverArt"], detail["coverArt"]):
+        status, hdr, binary = call("getCoverArt.view", creds, params={"id": cover_id}, binary=True)
+        assert status == 200 and hdr["Content-Type"] == "image/png" and binary == cover
+    assert call("getCoverArt", creds, params={"id": non_track})["error"]["code"] == 70
+    assert call("getCoverArt", creds, params={"id": song["coverArt"], "size": "0"})["error"]["code"] == 10
+    _, header, head_body = call("getCoverArt.view", creds, params={"id": song["coverArt"]}, verb="HEAD", binary=True)
+    assert int(header["Content-Length"]) == len(cover) and head_body == b""
+    assert call("getStarred2", creds)["error"]["code"] == 50
+    assert call("createPlaylist", creds, params={"name":"Denied"})["error"]["code"] == 50
+    assert call("star", creds, params={"id":track})["error"]["code"] == 50
+    assert call("getOpenSubsonicExtensions", creds)["openSubsonicExtensions"] == [{"name":"songLyrics","versions":[1]}]
+    words = call("getLyricsBySongId", creds, params={"id":track})["lyricsList"]["structuredLyrics"][0]
+    assert not words["synced"] and words["line"][0]["value"] == "Embedded test line"
+    next_creds = auth(manage("POST", personal=True)["password"])
+    assert manage("GET") == {"enabled": True,"personal":True}
+    def personal(method, **params):
+        return call(method, next_creds, params=params)
+    assert personal("star", id=track)["status"] == "ok"
+    assert track in [s["id"] for s in personal("getStarred2")["starred2"]["song"]]
+    assert personal("unstar",id=track)["status"]=="ok"
+    assert track not in [s["id"] for s in personal("getStarred2")["starred2"]["song"]]
+    collection = personal("getAlbum", id=personal("getSong", id=track)["song"]["albumId"])["album"]
+    for field, key, object_id in (("albumId", "album", collection["id"]), ("artistId", "artist", collection["artistId"])):
+        for _ in range(2):
+            assert personal("star", **{field: object_id})["status"] == "ok"
+        saved = personal("getStarred2", musicFolderId=folder)["starred2"][key]
+        assert [item["id"] for item in saved] == [object_id] and saved[0]["name"]
+        assert personal("getStarred2", musicFolderId=-1)["starred2"][key] == []
+        assert personal("unstar", **{field: object_id})["status"] == "ok"
+        assert personal("getStarred2")["starred2"][key] == []
+    assert personal("setRating",id=track,rating=4)["status"]=="ok"
+    created=personal("createPlaylist",name="Practice",songId=[track,track])["playlist"]
+    assert created["songCount"]==2 and len(created["entry"])==2
+    pid=created["id"]
+    assert personal("updatePlaylist",playlistId=pid,name="Practice set",comment="Working notes",songIndexToRemove=0,songIdToAdd=track)["status"]=="ok"
+    detail=personal("getPlaylist",id=pid)["playlist"]
+    assert detail["name"]=="Practice set" and detail["comment"]=="Working notes" and len(detail["entry"])==2
+    assert any(p["id"]==pid for p in personal("getPlaylists")["playlists"]["playlist"])
+    assert personal("deletePlaylist",id=pid)["status"]=="ok"
+    assert personal("getPlaylist",id=pid)["error"]["code"]==70
+    before=personal("getSong",id=track)["song"].get("playCount",0)
+    at=int(time.time()*1000)-1500
+    assert personal("scrobble",id=track,time=at,submission="false")["status"]=="ok"
+    assert personal("getSong",id=track)["song"]["playCount"]==before
+    for _ in range(2):
+        assert personal("scrobble",id=track,time=at,submission="true")["status"]=="ok"
+    song=personal("getSong",id=track)["song"]
+    assert song["playCount"]==before+1 and song["userRating"]==4 and song["played"]
+    assert call("getCoverArt", next_creds, params={"id": song["coverArt"]}, binary=True)[2] == cover
+    index=personal("search3",query=song["title"])["searchResult3"]["song"]
+    assert any(s["id"]==track and s["playCount"]==before+1 for s in index)
+
     assert call("ping", creds)["error"]["code"] == 40
     assert call("stream", creds, params={"id": track}, headers={"Range": "bytes=0-1"})["error"]["code"] == 40
     assert call("ping", next_creds)["status"] == "ok"
     manage("DELETE")
-    assert manage("GET") == {"enabled": False} and call("ping", next_creds)["error"]["code"] == 40
+    assert manage("GET") == {"enabled": False, "personal": False} and call("ping", next_creds)["error"]["code"] == 40
 
 
 if __name__ == "__main__":

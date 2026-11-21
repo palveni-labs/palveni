@@ -62,7 +62,62 @@ struct TrackRow {
     duration_ms: Option<i64>,
 }
 
+#[derive(sea_orm::FromQueryResult)]
+pub struct ClientPlaylist {
+    pub id: String,
+    pub name: String,
+    pub comment: Option<String>,
+    pub created_at: Option<i64>,
+    pub changed_at: Option<i64>,
+    pub count: String,
+    pub duration_ms: Option<String>,
+}
 impl Playlists<'_> {
+    pub async fn client_headers(
+        &self,
+        user: UserId,
+        id: Option<PlaylistId>,
+    ) -> Result<Vec<ClientPlaylist>, DbError> {
+        let mut query = lists::Entity::find()
+            .filter(C::UserId.eq(user.to_string()))
+            .filter(C::Deleted.eq(false))
+            .join_rev(
+                JoinType::LeftJoin,
+                entries::Entity::belongs_to(lists::Entity)
+                    .from(entries::Column::PlaylistId)
+                    .to(C::Id)
+                    .into(),
+            )
+            .join(
+                JoinType::LeftJoin,
+                entries::Relation::Item.def().on_condition(|_, right| {
+                    Expr::col((right.clone(), items::Column::DeletedAt))
+                        .is_null()
+                        .and(Expr::col((right, items::Column::Kind)).eq("track"))
+                        .into_condition()
+                }),
+            )
+            .join_rev(JoinType::LeftJoin, tags::Relation::Item.def())
+            .select_only()
+            .columns([C::Id, C::Name, C::Comment, C::CreatedAt, C::ChangedAt])
+            .column_as(items::Column::Id.count().cast_as("CHAR(24)"), "count")
+            .column_as(
+                tags::Column::DurationMs.sum().cast_as("CHAR(24)"),
+                "duration_ms",
+            )
+            .group_by(C::Id)
+            .group_by(C::Name)
+            .group_by(C::Comment)
+            .group_by(C::CreatedAt)
+            .group_by(C::ChangedAt)
+            .order_by_asc(C::Name)
+            .order_by_asc(C::Id);
+        if let Some(id) = id {
+            query = query.filter(C::Id.eq(id.to_string()));
+        }
+        Ok(query.into_model().all(self.db.main()).await?)
+    }
+
     pub async fn list(
         &self,
         user: UserId,
@@ -220,6 +275,23 @@ impl Playlists<'_> {
         name: &str,
         tracks: Vec<ItemId>,
     ) -> Result<Playlist, DbError> {
+        self.save_with_comment(user, id, expected, name, tracks, None)
+            .await
+    }
+
+    pub async fn save_with_comment(
+        &self,
+        user: UserId,
+        id: PlaylistId,
+        expected: i64,
+        name: &str,
+        tracks: Vec<ItemId>,
+        comment: Option<&str>,
+    ) -> Result<Playlist, DbError> {
+        if comment.is_some_and(|text| text.chars().count() > 4096) {
+            return Err(DbError::Invalid("Playlist description too long"));
+        }
+        let now = crate::convert::now_ms();
         let name = name.trim();
         if name.is_empty() || name.chars().count() > 128 || name.chars().any(char::is_control) {
             return Err(DbError::Invalid(
@@ -261,6 +333,10 @@ impl Playlists<'_> {
             Some(row) => {
                 let mut active: lists::ActiveModel = row.into();
                 active.name = Set(name.to_owned());
+                if let Some(comment) = comment {
+                    active.comment = Set(Some(comment.to_owned()));
+                }
+                active.changed_at = Set(Some(now));
                 active.version = Set(version);
                 active.update(&txn).await?;
                 remove_entries(&txn, id).await?;
@@ -272,6 +348,9 @@ impl Playlists<'_> {
                     name: Set(name.to_owned()),
                     version: Set(version),
                     deleted: Set(false),
+                    comment: Set(comment.map(str::to_owned)),
+                    created_at: Set(Some(now)),
+                    changed_at: Set(Some(now)),
                 })
                 .exec_without_returning(&txn)
                 .await?;

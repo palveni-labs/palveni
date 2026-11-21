@@ -1,6 +1,7 @@
 //! Local film and TV sidecars. Discovery uses the scanner's existing directory listing.
 mod nfo;
 mod recognition;
+pub mod subtitles;
 #[cfg(test)]
 mod tests;
 
@@ -444,15 +445,7 @@ pub async fn open_poster(
         let mut header = [0u8; 12];
         let bytes = &mut header[..size.min(12) as usize];
         file.read_exact(bytes)?;
-        let media = if bytes.starts_with(&[255, 216, 255]) {
-            "image/jpeg"
-        } else if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
-            "image/png"
-        } else if bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP") {
-            "image/webp"
-        } else {
-            return Err(Error::not_found("poster"));
-        };
+        let media = crate::artwork::mime(bytes).ok_or_else(|| Error::not_found("poster"))?;
         file.rewind()?;
         let reader = tokio::io::AsyncReadExt::take(tokio::fs::File::from_std(file), size);
         Ok((media, size, Box::pin(reader) as ByteStream))

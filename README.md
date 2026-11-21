@@ -34,7 +34,7 @@ Run `palveni doctor` to check FFmpeg, hardware acceleration and database connect
 
 Choose **Music** when adding a library, then scan its folders. Open the library and choose **Album artists** to browse albums and tracks. Compilation albums stay together under their album artist. Tracks without tags appear under an unknown artist or album and use their filenames as titles. Run a scan after upgrading to index music that is already in your library.
 
-To use an OpenSubsonic player, open **System → Settings → Account → OpenSubsonic music clients** and create a password. Enter the server’s base address, your username and this password in the player. The music catalog supports browsing, searching and streaming original files with seeking. All players on your account share the password. You can replace or revoke it in Settings. Use HTTPS when connecting over the internet.
+To use an OpenSubsonic player, open **System → Settings → Account → OpenSubsonic music clients** and create a password. Enter the server’s base address, your username and this password in the player. The music catalog supports browsing, searching and streaming original files with seeking. Allow personal music access when creating the password to sync favorite artists, albums and tracks, song ratings, playlists and listening history. Compatible players can also display synced or plain lyrics. All players on your account share the password. You can replace or revoke it in Settings. Use HTTPS when connecting over the internet.
 
 Open an album to play its tracks. **Libraries** brings together your continue-playing list, history and favorites. Administrators can rename a library or add folders under **System → Libraries**. Existing items keep their identities and playback history.
 

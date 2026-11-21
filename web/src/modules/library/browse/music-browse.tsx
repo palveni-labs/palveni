@@ -1,12 +1,14 @@
 import { Button } from "@heroui/react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
-import { ChevronRight, Disc3, Music2, Play, UsersRound } from "lucide-react";
+import { ChevronRight, Music2, Play, UsersRound } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "@/api/endpoints";
 import { queryKeys } from "@/api/query-keys";
 import { useFeature } from "@/modules/access";
+import type { MusicPage } from "@/api/types";
+import { AlbumCover } from "./album-cover";
 import { OriginalPlayer } from "./original-player";
 import { formatDuration } from "@/lib/format";
 import { Section } from "@/ui/section";
@@ -17,6 +19,8 @@ import { SearchableMusic } from "./music-search";
 export function MusicBrowse({ libraryId }: { libraryId: string }) {
   const { t } = useTranslation();
   const { artist, album, artistName, albumName } = useSearch({ from: "/_app/library/$libraryId" });
+  const artworkEnabled = useFeature("musicArtwork");
+  const client = useQueryClient();
   const playbackEnabled = useFeature("personal");
   const [playing, setPlaying] = useState<{id: string; title: string} | null>(null);
   const listing = useInfiniteQuery({
@@ -26,6 +30,9 @@ export function MusicBrowse({ libraryId }: { libraryId: string }) {
     getNextPageParam: (page) => page.nextCursor,
   });
   const entries = listing.data?.pages.flatMap((page) => page.entries) ?? [];
+  const albumGroup = album ? client.getQueryData<InfiniteData<MusicPage>>(queryKeys.items.music(libraryId, artist, undefined))
+    ?.pages.flatMap((page) => page.entries).find((entry) => entry.kind === "album" && entry.id === album) : undefined;
+  const representative = albumGroup?.kind === "album" ? albumGroup.artworkItemId : entries.find((entry) => entry.kind === "track")?.id;
   const group = album ? t("music.tracks") : artist ? t("music.albums") : t("music.artists");
   const artistTitle = artistName || t("music.unknownArtist");
   const albumTitle = albumName || t("music.unknownAlbum");
@@ -33,14 +40,16 @@ export function MusicBrowse({ libraryId }: { libraryId: string }) {
 
   const browse = (
     <>
-      {artist && <nav aria-label={t("a11y.breadcrumb")} className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
+      {artist && <div className="flex min-w-0 items-center gap-3">
+        {album && <AlbumCover libraryId={libraryId} id={artworkEnabled ? representative : undefined} large />}
+        <nav aria-label={t("a11y.breadcrumb")} className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
         <Link to="/library/$libraryId" params={{ libraryId }} search={{ view: "music" }}>{t("music.artists")}</Link>
         <ChevronRight className="size-4" aria-hidden />
         {album ? <>
           <Link to="/library/$libraryId" params={{ libraryId }} search={{ view: "music", artist, artistName }}>{artistTitle}</Link>
           <ChevronRight className="size-4" aria-hidden /><span aria-current="page">{albumTitle}</span>
         </> : <span aria-current="page">{artistTitle}</span>}
-      </nav>}
+      </nav></div>}
       {playing && <OriginalPlayer key={playing.id} id={playing.id} title={playing.title} />}
       <Section title={group} bare>
         {listing.isPending ? <LoadingRows /> : listing.isError && entries.length === 0 ? (
@@ -66,7 +75,7 @@ export function MusicBrowse({ libraryId }: { libraryId: string }) {
                     ? { view: "music", artist: entry.id, artistName: entry.name ?? undefined }
                     : { view: "music", artist, artistName, album: entry.id, albumName: entry.name ?? undefined }}
                     className={rowClass}>
-                    {entry.kind === "artist" ? <UsersRound className="size-5 shrink-0 text-fg-muted" aria-hidden /> : <Disc3 className="size-5 shrink-0 text-fg-muted" aria-hidden />}
+                    {entry.kind === "artist" ? <UsersRound className="size-5 shrink-0 text-fg-muted" aria-hidden /> : <AlbumCover libraryId={libraryId} id={artworkEnabled ? entry.artworkItemId : undefined} />}
                     <span className="min-w-0 flex-1 break-words">{entry.name ?? t(entry.kind === "artist" ? "music.unknownArtist" : "music.unknownAlbum")}</span>
                     <ChevronRight className="size-4 shrink-0 text-fg-muted" aria-hidden />
                   </Link>
