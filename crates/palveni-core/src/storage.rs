@@ -165,6 +165,13 @@ impl ByteRange {
 /// A readable byte stream returned by [`StorageProvider::open_range`].
 pub type ByteStream = Pin<Box<dyn AsyncRead + Send>>;
 
+/// A representation whose length and range reads refer to the same open source.
+#[async_trait]
+pub trait OpenedFile: Send {
+    fn size(&self) -> u64;
+    async fn read_range(self: Box<Self>, range: ByteRange) -> Result<ByteStream>;
+}
+
 /// Lists, inspects and opens files relative to the configured storage root.
 #[async_trait]
 pub trait StorageProvider: Send + Sync {
@@ -176,7 +183,11 @@ pub trait StorageProvider: Send + Sync {
 
     async fn stat(&self, path: &StoragePath) -> Result<FileStat>;
 
-    async fn open_range(&self, path: &StoragePath, range: ByteRange) -> Result<ByteStream>;
+    async fn open_file(&self, path: &StoragePath) -> Result<Box<dyn OpenedFile>>;
+
+    async fn open_range(&self, path: &StoragePath, range: ByteRange) -> Result<ByteStream> {
+        self.open_file(path).await?.read_range(range).await
+    }
 }
 
 #[cfg(test)]

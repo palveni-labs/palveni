@@ -353,6 +353,16 @@ async fn conformance_sessions_and_devices() {
         .expect("valid token");
     assert_eq!(auth.user.id, user.id);
     assert_eq!(auth.device_id, Some(issued.device_id));
+    assert_eq!(
+        sessions
+            .active_by_id(issued.session_id)
+            .await
+            .unwrap()
+            .unwrap()
+            .user
+            .id,
+        user.id
+    );
     assert!(
         sessions
             .authenticate("pvt_not-a-token")
@@ -368,6 +378,13 @@ async fn conformance_sessions_and_devices() {
     sessions.revoke(issued.session_id).await.unwrap(); // idempotent
     assert!(
         sessions
+            .active_by_id(issued.session_id)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        sessions
             .authenticate(&issued.token)
             .await
             .unwrap()
@@ -380,6 +397,13 @@ async fn conformance_sessions_and_devices() {
 
     let past = clock::now() - chrono::Duration::hours(1);
     let expired = sessions.create(user.id, "Old", Some(past)).await.unwrap();
+    assert!(
+        sessions
+            .active_by_id(expired.session_id)
+            .await
+            .unwrap()
+            .is_none()
+    );
     assert!(
         sessions
             .authenticate(&expired.token)
@@ -874,13 +898,13 @@ async fn conformance_music_backfill_pagination_and_removal() {
     let db = &h.db;
     let library = new_library(db, "Recordings").await.id;
     let other = new_library(db, "Other recordings").await.id;
-    let mut second = track("second", "/media/02.flac", None, 16);
+    let mut second = track("second", "/media/Recordings/02.flac", None, 16);
     db.items()
         .apply_scan_batch(library, &[second.clone()], &[])
         .await
         .unwrap();
     assert!(!db.items().scan_index(library).await.unwrap()[0].music_indexed);
-    let mut first = track("first", "/media/01.flac", None, 20);
+    let mut first = track("first", "/media/Recordings/01.flac", None, 20);
     first.music = Some(TrackTags {
         artist: Some("Guest".into()),
         album_artist: Some("Ensemble".into()),
@@ -946,6 +970,10 @@ async fn conformance_music_backfill_pagination_and_removal() {
         .unwrap();
     assert!(matches!(page.entries[..], [MusicEntry::Track{id,..}] if id == second.id));
     assert!(page.next_cursor.is_none());
+    let location = db.music().track_location(first.id).await.unwrap().unwrap();
+    assert_eq!(location.root, std::path::Path::new("/media/Recordings"));
+    assert_eq!(location.relative_path, std::path::Path::new("01.flac"));
+    let second_id = second.id;
     second.music.as_mut().unwrap().album = Some("Encore".into());
     db.items()
         .apply_scan_batch(library, &[second], &[first.id])
@@ -968,6 +996,14 @@ async fn conformance_music_backfill_pagination_and_removal() {
             .is_empty()
     );
     db.libraries().delete(library).await.unwrap();
+    assert!(db.music().track_location(first.id).await.unwrap().is_none());
+    assert!(
+        db.music()
+            .track_location(second_id)
+            .await
+            .unwrap()
+            .is_none()
+    );
     assert!(
         db.music()
             .indexed_item_ids(library)

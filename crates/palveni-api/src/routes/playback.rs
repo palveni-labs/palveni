@@ -1,0 +1,221 @@
+mod byte_range;
+
+use axum::{
+    Json,
+    body::Body,
+    extract::{
+        Path, Query, State,
+        rejection::{PathRejection, QueryRejection},
+    },
+    http::{HeaderMap, Method, StatusCode, header},
+    response::{IntoResponse, Response},
+};
+use chrono::{DateTime, TimeDelta, Utc};
+use palveni_core::{ItemId, SessionId, clock, storage::ByteRange};
+use palveni_library::local::TrackFile;
+use palveni_link::NodeIdentity;
+use serde::{Deserialize, Serialize};
+use tokio_util::io::ReaderStream;
+
+use super::path_id;
+use crate::{AppState, auth::CurrentUser, error::ApiError};
+use byte_range::Selection;
+
+const TICKET_LIFETIME: TimeDelta = TimeDelta::minutes(15);
+const PRIVATE_CACHE: &str = "private, no-store";
+
+#[derive(Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum PlaybackMode {
+    Direct,
+}
+
+#[derive(Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaybackInfo {
+    mode: PlaybackMode,
+    url: String,
+    expires_at: DateTime<Utc>,
+}
+
+#[derive(Deserialize)]
+pub struct Access {
+    ticket: Option<String>,
+}
+
+fn signed_message(item: ItemId, session: SessionId, expiry: i64) -> String {
+    format!("palveni:music-stream:v1\n{item}\n{session}\n{expiry}")
+}
+
+fn issue(
+    identity: &NodeIdentity,
+    item: ItemId,
+    session: SessionId,
+    now: DateTime<Utc>,
+) -> PlaybackInfo {
+    let expires_at = now + TICKET_LIFETIME;
+    let expiry = expires_at.timestamp_millis();
+    let signature = identity.sign(signed_message(item, session, expiry).as_bytes());
+    let ticket = format!("{session}.{expiry}.{}", hex::encode(signature));
+    PlaybackInfo {
+        mode: PlaybackMode::Direct,
+        url: format!("/api/v1/items/{item}/stream?ticket={ticket}"),
+        expires_at,
+    }
+}
+
+fn verify(
+    identity: &NodeIdentity,
+    item: ItemId,
+    ticket: &str,
+    now: DateTime<Utc>,
+) -> Option<SessionId> {
+    if ticket.len() > 192 {
+        return None;
+    }
+    let (session, rest) = ticket.split_once('.')?;
+    let (deadline, signature) = rest.split_once('.')?;
+    let session = session.parse().ok()?;
+    let expiry: i64 = deadline.parse().ok()?;
+    if expiry <= now.timestamp_millis() {
+        return None;
+    }
+    let mut bytes = [0; 64];
+    hex::decode_to_slice(signature, &mut bytes).ok()?;
+    identity
+        .node_id()
+        .verify(signed_message(item, session, expiry).as_bytes(), &bytes)
+        .then_some(session)
+}
+
+async fn open_track(state: &AppState, id: ItemId) -> Result<TrackFile, ApiError> {
+    let location = state
+        .db
+        .music()
+        .track_location(id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Track not found"))?;
+    palveni_library::local::open_track(location)
+        .await
+        .map_err(|err| match err {
+            palveni_core::Error::Internal(_) => ApiError::internal(err),
+            _ => ApiError::not_found("Track file unavailable"),
+        })
+}
+
+pub async fn prepare(
+    current: CurrentUser,
+    State(state): State<AppState>,
+    path: Result<Path<String>, PathRejection>,
+) -> Result<Response, ApiError> {
+    let id = path_id(&path?.0, "Track")?;
+    open_track(&state, id).await?;
+    let info = issue(&state.identity, id, current.session_id, clock::now());
+    Ok(([(header::CACHE_CONTROL, PRIVATE_CACHE)], Json(info)).into_response())
+}
+
+pub async fn stream(
+    State(state): State<AppState>,
+    method: Method,
+    path: Result<Path<String>, PathRejection>,
+    query: Result<Query<Access>, QueryRejection>,
+    headers: HeaderMap,
+) -> Result<Response, ApiError> {
+    let id = if headers.contains_key(header::AUTHORIZATION) {
+        CurrentUser::from_headers(&headers, &state).await?;
+        path_id(&path?.0, "Track")?
+    } else {
+        let ticket = query
+            .map_err(|_| ApiError::unauthorized())?
+            .0
+            .ticket
+            .ok_or_else(ApiError::unauthorized)?;
+        let id = path_id(&path?.0, "Track")?;
+        let session = verify(&state.identity, id, &ticket, clock::now())
+            .ok_or_else(ApiError::unauthorized)?;
+        state
+            .db
+            .sessions()
+            .active_by_id(session)
+            .await?
+            .ok_or_else(ApiError::unauthorized)?;
+        id
+    };
+    let track = open_track(&state, id).await?;
+    let size = track.source.size();
+    let mut response = Response::builder()
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::CONTENT_TYPE, track.content_type)
+        .header(header::CACHE_CONTROL, PRIVATE_CACHE);
+    let selection = if method == Method::HEAD {
+        Selection::Full
+    } else {
+        byte_range::select(&headers, size)
+    };
+    let range = match selection {
+        Selection::Full => 0..size,
+        Selection::Partial(range) => {
+            response = response.status(StatusCode::PARTIAL_CONTENT).header(
+                header::CONTENT_RANGE,
+                format!("bytes {}-{}/{size}", range.start, range.end - 1),
+            );
+            range
+        }
+        Selection::Unsatisfiable => {
+            return response
+                .status(StatusCode::RANGE_NOT_SATISFIABLE)
+                .header(header::CONTENT_RANGE, format!("bytes */{size}"))
+                .header(header::CONTENT_LENGTH, 0)
+                .body(Body::empty())
+                .map_err(ApiError::internal);
+        }
+    };
+    let length = range.end - range.start;
+    let body = if method == Method::HEAD || length == 0 {
+        Body::empty()
+    } else {
+        let reader = track
+            .source
+            .read_range(ByteRange {
+                start: range.start,
+                end: Some(range.end),
+            })
+            .await
+            .map_err(ApiError::internal)?;
+        Body::from_stream(ReaderStream::with_capacity(reader, 64 * 1024))
+    };
+    response
+        .header(header::CONTENT_LENGTH, length)
+        .body(body)
+        .map_err(ApiError::internal)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tickets_are_bound_to_the_item_issuer_session_and_expiry() {
+        let key = NodeIdentity::generate().unwrap();
+        let item = ItemId::generate();
+        let session = SessionId::generate();
+        let now = clock::now();
+        let info = issue(&key, item, session, now);
+        let (_, token) = info.url.split_once("?ticket=").unwrap();
+        assert_eq!(verify(&key, item, token, now), Some(session));
+        assert_eq!(verify(&key, ItemId::generate(), token, now), None);
+        assert_eq!(verify(&key, item, token, info.expires_at), None);
+        assert_eq!(
+            verify(&NodeIdentity::generate().unwrap(), item, token, now),
+            None
+        );
+        let changed_session =
+            token.replace(&session.to_string(), &SessionId::generate().to_string());
+        assert_eq!(verify(&key, item, &changed_session, now), None);
+        let extended = token.replace(
+            &info.expires_at.timestamp_millis().to_string(),
+            &(info.expires_at.timestamp_millis() + 1000).to_string(),
+        );
+        assert_eq!(verify(&key, item, &extended, now), None);
+    }
+}

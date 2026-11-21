@@ -33,6 +33,8 @@ Run `palveni doctor` to check FFmpeg, hardware acceleration and database connect
 
 Choose **Music** when adding a library, then scan its folders. Open the library and choose **Album artists** to browse albums and tracks. Compilation albums stay together under their album artist. Tracks without tags appear under an unknown artist or album and use their filenames as titles. Run a scan after upgrading to index music that is already in your library.
 
+Clients can play a scanned track in its original format through the native API. Send an authenticated `GET /api/v1/items/{id}/stream` to read the file or seek with an HTTP byte range. For a player that opens URLs, send an authenticated `POST /api/v1/items/{id}/playback` and resolve the returned `url` against the server address. The link is valid for 15 minutes and can be renewed for later seeks.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/music-library-dark.png">
   <img src="docs/images/music-library-light.png" alt="Six tracks from Harbor Sessions, with the album artist, disc number and duration shown in the music library.">

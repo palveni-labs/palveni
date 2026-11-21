@@ -13,17 +13,19 @@ palveni-core.workspace = true
 palveni-db.workspace = true
 palveni-jobs.workspace = true
 palveni-library.workspace = true
+palveni-link.workspace = true
 palveni-media.workspace = true
 palveni-plugin-host.workspace = true
 argon2.workspace = true
 axum.workspace = true
 chrono.workspace = true
 futures-util.workspace = true
+hex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_path_to_error.workspace = true
 tokio.workspace = true
-tokio-util.workspace = true
+tokio-util = { workspace = true, features = ["io"] }
 tower-http.workspace = true
 tracing.workspace = true
 

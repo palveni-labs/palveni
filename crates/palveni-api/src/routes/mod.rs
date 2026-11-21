@@ -4,6 +4,7 @@ pub mod items;
 pub mod jobs;
 pub mod libraries;
 pub mod music;
+pub mod playback;
 pub mod plugins;
 pub mod settings;
 pub mod skins;

@@ -104,8 +104,22 @@ impl Sessions<'_> {
 
     /// Resolves a bearer token to its live session and user.
     pub async fn authenticate(&self, token: &str) -> Result<Option<AuthenticatedSession>, DbError> {
+        self.live_session(sessions::Column::TokenHash.eq(hash_token(token)))
+            .await
+    }
+
+    /// Revalidates the session after the caller verifies a scoped media signature.
+    pub async fn active_by_id(
+        &self,
+        id: SessionId,
+    ) -> Result<Option<AuthenticatedSession>, DbError> {
+        self.live_session(sessions::Column::Id.eq(id.to_string()))
+            .await
+    }
+
+    async fn live_session(&self, key: Expr) -> Result<Option<AuthenticatedSession>, DbError> {
         let session = sessions::Entity::find()
-            .filter(sessions::Column::TokenHash.eq(hash_token(token)))
+            .filter(key)
             .filter(sessions::Column::RevokedAt.is_null())
             .one(self.db.main())
             .await?;

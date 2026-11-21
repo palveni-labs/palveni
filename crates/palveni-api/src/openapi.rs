@@ -43,7 +43,10 @@ pub fn openapi_document() -> &'static Value {
             "openapi": "3.1.0", "info": {"title":"Palveni Server","version":palveni_core::VERSION},
             "paths": paths, "components":{
                 "schemas":schemas::components(),
-                "securitySchemes":{"bearerAuth":{"type":"http","scheme":"bearer"}}
+                "securitySchemes":{
+                    "bearerAuth":{"type":"http","scheme":"bearer"},
+                    "mediaTicket":{"type":"apiKey","in":"query","name":"ticket","description":"Time-limited signature for a single track and session."}
+                }
             }
         })
     })
@@ -93,6 +96,7 @@ fn success(output: Output) -> Value {
         ]),
         Output::Preview => binary(&["image/png"]),
         Output::Tar => binary(&["application/x-tar"]),
+        Output::Audio => binary(&["audio/*", "application/octet-stream"]),
         Output::Document => json_content(json!({"type":"object","additionalProperties":true})),
         Output::SkinManifest => json_content(reference("SkinManifest")),
         Output::Events => content(
@@ -139,6 +143,9 @@ fn parameters(cap: &Capability) -> Vec<Value> {
             };
             params.push(parameter(name, "path", true, schema));
         }
+    }
+    if matches!(cap.id, "streamTrack" | "headTrack") {
+        params.push(parameter("ticket", "query", false, json!({"type":"string","description":"Single-track credential from the playback URL, as an alternative to a bearer header."})));
     }
     match cap.id {
         "browseMusic" => {
@@ -187,6 +194,10 @@ fn parameters(cap: &Capability) -> Vec<Value> {
             false,
             json!({"type":"string","pattern":"^[0-9]+$"}),
         )),
+        "streamTrack" => {
+            params.push(parameter("Range", "header", false, json!({"type":"string","description":"One HTTP byte range, for example bytes=0-1."})));
+            params.push(parameter("If-Range", "header", false, json!({"type":"string","description":"Returns the full representation because this endpoint supplies no entity validator."})));
+        }
         _ => (),
     }
     if matches!(cap.id, "listItems" | "listJobs" | "browseMusic") {
@@ -215,6 +226,28 @@ fn operation(endpoint: &Endpoint) -> Value {
     });
     if cap.permission != Permission::Public {
         op["security"] = json!([{"bearerAuth":[]}]);
+    }
+    if matches!(cap.id, "streamTrack" | "headTrack") {
+        op["security"] = json!([{"bearerAuth":[]},{"mediaTicket":[]}]);
+        let headers = json!({
+            "Accept-Ranges":{"schema":{"type":"string","const":"bytes"}},
+            "Content-Length":{"schema":{"type":"integer","minimum":0}},
+            "Content-Type":{"schema":{"type":"string"}},
+            "Cache-Control":{"schema":{"type":"string","const":"private, no-store"}}
+        });
+        let responses = &mut op["responses"];
+        responses["200"]["headers"] = headers;
+        if cap.id == "streamTrack" {
+            responses["206"] = responses["200"].clone();
+            responses["206"]["description"] = json!("Partial content");
+            let content_range = json!({"schema":{"type":"string"}});
+            responses["206"]["headers"]["Content-Range"] = content_range.clone();
+            responses["416"] = json!({"description":"Unsatisfiable byte range","headers":{"Content-Range":content_range}});
+        } else if let Some(statuses) = responses.as_object_mut() {
+            for response in statuses.values_mut().filter_map(Value::as_object_mut) {
+                response.remove("content");
+            }
+        }
     }
     match endpoint.input {
         Input::None => (),
@@ -300,6 +333,14 @@ mod tests {
                 .contains(&json!("perfTier"))
         );
         let paths = &doc["paths"];
+        let stream = &paths["/api/v1/items/{id}/stream"];
+        assert!(stream["get"]["responses"]["206"]["headers"]["Content-Range"].is_object());
+        assert!(stream["get"]["responses"]["416"].get("content").is_none());
+        assert!(stream["head"]["responses"]["200"].get("content").is_none());
+        assert_eq!(
+            stream["head"]["security"],
+            json!([{"bearerAuth":[]},{"mediaTicket":[]}])
+        );
         assert!(
             paths["/api/v1/auth/login"]["post"]["responses"]["429"]["headers"]["Retry-After"]
                 .is_object()

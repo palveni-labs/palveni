@@ -83,6 +83,7 @@ use crate::routes::{
     items::ItemList,
     jobs::JobList,
     libraries::{CreateLibraryRequest, LibraryList, ScanAccepted},
+    playback::{PlaybackInfo, PlaybackMode},
     plugins::PluginList,
     system::{Health, SystemInfo},
 };
@@ -110,6 +111,8 @@ use utoipa::OpenApi;
     ItemList,
     MusicEntry,
     MusicPage,
+    PlaybackInfo,
+    PlaybackMode,
     Item,
     ItemKind,
     JobList,

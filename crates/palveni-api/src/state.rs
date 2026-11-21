@@ -19,6 +19,7 @@ pub struct ServerInfo {
 #[derive(Clone)]
 pub struct AppState {
     pub db: Db,
+    pub identity: Arc<palveni_link::NodeIdentity>,
     pub login_limit: Arc<crate::LoginLimit>,
     pub bus: EventBus,
     pub jobs: JobService,

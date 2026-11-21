@@ -37,16 +37,12 @@ impl CurrentUser {
     pub fn is_admin(&self) -> bool {
         self.user.is_admin()
     }
-}
 
-impl FromRequestParts<AppState> for CurrentUser {
-    type Rejection = ApiError;
-
-    async fn from_request_parts(
-        parts: &mut Parts,
+    pub(crate) async fn from_headers(
+        headers: &HeaderMap,
         state: &AppState,
-    ) -> Result<Self, Self::Rejection> {
-        let token = bearer_token(&parts.headers).ok_or_else(ApiError::unauthorized)?;
+    ) -> Result<Self, ApiError> {
+        let token = bearer_token(headers).ok_or_else(ApiError::unauthorized)?;
         let session = state
             .db
             .sessions()
@@ -70,6 +66,14 @@ impl FromRequestParts<AppState> for CurrentUser {
             session_id: session.session_id,
             device_id: session.device_id,
         })
+    }
+}
+
+impl FromRequestParts<AppState> for CurrentUser {
+    type Rejection = ApiError;
+
+    async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, ApiError> {
+        Self::from_headers(&parts.headers, state).await
     }
 }
 

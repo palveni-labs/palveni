@@ -127,6 +127,7 @@ pub async fn run(cli: &Cli) -> anyhow::Result<()> {
     let skins = tokio::task::spawn_blocking(move || SkinStore::open(&skin_data)).await??;
     let state = AppState {
         db: db.clone(),
+        identity: Arc::new(identity),
         login_limit: Arc::new(palveni_api::LoginLimit::new(tier.job_concurrency())),
         bus,
         jobs: jobs.clone(),

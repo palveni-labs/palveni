@@ -1,6 +1,7 @@
 //! Album-artist, album and track views of the live music index.
 
 use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
 
 use palveni_core::{
     ItemId, ItemKind, LibraryId,
@@ -8,8 +9,8 @@ use palveni_core::{
 };
 use sea_orm::sea_query::OnConflict;
 use sea_orm::{
-    ColumnTrait, Condition, DatabaseTransaction, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
-    Set,
+    ColumnTrait, Condition, DatabaseTransaction, EntityTrait, JoinType, QueryFilter, QueryOrder,
+    QuerySelect, Set,
 };
 use serde::{Deserialize, Serialize};
 
@@ -25,6 +26,11 @@ use crate::{
 
 pub struct Music<'a> {
     pub(crate) db: &'a Db,
+}
+
+pub struct TrackLocation {
+    pub root: PathBuf,
+    pub relative_path: PathBuf,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -189,6 +195,44 @@ impl Music<'_> {
             .one(self.db.main())
             .await?;
         Ok(row.is_some())
+    }
+
+    /// Resolves one live track without counting or loading the rest of its library.
+    pub async fn track_location(&self, id: ItemId) -> Result<Option<TrackLocation>, DbError> {
+        use crate::entities::{libraries, library_paths};
+        let rows = items::Entity::find_by_id(id.to_string())
+            .join(
+                JoinType::InnerJoin,
+                items::Entity::belongs_to(libraries::Entity)
+                    .from(items::Column::LibraryId)
+                    .to(libraries::Column::Id)
+                    .into(),
+            )
+            .join_rev(
+                JoinType::InnerJoin,
+                library_paths::Entity::belongs_to(libraries::Entity)
+                    .from(library_paths::Column::LibraryId)
+                    .to(libraries::Column::Id)
+                    .into(),
+            )
+            .filter(items::Column::Kind.eq(ItemKind::Track.as_str()))
+            .filter(items::Column::DeletedAt.is_null())
+            .filter(items::Column::Path.is_not_null())
+            .filter(libraries::Column::Kind.eq("music"))
+            .filter(libraries::Column::DeletedAt.is_null())
+            .select_only()
+            .column_as(items::Column::Path, "file_path")
+            .column_as(library_paths::Column::Path, "root_path")
+            .into_tuple::<(String, String)>()
+            .all(self.db.main())
+            .await?;
+        Ok(rows.into_iter().find_map(|(file, root)| {
+            let relative_path = Path::new(&file).strip_prefix(&root).ok()?.to_owned();
+            Some(TrackLocation {
+                root: root.into(),
+                relative_path,
+            })
+        }))
     }
 
     pub async fn indexed_item_ids(&self, library: LibraryId) -> Result<HashSet<String>, DbError> {

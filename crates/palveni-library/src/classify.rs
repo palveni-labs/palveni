@@ -44,6 +44,24 @@ pub fn extension_of(name: &str) -> Option<String> {
     Some(ext.to_ascii_lowercase())
 }
 
+pub(crate) fn audio_content_type(name: &str) -> &'static str {
+    match extension_of(name).as_deref() {
+        Some("aac") => "audio/aac",
+        Some("aif" | "aiff") => "audio/aiff",
+        Some("flac") => "audio/flac",
+        Some("m4a") => "audio/mp4",
+        Some("mka") => "audio/x-matroska",
+        Some("mp3") => "audio/mpeg",
+        Some("oga" | "ogg" | "opus") => "audio/ogg",
+        Some("wav") => "audio/wav",
+        Some("wma") => "audio/x-ms-wma",
+        Some("wv") => "audio/x-wavpack",
+        Some("ape") => "audio/x-ape",
+        Some("mpc") => "audio/x-musepack",
+        _ => "application/octet-stream",
+    }
+}
+
 /// Leaf item kind for a file in a library of `kind`, or `None` if the file
 /// is not media for that library.
 pub fn classify(kind: LibraryKind, file_name: &str) -> Option<ItemKind> {

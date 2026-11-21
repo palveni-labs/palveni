@@ -56,6 +56,15 @@ req() {
 
 field() { printf '%s' "$BODY" | jq -r "$1" 2>/dev/null; }
 
+# Keep binary responses out of shell variables.
+read_media() {
+  curl -sS --max-time 10 -D "$PRIVATE_TMP/media.headers" -o "$PRIVATE_TMP/audio" -w '%{http_code}' "$@"
+}
+
+media_header() {
+  awk -v key="$1:" 'tolower($1) == key {sub(/^[^:]+: */, ""); sub(/\r$/, ""); print; exit}' "$PRIVATE_TMP/media.headers"
+}
+
 wait_for_job() {
   local id="$1" state=""
   for _ in $(seq 1 100); do
@@ -237,12 +246,45 @@ ALBUM=$(field '.entries[0].id')
 req GET "/libraries/$LIB/music?artist=$ARTIST&album=$ALBUM&limit=2"
 check "tracks expose performer, disc, track and audio duration" "$(field '.entries[0] | [.kind,.title,.artist,.discNumber,.trackNumber,.durationMs] | join("|")')" "track|First Light|Guest Quartet|1|1|50"
 MUSIC_CURSOR=$(field .nextCursor)
+TRACK=$(field '.entries[0].id')
+OTHER_TRACK=$(field '.entries[1].id')
 req GET "/libraries/$LIB/music?artist=$ARTIST&album=$ALBUM&limit=2&cursor=$MUSIC_CURSOR"
 check "music pagination preserves track order" "$STATUS $(field '.entries[0].title') $(field .nextCursor)" "200 Coda null"
 req GET "/libraries/$LIB/music?cursor=$MUSIC_CURSOR"
 check "music cursor belongs to its original group" "$STATUS $(field .error.details.field)" "400 cursor"
 req GET "/libraries/$LIB/music?album=$ALBUM"
 check "albums require their artist" "$STATUS $(field .error.details.field)" "400 artist"
+
+echo "Original music playback"
+ORIGINAL="$MEDIA/Album A/track 1.flac"
+SIZE=$(wc -c < "$ORIGINAL" | tr -d ' ')
+req POST "/items/$FOLDER/playback"
+check "folders cannot issue a playback URL" "$STATUS" "404"
+req POST "/items/$TRACK/playback"
+PLAY_PATH=$(field .url)
+check "playback reports direct mode with an expiry" "$STATUS $(field '.mode == "direct" and (.expiresAt | type == "string")')" "200 true"
+case "$PLAY_PATH" in
+  "/api/v1/items/$TRACK/stream?ticket="?*) ok "playback prepares a signed native URL" ;;
+  *) bad "playback prepares a signed native URL" "missing or invalid playback URL"; exit 1 ;;
+esac
+PLAY_URL="$BASE$PLAY_PATH"
+check "stream requires authorization" "$(read_media "$API/items/$TRACK/stream")" "401"
+check "signed URL is scoped to one track" "$(read_media "$API/items/$OTHER_TRACK/stream?${PLAY_PATH#*\?}")" "401"
+check "bearer can read the original track" "$(read_media -H "Authorization: Bearer $TOKEN" "$API/items/$TRACK/stream")" "200"
+cmp -s "$ORIGINAL" "$PRIVATE_TMP/audio" && ok "playback preserves the original bytes" || bad "playback preserves the original bytes" "files differ"
+check "two-byte probe returns the exact range" "$(read_media -H 'Range: bytes=0-1' "$PLAY_URL") $(media_header content-range) $(media_header content-length)" "206 bytes 0-1/$SIZE 2"
+head -c 2 "$ORIGINAL" > "$PRIVATE_TMP/expected"
+cmp -s "$PRIVATE_TMP/expected" "$PRIVATE_TMP/audio" && ok "probe contains the first two bytes" || bad "probe contains the first two bytes" "bytes differ"
+check "signed HEAD reports complete metadata" \
+  "$(read_media --head -H 'Range: bytes=0-1' "$PLAY_URL") $(media_header accept-ranges) $(media_header content-type) $(media_header content-length)" "200 bytes audio/flac $SIZE"
+check "suffix seek reaches the original last bytes" \
+  "$(read_media -H 'Range: bytes=-3' "$PLAY_URL") $(media_header content-range)" "206 bytes $((SIZE-3))-$((SIZE-1))/$SIZE"
+tail -c 3 "$ORIGINAL" > "$PRIVATE_TMP/expected"
+cmp -s "$PRIVATE_TMP/expected" "$PRIVATE_TMP/audio" && ok "seek returns the requested audio bytes" || bad "seek returns the requested audio bytes" "bytes differ"
+check "seek past EOF reports the current size" \
+  "$(read_media -H "Range: bytes=$SIZE-" "$PLAY_URL") $(media_header content-range) $(media_header content-length)" "416 bytes */$SIZE 0"
+check "unmatched If-Range requests return the full file" \
+  "$(read_media -H 'Range: bytes=0-1' -H 'If-Range: "older"' "$PLAY_URL") $(media_header content-length)" "200 $SIZE"
 
 # ---------------------------------------------------------------- change detection
 echo "Change detection"
@@ -260,6 +302,7 @@ check "removed track disappears from its album" "$(field '[.entries[].title] | j
 # ---------------------------------------------------------------- offline protection
 echo "Unavailable library root"
 mv "$MEDIA" "$GONE"
+check "unavailable original files return 404" "$(read_media "$PLAY_URL")" "404"
 req POST "/libraries/$LIB/scan"; wait_for_job "$(field .jobId)"
 check "scan with every root missing fails" "$JOB_STATE" "failed"
 check "failed job keeps no stale step text" "$(printf '%s' "$JOB" | jq -r '(.step|tostring) + " " + (.message|tostring) + " " + ((.error != null)|tostring)')" "null null true"
@@ -357,10 +400,12 @@ check "library is deleted" "$STATUS" "204"
 [ -f "$MEDIA/Album A/track 1.flac" ] && ok "files on disk are untouched" || bad "files on disk are untouched" "a media file disappeared"
 req GET "/libraries/$LIB"
 check "deleted library is gone" "$STATUS" "404"
+check "library removal makes its media URL unavailable" "$(read_media "$PLAY_URL")" "404"
 req POST /auth/logout
 check "logout succeeds" "$STATUS" "204"
 req GET /auth/me
 check "token no longer works" "$STATUS" "401"
+check "logout revokes the signed media URL" "$(read_media "$PLAY_URL")" "401"
 
 echo
 echo "Login throttling"

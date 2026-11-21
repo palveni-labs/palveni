@@ -14,9 +14,34 @@ use async_trait::async_trait;
 use palveni_core::clock;
 use palveni_core::error::{Error, Result};
 use palveni_core::storage::{
-    ByteRange, ByteStream, DirEntry, EntryKind, FileStat, StoragePath, StorageProvider,
+    ByteRange, ByteStream, DirEntry, EntryKind, FileStat, OpenedFile, StoragePath, StorageProvider,
 };
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
+
+pub struct TrackFile {
+    pub source: Box<dyn OpenedFile>,
+    pub content_type: &'static str,
+}
+
+/// Reopen a scanned item only inside its registered, canonical music root.
+pub async fn open_track(location: palveni_db::music::TrackLocation) -> Result<TrackFile> {
+    let storage = LocalStorage::open(&location.root).await?;
+    if storage.root() != location.root {
+        return Err(Error::PathEscape);
+    }
+    let mut path = StoragePath::root();
+    for name in &location.relative_path {
+        path = path.join(
+            name.to_str()
+                .ok_or_else(|| Error::invalid("invalid track path"))?,
+        )?;
+    }
+    let content_type = crate::classify::audio_content_type(path.file_name().unwrap_or_default());
+    Ok(TrackFile {
+        source: storage.open_file(&path).await?,
+        content_type,
+    })
+}
 
 #[derive(Clone, Debug)]
 pub struct LocalStorage {
@@ -64,13 +89,26 @@ impl LocalStorage {
 
     pub(crate) fn open_file_blocking(&self, path: &StoragePath) -> Result<std::fs::File> {
         let resolved = self.resolve(path)?;
-        if !std::fs::metadata(&resolved)
-            .map_err(|e| map_io(e, &resolved))?
-            .is_file()
-        {
+        let before = std::fs::metadata(&resolved).map_err(|e| map_io(e, &resolved))?;
+        if !before.is_file() {
             return Err(Error::invalid("expected a regular audio file"));
         }
-        std::fs::File::open(&resolved).map_err(|e| map_io(e, &resolved))
+        let file = std::fs::File::open(&resolved).map_err(|e| map_io(e, &resolved))?;
+        let opened = file.metadata()?;
+        if !opened.is_file() {
+            return Err(Error::invalid("expected a regular file"));
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            let current = std::fs::metadata(self.resolve(path)?)?;
+            if (before.dev(), before.ino()) != (opened.dev(), opened.ino())
+                || (current.dev(), current.ino()) != (opened.dev(), opened.ino())
+            {
+                return Err(Error::PathEscape);
+            }
+        }
+        Ok(file)
     }
 
     /// Resolves a storage path to a canonical host path inside the root.
@@ -210,21 +248,39 @@ impl StorageProvider for LocalStorage {
         run_blocking(move || this.stat_blocking(&path)).await
     }
 
-    async fn open_range(&self, path: &StoragePath, range: ByteRange) -> Result<ByteStream> {
+    async fn open_file(&self, path: &StoragePath) -> Result<Box<dyn OpenedFile>> {
         let this = self.clone();
         let path = path.clone();
-        let resolved = run_blocking(move || this.resolve(&path)).await?;
-        let mut file = tokio::fs::File::open(&resolved)
-            .await
-            .map_err(|e| map_io(e, &resolved))?;
+        run_blocking(move || {
+            let file = this.open_file_blocking(&path)?;
+            let size = file.metadata()?.len();
+            Ok(Box::new(LocalFile {
+                file: tokio::fs::File::from_std(file),
+                size,
+            }) as Box<dyn OpenedFile>)
+        })
+        .await
+    }
+}
+
+struct LocalFile {
+    file: tokio::fs::File,
+    size: u64,
+}
+
+#[async_trait]
+impl OpenedFile for LocalFile {
+    fn size(&self) -> u64 {
+        self.size
+    }
+
+    async fn read_range(self: Box<Self>, range: ByteRange) -> Result<ByteStream> {
+        let mut file = self.file;
         if range.start > 0 {
             file.seek(SeekFrom::Start(range.start)).await?;
         }
-        let stream: ByteStream = match range.length() {
-            Some(len) => Box::pin(file.take(len)),
-            None => Box::pin(file),
-        };
-        Ok(stream)
+        let end = range.end.unwrap_or(self.size).min(self.size);
+        Ok(Box::pin(file.take(end.saturating_sub(range.start))))
     }
 }
 
@@ -261,6 +317,32 @@ mod tests {
         let mut buf = Vec::new();
         stream.read_to_end(&mut buf).await.unwrap();
         assert_eq!(buf, b"cd");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn replacing_a_track_after_open_preserves_its_size_and_bytes() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("song.flac");
+        std::fs::write(&path, b"12345").unwrap();
+        let storage = LocalStorage::open(dir.path()).await.unwrap();
+        let original = storage
+            .open_file(&StoragePath::parse("song.flac").unwrap())
+            .await
+            .unwrap();
+        std::fs::write(dir.path().join("replacement"), b"00").unwrap();
+        std::fs::rename(dir.path().join("replacement"), &path).unwrap();
+        assert_eq!(original.size(), 5);
+        let mut stream = original
+            .read_range(ByteRange {
+                start: 1,
+                end: Some(4),
+            })
+            .await
+            .unwrap();
+        let mut bytes = Vec::new();
+        stream.read_to_end(&mut bytes).await.unwrap();
+        assert_eq!(bytes, b"234");
     }
 
     #[cfg(unix)]
