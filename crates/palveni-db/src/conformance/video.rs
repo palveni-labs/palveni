@@ -1,7 +1,7 @@
 use super::*;
 use crate::convert::sha256_hex;
-use crate::video::{VideoCursor, VideoMetadata};
-use palveni_core::video::VideoOrder;
+use crate::video::{VideoCursor, VideoFilters, VideoMetadata};
+use palveni_core::video::{VideoOrder, WorkKind};
 
 #[tokio::test]
 async fn conformance_video_poster_order_and_cursor_boundaries() {
@@ -25,7 +25,7 @@ async fn conformance_video_poster_order_and_cursor_boundaries() {
         (
             "older series title",
             "series",
-            "Winter archive",
+            "Winter archive 电影100%_!",
             false,
             Some(3),
         ),
@@ -124,6 +124,92 @@ async fn conformance_video_poster_order_and_cursor_boundaries() {
             );
         }
         assert_eq!(ids, expected);
+    }
+    for order in [VideoOrder::Title, VideoOrder::Poster] {
+        let filter = VideoFilters {
+            order,
+            kind: Some(WorkKind::Series),
+            title: "ARCHIVE 电影100%_!",
+        };
+        let page = repo
+            .browse_filtered(lib, None, None, filter, 1, None)
+            .await
+            .unwrap();
+        assert_eq!(page.entries.len(), 1);
+        assert_eq!(page.entries[0].id, series);
+        assert_eq!(
+            (page.entries[0].file_count, page.entries[0].poster_item_id),
+            (3, Some(items[2].id))
+        );
+        assert!(page.next_cursor.is_none());
+        for term in ["ARCHIVE 电影100__", "100%%", "%_", "!"] {
+            let result = repo
+                .browse_filtered(
+                    lib,
+                    None,
+                    None,
+                    VideoFilters {
+                        title: term,
+                        ..filter
+                    },
+                    10,
+                    None,
+                )
+                .await
+                .unwrap();
+            assert_eq!(
+                result.entries.len(),
+                usize::from(["%_", "!"].contains(&term))
+            );
+        }
+
+        let filter = VideoFilters {
+            order,
+            kind: Some(WorkKind::Movie),
+            title: "WiN",
+        };
+        let mut seen = Vec::new();
+        let mut cursor = None;
+        loop {
+            let page = repo
+                .browse_filtered(lib, None, None, filter, 1, cursor)
+                .await
+                .unwrap();
+            assert_eq!(page.entries.len(), 1);
+            assert_eq!(page.entries[0].title, "Twins");
+            assert!(!seen.contains(&page.entries[0].id));
+            seen.push(page.entries[0].id.clone());
+            let Some(raw) = page.next_cursor else { break };
+            assert!(VideoCursor::decode_for_order(&raw, lib, None, None, order).is_none());
+            assert!(
+                VideoCursor::decode_filtered(
+                    &raw,
+                    lib,
+                    None,
+                    None,
+                    VideoFilters {
+                        kind: None,
+                        ..filter
+                    }
+                )
+                .is_none()
+            );
+            assert!(
+                VideoCursor::decode_filtered(
+                    &raw,
+                    lib,
+                    None,
+                    None,
+                    VideoFilters {
+                        title: "Tw",
+                        ..filter
+                    }
+                )
+                .is_none()
+            );
+            cursor = Some(VideoCursor::decode_filtered(&raw, lib, None, None, filter).unwrap());
+        }
+        assert_eq!(seen.len(), 4);
     }
     for season in [None, Some(1)] {
         assert!(matches!(

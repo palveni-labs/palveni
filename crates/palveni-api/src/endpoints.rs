@@ -92,6 +92,8 @@ pub(super) fn endpoints() -> Vec<Endpoint> {
             "List media libraries.", None, 200 Json("LibraryList"), []),
         endpoint!(createLibrary, libraries, POST "/libraries", routes::libraries::create, Admin, Write, true,
             "Register a media library and its local paths.", Body("CreateLibraryRequest"), 201 Json("Library"), [400,409]),
+        endpoint!(updateLibrary, libraries, PATCH "/libraries/{id}", routes::libraries::update, Admin, Write, false,
+            "Rename a library or add media folders.", Body("UpdateLibraryRequest"), 200 Json("Library"), [400,404,409]),
         endpoint!(getLibrary, libraries, GET "/libraries/{id}", routes::libraries::get_one, Authenticated, Read, false,
             "Read a media library.", None, 200 Json("Library"), [404]),
         endpoint!(deleteLibrary, libraries, DELETE "/libraries/{id}", routes::libraries::delete, Admin, Destructive, false,

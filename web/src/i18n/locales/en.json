@@ -190,6 +190,24 @@
       "calm": "All quiet — nothing needs you"
     }
   },
+  "libraryHome": {
+    "title": "My playback",
+    "views": {
+      "continue": "Continue playing",
+      "recent": "Recently played",
+      "favorites": "Favorites"
+    },
+    "empty": {
+      "continue": "Unfinished films, tracks and recordings will appear here.",
+      "recent": "Your playback history is empty.",
+      "favorites": "Save a favorite with the heart beside a title."
+    },
+    "resumeAt": "Resume {{title}} at {{time}}",
+    "favoriteItem": "Favorite {{title}}",
+    "pages": "Playback list pages",
+    "previous": "Previous",
+    "next": "Next"
+  },
   "libraries": {
     "emptyAdmin": "No libraries yet. Add a folder to get started",
     "emptyUser": "No libraries are shared with you yet",
@@ -291,6 +309,11 @@
     "saved": "Saved sources"
   },
   "adminLibraries": {
+    "edit": "Edit library",
+    "save": "Save",
+    "saved": "Saved “{{name}}”",
+    "additionalFolders": "Folders to add",
+    "scanAfterEdit": "Scan added folders",
     "create": "New library",
     "created": "Created library “{{name}}”",
     "empty": "No libraries yet",
@@ -422,6 +445,19 @@
     "noneVerified": "No hardware encoder works"
   },
   "plugins": {
+    "storeTitle": "Plugin store",
+    "available": "Available from the official catalogue",
+    "official": "Official catalogue",
+    "search": "Search plugins",
+    "filterLabel": "Installation status",
+    "filter": {
+      "all": "All",
+      "available": "Available",
+      "installed": "Installed"
+    },
+    "contribute": "Submit a plugin on GitHub",
+    "manageSkin": "Manage in Appearance",
+    "noMatches": "No matching plugins",
     "empty": "No plugins installed yet",
     "enabled": "Enabled",
     "disabled": "Disabled",
@@ -435,7 +471,7 @@
     "summary_other": "{{count}} plugins, {{enabled}} enabled",
     "installedTitle": "Installed plugins",
     "version": "Version {{version}}",
-    "emptyDetail": "Plugins connect cloud drives, metadata sources, lyrics and notification channels. Once plugins are installed you can see and manage them here; skins live in Appearance.",
+    "emptyDetail": "Install a plugin from the catalogue or upload a skin package.",
     "toAppearance": "Go to Appearance",
     "provides": "Extension points",
     "isolation": {
@@ -837,6 +873,12 @@
     "playbackFailed": "Could not play this audio"
   },
   "video": {
+    "findTitle": "Find a title",
+    "search": "Search",
+    "workKind": "Title type",
+    "allKinds": "Films and series",
+    "clearFilters": "Clear filters",
+    "noMatches": "No matching titles",
     "sort": "Sort titles",
     "posterFirst": "Posters first",
     "byTitle": "By title",

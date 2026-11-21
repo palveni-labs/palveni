@@ -353,28 +353,44 @@ function FallbackNotice({ builtinName, skinsEnabled }: { builtinName: string; sk
 
 /* ---------------------------------------------------------------- page */
 
-export function AppearancePage() {
-  const { t } = useTranslation();
+export function UploadSkinButton() {
   const language = currentLanguage();
-  const skinsEnabled = useFeature("skins");
-  const isAdmin = useIsAdmin();
-  const { active, status, mode } = useSkin();
-  const modeSummary = useModeSummary();
-  const installed = useInstalledSkins(skinsEnabled);
-  const registry = useSkinRegistry(skinsEnabled && isAdmin);
+  const { t } = useTranslation();
   const upload = useUploadSkin();
   const fileInput = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <Button size="sm" variant="outline" isPending={upload.isPending} onPress={() => fileInput.current?.click()}>
+        {t("appearance.upload")}
+      </Button>
+      <input type="file" accept=".tar,application/x-tar" hidden ref={fileInput} onChange={(event) => {
+        const file = event.currentTarget.files?.[0];
+        event.currentTarget.value = "";
+        if (!file) return;
+        if (file.size > MAX_SKIN_BYTES) {
+          toast.danger(t("appearance.tooLarge"));
+          return;
+        }
+        upload.mutate(file, {
+          onSuccess: (skin) => toast.success(t("appearance.install.done", { name: localized(skin.name, language) })),
+          onError: (error) => toast.danger(errorText(t, error)),
+        });
+      }} />
+    </>
+  );
+}
+
+export function OfficialSkinCatalog({ enabled, search = "", store = false }: { enabled: boolean; search?: string; store?: boolean }) {
+  const { t } = useTranslation();
+  const registry = useSkinRegistry(enabled);
   const install = useInstallSkin();
-  const uninstall = useUninstallSkin();
-  const applyState = useApply();
   const [installing, setInstalling] = useState<RegistrySkin | null>(null);
-  const [removing, setRemoving] = useState<InstalledSkin | null>(null);
-
-  const builtinName = localized(BUILTIN_SKIN.manifest.name, language);
-  const activeName = localized(active.manifest.name, language);
-  const installedSkins = skinsEnabled ? (installed.data?.skins ?? []) : [];
-  const available = (registry.data?.skins ?? []).filter((skin) => !skin.installed);
-
+  const language = currentLanguage();
+  const available = (registry.data?.skins ?? []).filter((skin) => {
+    if (skin.installed) return false;
+    const fields = [skin.id, skin.pluginId, ...Object.values(skin.name), ...Object.values(skin.description), t("plugins.points.skin")];
+    return fields.some((field) => field.toLocaleLowerCase().includes(search));
+  });
   const confirmInstall = () => {
     if (!installing) return;
     const name = localized(installing.name, language);
@@ -385,6 +401,55 @@ export function AppearancePage() {
       },
     });
   };
+
+  const openInstall = (info: RegistrySkin) => {
+    install.reset();
+    setInstalling(info);
+  };
+  return (
+    <>
+      <Section title={t(store ? "plugins.available" : "appearance.catalog.title")} count={enabled && registry.data ? available.length : undefined}>
+        {!enabled ? (
+          <FeatureUnavailable titleKey="appearance.catalog.feature" compact />
+        ) : registry.isPending ? (
+          <Inset>
+            <LoadingRows rows={2} label={t("appearance.catalog.loading")} />
+          </Inset>
+        ) : registry.isError ? (
+          <ErrorState compact error={registry.error} onRetry={() => void registry.refetch()} />
+        ) : available.length === 0 && search ? (
+          <EmptyState compact icon={PackageCheck} title={t("plugins.noMatches")} />
+        ) : available.length === 0 ? (
+          <EmptyState compact icon={PackageCheck} title={t("appearance.catalog.allInstalled")} detail={t("appearance.catalog.allInstalledDetail")} />
+        ) : (
+          <SectionRows>
+            {available.map((info) => (
+              <CatalogRow key={info.id} info={info} onInstall={openInstall} />
+            ))}
+          </SectionRows>
+        )}
+      </Section>
+
+      <InstallSkinDialog skin={installing} onClose={() => setInstalling(null)} onConfirm={confirmInstall} busy={install.isPending} error={install.error} />
+    </>
+  );
+}
+
+export function AppearancePage() {
+  const { t } = useTranslation();
+  const language = currentLanguage();
+  const skinsEnabled = useFeature("skins");
+  const isAdmin = useIsAdmin();
+  const { active, status, mode } = useSkin();
+  const modeSummary = useModeSummary();
+  const installed = useInstalledSkins(skinsEnabled);
+  const uninstall = useUninstallSkin();
+  const applyState = useApply();
+  const [removing, setRemoving] = useState<InstalledSkin | null>(null);
+
+  const builtinName = localized(BUILTIN_SKIN.manifest.name, language);
+  const activeName = localized(active.manifest.name, language);
+  const installedSkins = skinsEnabled ? (installed.data?.skins ?? []) : [];
 
   const confirmUninstall = () => {
     if (!removing) return;
@@ -397,10 +462,6 @@ export function AppearancePage() {
     });
   };
 
-  const openInstall = (info: RegistrySkin) => {
-    install.reset();
-    setInstalling(info);
-  };
   const openUninstall = (info: InstalledSkin) => {
     uninstall.reset();
     setRemoving(info);
@@ -408,24 +469,7 @@ export function AppearancePage() {
 
   return (
     <PageFrame>
-      <PageHeader title={t("nav.appearance")} summary={t("appearance.summary", { skin: activeName, mode: modeSummary })} actions={skinsEnabled && isAdmin ? (
-        <Button size="sm" variant="outline" isPending={upload.isPending} onPress={() => fileInput.current?.click()}>
-          {t("appearance.upload")}
-        </Button>
-      ) : undefined} />
-      {skinsEnabled && isAdmin ? <input type="file" accept=".tar,application/x-tar" hidden ref={fileInput} onChange={(event) => {
-        const file = event.currentTarget.files?.[0];
-        event.currentTarget.value = "";
-        if (!file) return;
-        if (file.size > MAX_SKIN_BYTES) {
-          toast.danger(t("appearance.tooLarge"));
-          return;
-        }
-        upload.mutate(file, {
-          onSuccess: (skin) => toast.success(t("appearance.install.done", { name: localized(skin.name, language) })),
-          onError: (error) => toast.danger(errorText(t, error)),
-        });
-      }} /> : null}
+      <PageHeader title={t("nav.appearance")} summary={t("appearance.summary", { skin: activeName, mode: modeSummary })} actions={skinsEnabled && isAdmin ? <UploadSkinButton /> : undefined} />
       <p aria-live="polite" className="sr-only">
         {applyState.applied ? t("appearance.applied", { name: applyState.applied }) : ""}
       </p>
@@ -460,27 +504,8 @@ export function AppearancePage() {
         {skinsEnabled && installed.isError ? <ErrorState compact error={installed.error} onRetry={() => void installed.refetch()} /> : null}
       </Section>
 
-      {(!skinsEnabled || isAdmin) && <Section title={t("appearance.catalog.title")} count={skinsEnabled && registry.data ? available.length : undefined}>
-        {!skinsEnabled ? (
-          <FeatureUnavailable titleKey="appearance.catalog.feature" compact />
-        ) : registry.isPending ? (
-          <Inset>
-            <LoadingRows rows={2} label={t("appearance.catalog.loading")} />
-          </Inset>
-        ) : registry.isError ? (
-          <ErrorState compact error={registry.error} onRetry={() => void registry.refetch()} />
-        ) : available.length === 0 ? (
-          <EmptyState compact icon={PackageCheck} title={t("appearance.catalog.allInstalled")} detail={t("appearance.catalog.allInstalledDetail")} />
-        ) : (
-          <SectionRows>
-            {available.map((info) => (
-              <CatalogRow key={info.id} info={info} onInstall={isAdmin ? openInstall : undefined} />
-            ))}
-          </SectionRows>
-        )}
-      </Section>}
+      {(!skinsEnabled || isAdmin) && <OfficialSkinCatalog enabled={skinsEnabled} />}
 
-      <InstallSkinDialog skin={installing} onClose={() => setInstalling(null)} onConfirm={confirmInstall} busy={install.isPending} error={install.error} />
       <UninstallSkinDialog
         skin={removing}
         inUse={removing !== null && active.manifest.id === removing.id}

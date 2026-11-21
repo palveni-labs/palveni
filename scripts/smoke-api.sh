@@ -206,6 +206,12 @@ LIB="$(field .id)"
 req POST /libraries "{\"name\":\"冒烟音乐\",\"kind\":\"music\",\"paths\":[\"$MEDIA\"]}"
 check "duplicate name conflicts" "$STATUS $(field .error.code)" "409 conflict"
 
+req PATCH "/libraries/$LIB" '{"name":"音乐精选"}'
+check "renaming retains the library identity" "$STATUS $(field .name) $(field .id)" "200 音乐精选 $LIB"
+req PATCH "/libraries/$LIB" "$(jq -cn --arg p "$MEDIA" '{addPaths:[$p]}')"
+check "adding the same root is idempotent" "$STATUS $(field '.paths|length')" "200 1"
+req PATCH "/libraries/$LIB" '{"kind":"video"}'
+check "library kind cannot silently change" "$STATUS" "400"
 req PUT "/libraries/$LIB"
 check "unsupported method is a JSON 405" "$STATUS $(field .error.code)" "405 method_not_allowed"
 
@@ -538,6 +544,12 @@ for spec in 'audiobook stories book chapter' 'podcast shows show episode' 'video
     check "film wall cursor rejects a different sort order" "$STATUS" "400"
     req GET "/libraries/$sample_lib/videos?order=poster&limit=1&cursor=$wall_cursor"
     check "film wall continues into works without artwork" "$STATUS $(field '.entries[0].title') $(field .nextCursor)" "200 Archive null"
+    req GET "/libraries/$sample_lib/videos?order=poster&kind=movie&q=ARCH&limit=1"
+    check "find a film outside the first unfiltered page" "$STATUS $(field '.entries[0].title') $(field .nextCursor)" "200 Archive null"
+    req GET "/libraries/$sample_lib/videos?kind=series&q=ARCH"
+    check "title and series filters apply together" "$STATUS $(field '.entries | length')" "200 0"
+    req GET "/libraries/$sample_lib/videos?order=poster&q=ARCH&cursor=$wall_cursor"
+    check "film search rejects a cursor from the unfiltered wall" "$STATUS" "400"
     check "film poster serves the original image" "$(read_media -H "Authorization: Bearer $TOKEN" "$API/items/$poster_id/poster") $(media_header content-type)" "200 image/png"
     cmp -s "$sample/film/poster.png" "$PRIVATE_TMP/audio" && ok "poster bytes match" || bad "poster bytes match" "unexpected payload"
   else

@@ -8,6 +8,8 @@ interface BrowseSearch {
   parent?: string;
   view?: "music" | "works" | "spoken" | "files";
   order?: "title";
+  q?: string;
+  kind?: "movie" | "series";
   collection?: string;
   collectionName?: string;
   series?: string;
@@ -23,6 +25,8 @@ export const Route = createFileRoute("/_app/library/$libraryId")({
   validateSearch: (search: Record<string, unknown>): BrowseSearch => ({
     view: search.view === "music" || search.view === "works" || search.view === "spoken" || search.view === "files" ? search.view : undefined,
     order: search.order === "title" ? "title" : undefined,
+    q: typeof search.q === "string" ? Array.from(search.q.trim()).slice(0, 128).join("") || undefined : typeof search.q === "number" && Number.isFinite(search.q) ? String(search.q) : undefined,
+    kind: search.kind === "movie" || search.kind === "series" ? search.kind : undefined,
     collection: typeof search.collection === "string" ? search.collection : undefined,
     collectionName: typeof search.collectionName === "string" ? search.collectionName.slice(0, 1024) : undefined,
     series: typeof search.series === "string" && /^[0-9a-f]{64}$/.test(search.series) ? search.series : undefined,
@@ -38,7 +42,7 @@ export const Route = createFileRoute("/_app/library/$libraryId")({
   loader: async ({ context, params, deps }) => {
     const { queryClient } = context;
     const library = await queryClient.ensureQueryData(libraryQuery(queryClient, params.libraryId));
-    const fileView = deps.view === "files" || !!deps.parent || (!deps.view && !["video", "audiobook", "podcast"].includes(library.kind));
+    const fileView = deps.view === "files" || !!deps.parent || (!deps.view && !["music", "video", "audiobook", "podcast"].includes(library.kind));
     await Promise.all([
       fileView ? queryClient.ensureInfiniteQueryData(itemsInfiniteQuery(params.libraryId, deps.parent)) : null,
       deps.parent ? queryClient.ensureQueryData(itemAncestorsQuery(queryClient, deps.parent)) : null,

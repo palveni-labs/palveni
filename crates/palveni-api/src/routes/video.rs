@@ -8,8 +8,8 @@ use axum::{
     http::header,
     response::Response,
 };
-use palveni_core::video::{VideoOrder, VideoPage};
-use palveni_db::video::{PosterLevel, VideoCursor};
+use palveni_core::video::{VideoOrder, VideoPage, WorkKind};
+use palveni_db::video::{PosterLevel, VideoCursor, VideoFilters};
 use serde::Deserialize;
 use tokio_util::io::ReaderStream;
 
@@ -22,11 +22,33 @@ pub struct Browse {
     season: Option<i32>,
     cursor: Option<String>,
     limit: Option<String>,
+    q: Option<String>,
+    kind: Option<WorkKind>,
     #[serde(default)]
     order: VideoOrder,
 }
 
 impl Browse {
+    fn filters(&self) -> Result<VideoFilters<'_>, ApiError> {
+        let title = self.q.as_deref().unwrap_or_default().trim();
+        if title.chars().count() > 128 || title.chars().any(char::is_control) {
+            return Err(ApiError::validation("Invalid search title").field("q"));
+        }
+        if self.series.is_some() || self.season.is_some() {
+            if !title.is_empty() {
+                return Err(ApiError::validation("Title search applies only to works").field("q"));
+            }
+            if self.kind.is_some() {
+                return Err(ApiError::validation("Kind filter applies only to works").field("kind"));
+            }
+        }
+        Ok(VideoFilters {
+            order: self.order()?,
+            title,
+            kind: self.kind,
+        })
+    }
+
     fn order(&self) -> Result<VideoOrder, ApiError> {
         if self.order == VideoOrder::Poster && (self.series.is_some() || self.season.is_some()) {
             return Err(
@@ -60,13 +82,13 @@ pub async fn list(
     {
         return Err(ApiError::validation("A season requires its series").field("season"));
     }
-    let order = query.order()?;
+    let filters = query.filters()?;
     let limit = parse_limit(query.limit.as_deref(), DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)?;
     let cursor = query
         .cursor
         .as_deref()
         .map(|s| {
-            VideoCursor::decode_for_order(s, library, series, query.season, order)
+            VideoCursor::decode_filtered(s, library, series, query.season, filters)
                 .ok_or_else(|| ApiError::validation("Invalid video cursor").field("cursor"))
         })
         .transpose()?;
@@ -76,7 +98,7 @@ pub async fn list(
     }
     Ok(Json(
         videos
-            .browse_ordered(library, series, query.season, order, limit, cursor)
+            .browse_filtered(library, series, query.season, filters, limit, cursor)
             .await?,
     ))
 }
@@ -128,6 +150,31 @@ pub async fn poster(
 mod tests {
     use super::*;
     use axum::{http::StatusCode, response::IntoResponse};
+
+    #[test]
+    fn work_filters_validate_search_bounds_and_levels() {
+        for query in [
+            "kind=episode".to_owned(),
+            "q=title&series=abc".to_owned(),
+            "kind=movie&series=abc".to_owned(),
+            "q=A%00B".to_owned(),
+            format!("q={}", "a".repeat(129)),
+        ] {
+            let uri = format!("/videos?{query}").parse().unwrap();
+            let result = Query::<Browse>::try_from_uri(&uri)
+                .map_err(ApiError::from)
+                .and_then(|q| q.filters().map(|_| ()));
+            assert_eq!(
+                result.unwrap_err().into_response().status(),
+                StatusCode::BAD_REQUEST
+            );
+        }
+        let q = Query::<Browse>::try_from_uri(&"/videos?q=%20Sea%20&kind=movie".parse().unwrap())
+            .unwrap();
+        let filters = q.filters().unwrap();
+        assert_eq!(filters.title, "Sea");
+        assert_eq!(filters.kind, Some(WorkKind::Movie));
+    }
 
     #[test]
     fn video_order_defaults_to_title_and_rejects_invalid_levels() {

@@ -1,14 +1,16 @@
-/**
- * 应用 › 插件 (M0 API, admin): the plugins installed on the server, with how each one runs and
- * which extension points it provides.
- */
-import { buttonVariants, Chip } from "@heroui/react";
+import { Button, buttonVariants, Chip, Input } from "@heroui/react";
 import { Link } from "@tanstack/react-router";
 import { FileCode2, Puzzle, ShieldAlert, ShieldCheck, type LucideIcon } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
 import { usePlugins } from "@/api/queries/plugins";
-import type { Plugin } from "@/api/types";
+import { useInstalledSkins } from "@/api/queries/skins";
+import type { InstalledSkin, Plugin } from "@/api/types";
+import { currentLanguage } from "@/i18n";
+import { useFeature } from "@/modules/access";
+import { localized } from "@/skins/schema";
+import { OfficialSkinCatalog, UploadSkinButton } from "./themes-page";
 import { PageFrame } from "@/ui/frame";
 import { StatusLabel } from "@/ui/marks";
 import { PageHeader } from "@/ui/page";
@@ -46,7 +48,7 @@ const KNOWN_POINTS = new Set([
   "widget",
 ]);
 
-function PluginRow({ plugin }: { plugin: Plugin }) {
+function PluginRow({ plugin, skin }: { plugin: Plugin; skin?: InstalledSkin }) {
   const { t } = useTranslation();
   const inset = useRowInset();
   const RuntimeIcon = RUNTIME_ICON[plugin.runtime];
@@ -58,9 +60,10 @@ function PluginRow({ plugin }: { plugin: Plugin }) {
         </span>
         <div className="grid min-w-0 gap-0.5">
           <h3 className="flex flex-wrap items-baseline gap-x-2 text-md font-strong text-fg">
-            <span className="min-w-0 truncate">{plugin.name}</span>
+            <span className="min-w-0 truncate">{skin ? localized(skin.name, currentLanguage()) : plugin.name}</span>
             <span className="text-sm font-body text-fg-muted tabular-nums">{t("plugins.version", { version: plugin.version })}</span>
           </h3>
+          {skin ? <p className="text-sm text-fg-muted">{t(skin.source === "upload" ? "appearance.unverified" : "plugins.official")}</p> : null}
           <p className="truncate font-mono text-sm text-fg-muted" title={plugin.id}>
             {plugin.id}
           </p>
@@ -86,10 +89,11 @@ function PluginRow({ plugin }: { plugin: Plugin }) {
           </ul>
         ) : null}
       </div>
-      <div className="max-md:ps-12">
+      <div className="grid justify-items-start gap-2 max-md:ps-12">
         <StatusLabel tone={plugin.enabled ? "ok" : "idle"} className="text-sm">
           {plugin.enabled ? t("plugins.enabled") : t("plugins.disabled")}
         </StatusLabel>
+        {skin && <Link to="/apps/themes" className={buttonVariants({ variant: "outline", size: "sm" })}>{t("plugins.manageSkin")}</Link>}
       </div>
     </li>
   );
@@ -103,19 +107,59 @@ function LoadingPlugins() {
 export function PluginsPage() {
   const { t } = useTranslation();
   const query = usePlugins();
-  const plugins = query.data?.plugins ?? [];
+  const skinsEnabled = useFeature("skins");
+  const installed = useInstalledSkins(skinsEnabled);
+  const skins = new Map((installed.data?.skins ?? []).map((skin) => [skin.pluginId, skin]));
+  const [input, setInput] = useState("");
+  const [filter, setFilter] = useState<"all" | "available" | "installed">("all");
+  const search = input.trim().toLocaleLowerCase();
+  const installedPlugins = new Map((query.data?.plugins ?? []).map((plugin) => [plugin.id, plugin]));
+  for (const skin of skins.values()) {
+    if (!installedPlugins.has(skin.pluginId)) {
+      installedPlugins.set(skin.pluginId, {
+        id: skin.pluginId, name: localized(skin.name, currentLanguage()), version: skin.version,
+        runtime: "none", provides: ["skin"], enabled: true,
+      });
+    }
+  }
+  const plugins = Array.from(installedPlugins.values());
+  const matches = plugins.filter((plugin) => {
+    const skin = skins.get(plugin.id);
+    const fields = [plugin.name, plugin.id, ...plugin.provides, ...(skin ? Object.values(skin.name) : [])];
+    for (const point of plugin.provides) {
+      if (KNOWN_POINTS.has(point)) fields.push(t(`plugins.points.${point}` as "plugins.points.storage"));
+    }
+    return fields.some((field) => field.toLocaleLowerCase().includes(search));
+  });
   const enabled = plugins.filter((plugin) => plugin.enabled).length;
   return (
     <PageFrame>
       <PageHeader
-        title={t("nav.plugins")}
+        title={t("plugins.storeTitle")}
+        actions={skinsEnabled ? <UploadSkinButton /> : undefined}
         summary={query.data && plugins.length > 0 ? t("plugins.summary", { count: plugins.length, enabled }) : undefined}
       />
-      <Section title={t("plugins.installedTitle")} count={query.data ? plugins.length : undefined}>
+      <div className="flex flex-wrap items-center gap-3">
+        <Input type="search" aria-label={t("plugins.search")} placeholder={t("plugins.search")} className="w-full sm:max-w-sm" value={input} onChange={(event) => setInput(event.target.value)} />
+        <div role="group" aria-label={t("plugins.filterLabel")} className="flex flex-wrap gap-1">
+          {(["all", "available", "installed"] as const).map((value) => (
+            <Button key={value} size="sm" variant={filter === value ? "primary" : "outline"} aria-pressed={filter === value} onPress={() => setFilter(value)}>
+              {t(`plugins.filter.${value}`)}
+            </Button>
+          ))}
+        </div>
+        <a className="text-sm font-mid text-link underline" href="https://github.com/palveni-labs/plugins#submit-a-plugin" target="_blank" rel="noreferrer">
+          {t("plugins.contribute")}
+        </a>
+      </div>
+      {filter !== "installed" && <OfficialSkinCatalog enabled={skinsEnabled} search={search} store />}
+      {filter !== "available" && <Section title={t("plugins.installedTitle")} count={query.data ? matches.length : undefined}>
         {query.isPending ? (
           <LoadingPlugins />
         ) : query.isError ? (
           <ErrorState compact error={query.error} onRetry={() => void query.refetch()} />
+        ) : matches.length === 0 && search ? (
+          <EmptyState compact icon={Puzzle} title={t("plugins.noMatches")} />
         ) : plugins.length === 0 ? (
           <EmptyState
             compact
@@ -130,12 +174,12 @@ export function PluginsPage() {
           />
         ) : (
           <SectionRows>
-            {plugins.map((plugin) => (
-              <PluginRow key={plugin.id} plugin={plugin} />
+            {matches.map((plugin) => (
+              <PluginRow key={plugin.id} plugin={plugin} skin={skins.get(plugin.id)} />
             ))}
           </SectionRows>
         )}
-      </Section>
+      </Section>}
     </PageFrame>
   );
 }

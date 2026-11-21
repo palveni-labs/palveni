@@ -12,6 +12,7 @@ import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { Section, SectionRows } from "@/ui/section";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
+import { PersonalShelf } from "./personal-shelf";
 import { LibraryRow } from "./library-card";
 import { useItemCountLabel } from "./use-item-count-label";
 import { useScanningLibraries } from "./use-scanning";
@@ -47,6 +48,7 @@ export function LibrariesPage() {
   const isAdmin = useIsAdmin();
   const itemCount = useItemCountLabel();
   const query = useLibraries();
+  const personal = useFeature("personal");
   const subscriptions = useFeature("broadcast");
   const storage = useFeature("connections");
   const scanning = useScanningLibraries();
@@ -95,6 +97,7 @@ export function LibrariesPage() {
           {storage && <Link to="/library/connections" className={buttonVariants({ variant: "outline", size: "sm" })}>{t("connections.title")}</Link>}
         </nav>
       )}
+      {personal && query.isSuccess && libraries.length > 0 && <PersonalShelf libraries={libraries} />}
       {query.isPending ? (
         <LoadingRows rows={4} />
       ) : query.isError ? (

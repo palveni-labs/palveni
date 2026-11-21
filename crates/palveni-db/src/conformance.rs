@@ -489,6 +489,45 @@ async fn conformance_libraries_and_revisions() {
             .is_some()
     );
 
+    let edited = libraries
+        .update(movies.id, Some("Films"), &["/media/c".into()])
+        .await
+        .unwrap();
+    assert_eq!(edited.paths, ["/media/b", "/media/a", "/media/c"]);
+    let edited_rev = h.db.current_revision().await.unwrap();
+    libraries
+        .update(movies.id, None, &["/media/c".into()])
+        .await
+        .unwrap();
+    assert_eq!(edited_rev, h.db.current_revision().await.unwrap());
+    assert!(matches!(
+        libraries.update(movies.id, Some("Music"), &[]).await,
+        Err(DbError::Conflict(_))
+    ));
+    assert!(matches!(
+        libraries
+            .update(
+                movies.id,
+                Some("Wrong"),
+                &["/new".into(), "/media/a/sub".into()]
+            )
+            .await,
+        Err(DbError::Invalid(_))
+    ));
+    let reread = libraries.get(movies.id).await.unwrap().unwrap();
+    assert_eq!(reread.name, "Films");
+    assert_eq!(reread.paths, edited.paths);
+    let left_paths = ["/two".to_owned()];
+    let right_paths = ["/three".to_owned()];
+    let (left, right) = tokio::join!(
+        libraries.update(movies.id, None, &left_paths),
+        libraries.update(movies.id, None, &right_paths)
+    );
+    left.unwrap();
+    right.unwrap();
+    let merged = libraries.get(movies.id).await.unwrap().unwrap();
+    assert_eq!(merged.paths.len(), 5);
+    assert!(merged.paths.contains(&left_paths[0]) && merged.paths.contains(&right_paths[0]));
     assert!(libraries.delete(movies.id).await.unwrap());
     assert!(!libraries.delete(movies.id).await.unwrap());
     assert!(libraries.get(movies.id).await.unwrap().is_none());

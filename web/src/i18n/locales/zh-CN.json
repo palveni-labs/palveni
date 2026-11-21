@@ -185,6 +185,24 @@
       "calm": "一切正常，没有需要你处理的事"
     }
   },
+  "libraryHome": {
+    "title": "我的播放",
+    "views": {
+      "continue": "继续播放",
+      "recent": "最近播放",
+      "favorites": "我的收藏"
+    },
+    "empty": {
+      "continue": "未播完的影视、音乐和音频节目会显示在这里。",
+      "recent": "你还没有播放记录。",
+      "favorites": "点击标题旁的爱心即可收藏。"
+    },
+    "resumeAt": "从 {{time}} 继续播放《{{title}}》",
+    "favoriteItem": "收藏《{{title}}》",
+    "pages": "播放列表翻页",
+    "previous": "上一页",
+    "next": "下一页"
+  },
   "libraries": {
     "emptyAdmin": "还没有媒体库，添加一个文件夹开始吧",
     "emptyUser": "暂时没有可以访问的媒体库",
@@ -281,6 +299,11 @@
     "saved": "已保存的来源"
   },
   "adminLibraries": {
+    "edit": "编辑媒体库",
+    "save": "保存",
+    "saved": "已保存「{{name}}」",
+    "additionalFolders": "追加文件夹",
+    "scanAfterEdit": "扫描新增目录",
     "create": "新建媒体库",
     "created": "已创建媒体库「{{name}}」",
     "empty": "还没有媒体库",
@@ -408,6 +431,19 @@
     "noneVerified": "没有可用的硬件编码器"
   },
   "plugins": {
+    "storeTitle": "插件商店",
+    "available": "官方目录中可安装的插件",
+    "official": "官方目录",
+    "search": "搜索插件",
+    "filterLabel": "安装状态",
+    "filter": {
+      "all": "全部",
+      "available": "可安装",
+      "installed": "已安装"
+    },
+    "contribute": "向 GitHub 插件仓投稿",
+    "manageSkin": "在外观中管理",
+    "noMatches": "没有匹配的插件",
     "empty": "还没有安装插件",
     "enabled": "已启用",
     "disabled": "已停用",
@@ -420,7 +456,7 @@
     "summary_other": "{{count}} 个插件，{{enabled}} 个已启用",
     "installedTitle": "已安装的插件",
     "version": "版本 {{version}}",
-    "emptyDetail": "插件可以接入网盘、刮削源、歌词和通知渠道。装了插件之后，可以在这里查看和管理；皮肤在「外观」里管理。",
+    "emptyDetail": "可以从目录安装插件，也可以上传皮肤包。",
     "toAppearance": "前往外观",
     "provides": "提供的扩展点",
     "isolation": {
@@ -810,6 +846,12 @@
     "playbackFailed": "无法播放此音频"
   },
   "video": {
+    "findTitle": "搜索片名",
+    "search": "搜索",
+    "workKind": "作品类型",
+    "allKinds": "电影和剧集",
+    "clearFilters": "清除筛选",
+    "noMatches": "没有符合条件的作品",
     "sort": "作品排序",
     "posterFirst": "海报优先",
     "byTitle": "按片名",

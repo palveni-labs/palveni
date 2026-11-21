@@ -1,6 +1,7 @@
 import { request } from "./client";
 import type {
   CreateLibraryRequest,
+  UpdateLibraryRequest,
   Credentials,
   HardwareReport,
   HealthResponse,
@@ -44,6 +45,7 @@ export const api = {
     list: (signal?: AbortSignal) => request<LibraryList>("/libraries", { signal }),
     get: (id: string, signal?: AbortSignal) => request<Library>(`/libraries/${enc(id)}`, { signal }),
     create: (body: CreateLibraryRequest) => request<Library>("/libraries", { method: "POST", body }),
+    update: (id: string, body: UpdateLibraryRequest) => request<Library>(`/libraries/${enc(id)}`, { method: "PATCH", body }),
     remove: (id: string) => request<void>(`/libraries/${enc(id)}`, { method: "DELETE" }),
     scan: (id: string) => request<ScanResponse>(`/libraries/${enc(id)}/scan`, { method: "POST" }),
   },

@@ -356,7 +356,7 @@ export function LibraryBrowsePage() {
   const musicEnabled = useFeature("music");
   const videoEnabled = useFeature("video");
   const spokenEnabled = useFeature("spoken");
-  const { parent, view } = useSearch({ from: "/_app/library/$libraryId" });
+  const { parent, view, artist, album } = useSearch({ from: "/_app/library/$libraryId" });
   const libraryQuery = useLibrary(libraryId);
   const library = libraryQuery.data;
 
@@ -383,30 +383,25 @@ export function LibraryBrowsePage() {
 
   const spokenKind = spokenEnabled && (library.kind === "audiobook" || library.kind === "podcast") ? library.kind : undefined;
   const isVideo = videoEnabled && library.kind === "video";
-  const organized = !parent && view !== "files" && (isVideo || !!spokenKind);
-  const collectionView = isVideo ? "works" : "spoken";
+  const isMusic = musicEnabled && library.kind === "music";
+  const collectionView = isVideo ? "works" : isMusic ? "music" : spokenKind ? "spoken" : undefined;
+  const organized = !parent && view !== "files" && !!collectionView;
+  const collectionTitle = isVideo ? t("browse.works") : isMusic ? t("music.artists") : spokenKind === "audiobook" ? t("spoken.shelf") : t("spoken.shows");
   return (
     <PageFrame>
       <BrowseHeader library={library} />
-      {(isVideo || spokenKind) && (
+      {collectionView && (
         <nav aria-label={t("browse.view")} className="flex flex-wrap gap-2">
           <Link to="/library/$libraryId" params={{ libraryId }} search={{ view: collectionView }} aria-current={organized ? "page" : undefined} className={buttonVariants({ variant: organized ? "secondary" : "ghost", size: "sm" })}>
-            {isVideo ? t("browse.works") : spokenKind === "audiobook" ? t("spoken.shelf") : t("spoken.shows")}
+            {collectionTitle}
           </Link>
           <Link to="/library/$libraryId" params={{ libraryId }} search={{ view: "files" }} aria-current={!organized ? "page" : undefined} className={buttonVariants({ variant: !organized ? "secondary" : "ghost", size: "sm" })}>{t("browse.files")}</Link>
         </nav>
       )}
-      {musicEnabled && library.kind === "music" && (
-        <nav aria-label={t("music.browse")} className="flex flex-wrap gap-2">
-          <Link to="/library/$libraryId" params={{ libraryId }} search={{}} aria-current={view !== "music" ? "page" : undefined} className={buttonVariants({ variant: view !== "music" ? "secondary" : "ghost", size: "sm" })}>{t("browse.files")}</Link>
-          <Link to="/library/$libraryId" params={{ libraryId }} search={{ view: "music" }} aria-current={view === "music" ? "page" : undefined} className={buttonVariants({ variant: view === "music" ? "secondary" : "ghost", size: "sm" })}>{t("music.artists")}</Link>
-        </nav>
-      )}
       {organized && isVideo ? <VideoBrowse libraryId={libraryId} />
         : organized && spokenKind ? <SpokenBrowse libraryId={libraryId} kind={spokenKind} />
-        : view === "music" && musicEnabled && library.kind === "music"
-        ? <MusicBrowse libraryId={libraryId} />
-        : <BrowseBody key={`${library.id}:${parent ?? ""}`} library={library} parentId={parent ?? null} keepFileView={isVideo || !!spokenKind} />}
+        : organized && isMusic ? <MusicBrowse key={`${libraryId}/${artist ?? ""}/${album ?? ""}`} libraryId={libraryId} />
+        : <BrowseBody key={`${library.id}:${parent ?? ""}`} library={library} parentId={parent ?? null} keepFileView={!!collectionView} />}
     </PageFrame>
   );
 }

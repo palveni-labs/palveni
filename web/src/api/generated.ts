@@ -375,7 +375,8 @@ export interface paths {
         delete: operations["deleteLibrary"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** @description Rename a library or add media folders. */
+        patch: operations["updateLibrary"];
         trace?: never;
     };
     "/api/v1/libraries/{id}/music": {
@@ -1485,6 +1486,10 @@ export interface components {
         ToolSource: "config" | "bundled" | "path";
         TrackLyrics: {
             lyrics: null | components["schemas"]["Lyrics"];
+        };
+        UpdateLibraryRequest: {
+            addPaths?: string[];
+            name?: string | null;
         };
         User: {
             /** Format: date-time */
@@ -3442,6 +3447,97 @@ export interface operations {
             };
         };
     };
+    updateLibrary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLibraryRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Library"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
     browseMusic: {
         parameters: {
             query?: {
@@ -3661,6 +3757,8 @@ export interface operations {
     browseVideos: {
         parameters: {
             query?: {
+                q?: string;
+                kind?: "movie" | "series";
                 order?: "title" | "poster";
                 season?: number;
                 series?: string;

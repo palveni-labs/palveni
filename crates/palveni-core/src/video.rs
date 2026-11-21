@@ -10,6 +10,13 @@ pub enum VideoOrder {
     Poster,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum WorkKind {
+    Movie,
+    Series,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum VideoKind {

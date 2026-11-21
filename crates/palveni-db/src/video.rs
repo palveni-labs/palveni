@@ -4,9 +4,9 @@ use std::path::{Path, PathBuf};
 
 use palveni_core::{
     ItemId, ItemKind, LibraryId,
-    video::{VideoEntry, VideoKind, VideoOrder, VideoPage},
+    video::{VideoEntry, VideoKind, VideoOrder, VideoPage, WorkKind},
 };
-use sea_orm::sea_query::{ExprTrait, OnConflict};
+use sea_orm::sea_query::{BinOper, Expr, ExprTrait, Func, OnConflict};
 use sea_orm::{
     ColumnTrait, Condition, EntityTrait, IntoSimpleExpr, JoinType, QueryFilter, QueryOrder,
     QuerySelect, RelationTrait, Select, Set,
@@ -62,8 +62,33 @@ pub struct VideoCursor {
     has_poster: Option<bool>,
 }
 
-fn scope(library: LibraryId, series: Option<&str>, season: Option<i32>) -> String {
-    format!("{library}/{}/{season:?}", series.unwrap_or(""))
+#[derive(Clone, Copy, Default)]
+pub struct VideoFilters<'a> {
+    pub order: VideoOrder,
+    pub title: &'a str,
+    pub kind: Option<WorkKind>,
+}
+
+impl VideoFilters<'_> {
+    fn filtered(self) -> bool {
+        !self.title.is_empty() || self.kind.is_some()
+    }
+
+    fn scope(self, library: LibraryId, series: Option<&str>, season: Option<i32>) -> String {
+        let base = format!("{library}/{}/{season:?}", series.unwrap_or(""));
+        if !self.filtered() {
+            return base;
+        }
+        let kind = match self.kind {
+            None => "all",
+            Some(WorkKind::Movie) => "movie",
+            Some(WorkKind::Series) => "series",
+        };
+        format!(
+            "{base}/{kind}/{}",
+            sha256_hex(&self.title.to_ascii_lowercase())
+        )
+    }
 }
 
 impl VideoCursor {
@@ -83,12 +108,31 @@ impl VideoCursor {
         season: Option<i32>,
         order: VideoOrder,
     ) -> Option<Self> {
+        Self::decode_filtered(
+            raw,
+            library,
+            series,
+            season,
+            VideoFilters {
+                order,
+                ..Default::default()
+            },
+        )
+    }
+
+    pub fn decode_filtered(
+        raw: &str,
+        library: LibraryId,
+        series: Option<&str>,
+        season: Option<i32>,
+        filters: VideoFilters<'_>,
+    ) -> Option<Self> {
         if raw.len() > 1024 {
             return None;
         }
         let cursor: Self = serde_json::from_slice(&hex::decode(raw).ok()?).ok()?;
-        (cursor.scope == scope(library, series, season)
-            && cursor.has_poster.is_some() == (order == VideoOrder::Poster))
+        (cursor.scope == filters.scope(library, series, season)
+            && cursor.has_poster.is_some() == (filters.order == VideoOrder::Poster))
             .then_some(cursor)
     }
 }
@@ -112,7 +156,6 @@ fn active(library: LibraryId) -> Select<video::Entity> {
 }
 
 fn poster_sample(poster: C) -> sea_orm::sea_query::Expr {
-    use sea_orm::sea_query::{Expr, Func};
     let available = Expr::case(poster.is_not_null(), Expr::col((video::Entity, C::ItemId)));
     Func::coalesce([Expr::from(Func::min(available)), C::ItemId.min()]).into()
 }
@@ -305,6 +348,35 @@ impl Videos<'_> {
         limit: u32,
         cursor: Option<VideoCursor>,
     ) -> Result<VideoPage, DbError> {
+        self.browse_filtered(
+            library,
+            series,
+            season,
+            VideoFilters {
+                order,
+                ..Default::default()
+            },
+            limit,
+            cursor,
+        )
+        .await
+    }
+
+    pub async fn browse_filtered(
+        &self,
+        library: LibraryId,
+        series: Option<&str>,
+        season: Option<i32>,
+        filters: VideoFilters<'_>,
+        limit: u32,
+        cursor: Option<VideoCursor>,
+    ) -> Result<VideoPage, DbError> {
+        let order = filters.order;
+        if filters.filtered() && (series.is_some() || season.is_some()) {
+            return Err(DbError::Invalid(
+                "Title and kind filters apply only to works",
+            ));
+        }
         if order == VideoOrder::Poster && (series.is_some() || season.is_some()) {
             return Err(DbError::Invalid("Poster ordering applies only to works"));
         }
@@ -313,6 +385,10 @@ impl Videos<'_> {
             .is_some_and(|c| c.has_poster.is_some() != (order == VideoOrder::Poster))
         {
             return Err(DbError::Invalid("Video cursor order does not match"));
+        }
+        let scope = filters.scope(library, series, season);
+        if cursor.as_ref().is_some_and(|c| c.scope != scope) {
+            return Err(DbError::Invalid("Video cursor filters do not match"));
         }
         let n = u64::from(limit.clamp(1, 200)) + 1;
         let mut entries: Vec<(String, Option<bool>, VideoEntry)> = Vec::new();
@@ -375,7 +451,35 @@ impl Videos<'_> {
                     (number.to_string(), number.to_string(), sample, count, None)
                 }));
             } else {
+                if let Some(kind) = filters.kind {
+                    query = query.filter(match kind {
+                        WorkKind::Movie => C::Season.is_null(),
+                        WorkKind::Series => C::Season.is_not_null(),
+                    });
+                }
+                if !filters.title.is_empty() {
+                    let escaped = filters
+                        .title
+                        .replace('!', "!!")
+                        .replace('%', "!%")
+                        .replace('_', "!_");
+                    let title = Func::lower(C::WorkTitle.into_simple_expr());
+                    let pattern = Expr::from(Func::lower(format!("%{escaped}%")))
+                        .binary(BinOper::Escape, Expr::Constant('!'.into()));
+                    let matched = Expr::from(title).binary(BinOper::Like, pattern);
+                    // Match any indexed title for the work without dropping its other episodes or art.
+                    query = query.having(
+                        Expr::from(Func::max(Expr::case(matched, 1_i32).finally(0_i32))).eq(1_i32),
+                    );
+                }
                 let sort = match order {
+                    VideoOrder::Title if filters.filtered() => {
+                        let sort = C::WorkSort.min();
+                        if let Some(cursor) = &cursor {
+                            query = query.having(after(sort.clone(), C::WorkKey, cursor));
+                        }
+                        sort
+                    }
                     VideoOrder::Title => {
                         if let Some(cursor) = &cursor {
                             query = query.filter(after(C::WorkSort, C::WorkKey, cursor));
@@ -476,7 +580,7 @@ impl Videos<'_> {
             entries.truncate(limit);
             if let Some((sort, has_poster, entry)) = entries.last() {
                 next_cursor = serde_json::to_vec(&VideoCursor {
-                    scope: scope(library, series, season),
+                    scope,
                     sort: sort.clone(),
                     id: entry.id.clone(),
                     has_poster: *has_poster,

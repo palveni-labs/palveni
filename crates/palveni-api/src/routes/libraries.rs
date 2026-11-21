@@ -45,14 +45,7 @@ pub async fn create(
     body: Result<ApiJson<CreateLibraryRequest>, ApiError>,
 ) -> Result<(StatusCode, Json<Library>), ApiError> {
     let ApiJson(request) = body?;
-    let name = request.name.trim();
-    let name_chars = name.chars().count();
-    if name_chars == 0 || name_chars > NAME_MAX_CHARS {
-        return Err(
-            ApiError::validation(format!("Name must be 1 to {NAME_MAX_CHARS} characters"))
-                .field("name"),
-        );
-    }
+    let name = validate_name(&request.name)?;
     let paths = validate_library_paths(&request.paths).await?;
     let library = state
         .db
@@ -81,6 +74,69 @@ pub async fn create(
     )
     .await;
     Ok((StatusCode::CREATED, Json(library)))
+}
+
+fn validate_name(value: &str) -> Result<&str, ApiError> {
+    let name = value.trim();
+    let name_chars = name.chars().count();
+    if name_chars == 0 || name_chars > NAME_MAX_CHARS {
+        return Err(
+            ApiError::validation(format!("Name must be 1 to {NAME_MAX_CHARS} characters"))
+                .field("name"),
+        );
+    }
+    Ok(name)
+}
+
+#[derive(utoipa::ToSchema, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct UpdateLibraryRequest {
+    name: Option<String>,
+    #[serde(default)]
+    add_paths: Vec<String>,
+}
+
+pub async fn update(
+    AdminUser(admin): AdminUser,
+    State(state): State<AppState>,
+    path: Result<Path<String>, PathRejection>,
+    body: Result<ApiJson<UpdateLibraryRequest>, ApiError>,
+) -> Result<Json<Library>, ApiError> {
+    let id = path_id(&path?.0, "Library")?;
+    let ApiJson(request) = body?;
+    let name = request.name.as_deref().map(validate_name).transpose()?;
+    if name.is_none() && request.add_paths.is_empty() {
+        return Err(ApiError::validation("Provide a name or folders to add"));
+    }
+    let paths = if request.add_paths.is_empty() {
+        Vec::new()
+    } else {
+        validate_library_paths(&request.add_paths).await?
+    };
+    let library = state
+        .db
+        .libraries()
+        .update(id, name, &paths)
+        .await
+        .map_err(|error| match error {
+            DbError::Conflict(message) => ApiError::conflict(message).field("name"),
+            DbError::Invalid(message) => ApiError::validation(message).field("paths"),
+            other => other.into(),
+        })?;
+    state
+        .bus
+        .publish(ServerEvent::LibraryUpdated(library.clone()));
+    audit(
+        &state,
+        AuditEntry {
+            action: actions::LIBRARY_UPDATED,
+            actor: Some(admin.user.id),
+            target: Some(id.to_string()),
+            detail: Some(json!({ "name": library.name, "paths": library.paths })),
+        },
+    )
+    .await;
+    Ok(Json(library))
 }
 
 pub async fn get_one(

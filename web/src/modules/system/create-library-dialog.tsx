@@ -5,8 +5,10 @@ import { useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
 import { ApiError } from "@/api/errors";
-import { useCreateLibrary, useScanLibrary } from "@/api/queries/libraries";
-import type { LibraryKind } from "@/api/types";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/api/endpoints";
+import { upsertLibrary, useScanLibrary } from "@/api/queries/libraries";
+import type { Library, LibraryKind } from "@/api/types";
 import { describeError, errorText } from "@/lib/errors";
 import { isLibraryKind, LIBRARY_KIND_META, LIBRARY_KINDS } from "@/lib/kinds";
 import { isAbsolutePath } from "@/lib/paths";
@@ -22,25 +24,32 @@ interface FormErrors {
 }
 
 /** 新建媒体库: a name, a media type, one or more folders on the server, and whether to scan now. */
-export function CreateLibraryDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function CreateLibraryDialog({ open, onOpenChange, library }: { open: boolean; onOpenChange: (open: boolean) => void; library?: Library }) {
   const { t } = useTranslation();
   const formId = useId();
-  const create = useCreateLibrary();
+  const client = useQueryClient();
+  const save = useMutation({
+    mutationFn: ({ name, kind, paths }: { name: string; kind: LibraryKind; paths: string[] }) =>
+      library
+        ? api.libraries.update(library.id, { ...(name !== library.name ? { name } : {}), addPaths: paths })
+        : api.libraries.create({ name, kind, paths }),
+    onSuccess: (result) => upsertLibrary(client, result),
+  });
   const scan = useScanLibrary();
   const storageEnabled = useFeature("connections");
-  const [name, setName] = useState("");
+  const [name, setName] = useState(library?.name ?? "");
   const [kind, setKind] = useState<LibraryKind>("video");
   const [paths, setPaths] = useState<string[]>([""]);
   const [scanAfter, setScanAfter] = useState(true);
   const [errors, setErrors] = useState<FormErrors>({});
 
   const reset = () => {
-    setName("");
+    setName(library?.name ?? "");
     setKind("video");
     setPaths([""]);
     setScanAfter(true);
     setErrors({});
-    create.reset();
+    save.reset();
   };
 
   const close = () => {
@@ -52,7 +61,7 @@ export function CreateLibraryDialog({ open, onOpenChange }: { open: boolean; onO
     const next: FormErrors = {};
     const cleanPaths = [...new Set(paths.map((path) => path.trim()).filter(Boolean))];
     if (!name.trim()) next.name = t("adminLibraries.form.nameRequired");
-    if (cleanPaths.length === 0) {
+    if (!library && cleanPaths.length === 0) {
       next.paths = t("adminLibraries.form.pathRequired");
       next.badPaths = [0];
     } else {
@@ -70,12 +79,16 @@ export function CreateLibraryDialog({ open, onOpenChange }: { open: boolean; onO
     event.preventDefault();
     const { ok, cleanPaths } = validate();
     if (!ok) return;
-    create.mutate(
+    if (library && name.trim() === library.name && cleanPaths.length === 0) {
+      close();
+      return;
+    }
+    save.mutate(
       { name: name.trim(), kind, paths: cleanPaths },
       {
-        onSuccess: (library) => {
-          toast.success(t("adminLibraries.created", { name: library.name }));
-          if (scanAfter) scan.mutate(library.id, { onError: (error) => toast.danger(describeError(t, error).title) });
+        onSuccess: (result) => {
+          toast.success(t(library ? "adminLibraries.saved" : "adminLibraries.created", { name: result.name }));
+          if (scanAfter && (!library || (cleanPaths.length > 0 && !library.lastScanAt))) scan.mutate(result.id, { onError: (error) => toast.danger(describeError(t, error).title) });
           close();
         },
         onError: (error) => {
@@ -113,13 +126,13 @@ export function CreateLibraryDialog({ open, onOpenChange }: { open: boolean; onO
         onOpenChange(next);
         if (!next) reset();
       }}
-      isDismissable={!create.isPending}
+      isDismissable={!save.isPending}
     >
       <Modal.Container size="md" scroll="inside">
         <Modal.Dialog className="gap-0 p-0">
           <Modal.Header className="grid gap-1 px-6 pt-6 pb-4">
-            <Modal.Heading className="font-heading text-lg font-title text-heading">{t("adminLibraries.create")}</Modal.Heading>
-            <p className="text-sm text-fg-muted">{t("adminLibraries.form.description")}</p>
+            <Modal.Heading className="font-heading text-lg font-title text-heading">{t(library ? "adminLibraries.edit" : "adminLibraries.create")}</Modal.Heading>
+            {!library && <p className="text-sm text-fg-muted">{t("adminLibraries.form.description")}</p>}
           </Modal.Header>
           <Modal.Body className="px-6 pb-2">
             <form id={formId} className="grid gap-6" onSubmit={onSubmit} noValidate>
@@ -129,7 +142,7 @@ export function CreateLibraryDialog({ open, onOpenChange }: { open: boolean; onO
                 {errors.name ? <FieldError className="text-sm text-failed">{errors.name}</FieldError> : null}
               </TextField>
 
-              <RadioGroup
+              {!library && <RadioGroup
                 value={kind}
                 onChange={(value) => {
                   if (isLibraryKind(value)) setKind(value);
@@ -154,9 +167,12 @@ export function CreateLibraryDialog({ open, onOpenChange }: { open: boolean; onO
                     );
                   })}
                 </div>
-              </RadioGroup>
+              </RadioGroup>}
 
               <div className="grid gap-2">
+                {library && <ul aria-label={t("adminLibraries.form.paths")} className="grid gap-1 text-sm text-fg-muted">
+                  {library.paths.map((dir) => <li key={dir} className="break-all font-mono">{dir}</li>)}
+                </ul>}
                 {paths.map((path, index) => {
                   const invalid = badPaths.includes(index);
                   return (
@@ -168,7 +184,7 @@ export function CreateLibraryDialog({ open, onOpenChange }: { open: boolean; onO
                         aria-label={index === 0 ? undefined : t("adminLibraries.form.pathN", { n: index + 1 })}
                         className="grid min-w-0 flex-1 gap-1.5"
                       >
-                        {index === 0 ? <Label className="text-sm font-mid text-fg">{t("adminLibraries.form.paths")}</Label> : null}
+                        {index === 0 ? <Label className="text-sm font-mid text-fg">{t(library ? "adminLibraries.additionalFolders" : "adminLibraries.form.paths")}</Label> : null}
                         <Input
                           className="font-mono"
                           placeholder={t("adminLibraries.form.pathPlaceholder")}
@@ -212,15 +228,15 @@ export function CreateLibraryDialog({ open, onOpenChange }: { open: boolean; onO
                 setErrors((current) => ({ ...current, paths: undefined, badPaths: undefined }));
               }} />}
               {storageEnabled && <Link to="/library/connections" className="w-fit text-sm text-link" onClick={close}>{t("connections.title")}</Link>}
-              <Switch isSelected={scanAfter} onChange={setScanAfter}>
+              {(!library || (!library.lastScanAt && paths.some((path) => path.trim()))) && <Switch isSelected={scanAfter} onChange={setScanAfter}>
                 <Switch.Content className="gap-3 text-base font-body text-fg">
                   <Switch.Control>
                     <Switch.Thumb />
                   </Switch.Control>
-                  {t("adminLibraries.form.scanAfter")}
+                  {t(library ? "adminLibraries.scanAfterEdit" : "adminLibraries.form.scanAfter")}
                 </Switch.Content>
                 <Description className="text-sm text-fg-muted">{t("adminLibraries.form.scanAfterHint")}</Description>
-              </Switch>
+              </Switch>}
 
               {errors.form ? (
                 <p role="alert" className="flex items-start gap-2 rounded-tile bg-failed-soft px-3 py-2.5 text-sm text-fg">
@@ -231,12 +247,12 @@ export function CreateLibraryDialog({ open, onOpenChange }: { open: boolean; onO
             </form>
           </Modal.Body>
           <Modal.Footer className="flex justify-end gap-2 px-6 pt-4 pb-6">
-            <Button variant="secondary" onPress={close} isDisabled={create.isPending}>
+            <Button variant="secondary" onPress={close} isDisabled={save.isPending}>
               {t("common.cancel")}
             </Button>
-            <Button type="submit" form={formId} variant="primary" isPending={create.isPending}>
-              {create.isPending ? <Spinner size="sm" color="current" /> : null}
-              {t("common.create")}
+            <Button type="submit" form={formId} variant="primary" isPending={save.isPending}>
+              {save.isPending ? <Spinner size="sm" color="current" /> : null}
+              {t(library ? "adminLibraries.save" : "common.create")}
             </Button>
           </Modal.Footer>
         </Modal.Dialog>

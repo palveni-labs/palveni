@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, expect, it, vi } from "vitest";
@@ -121,4 +121,48 @@ it("opens an authenticated poster wall, navigates episodes and resumes when the 
   expect(pictureRequests).toEqual(
     expect.arrayContaining(["work", "season", "episode"]),
   );
+});
+
+it("searches all titles by name and type, keeps filters across seasons and can clear an empty result", async () => {
+  vi.spyOn(Element.prototype, "clientHeight", "get").mockReturnValue(640);
+  vi.spyOn(Element.prototype, "clientWidth", "get").mockReturnValue(960);
+  const db = installMockDb({ features: [...M0_FEATURES, "video"] });
+  const lib = db.createLibrary("TV", "video", ["/media/tv"]);
+  signIn(db, MOCK_ACCOUNTS.user.username);
+  const series = "f".repeat(64);
+  const entry: components["schemas"]["VideoEntry"] = {
+    id: series, kind: "series", title: "Beyond the Sea", fileCount: 4, year: null,
+    seasonNumber: null, episodeNumber: null, overview: null, posterItemId: null, itemId: null,
+  };
+  const requests: URLSearchParams[] = [];
+  server.use(http.get(`/api/v1/libraries/${lib.id}/videos`, ({ request }) => {
+    const params = new URL(request.url).searchParams;
+    requests.push(params);
+    if (params.has("series")) {
+      if (params.has("q") || params.has("kind")) return new HttpResponse(null, { status: 400 });
+      return HttpResponse.json({ entries: [{ ...entry, kind: "season", id: "1", seasonNumber: 1 }], nextCursor: null });
+    }
+    const entries = params.get("q") === "Sea" && params.get("kind") !== "movie"
+      ? [entry]
+      : params.has("q") ? [] : [{ ...entry, kind: "movie", title: "First Page" }];
+    return HttpResponse.json({ entries, nextCursor: null });
+  }));
+  const user = userEvent.setup();
+  renderApp(`/library/${lib.id}`);
+  await screen.findByRole("button", { name: /First Page/ });
+  const kind = () => screen.getByRole("combobox", { name: "作品类型" });
+  await user.selectOptions(kind(), "series");
+  await user.type(screen.getByRole("searchbox", { name: "搜索片名" }), "Sea{Enter}");
+  await user.click(await screen.findByRole("button", { name: /Beyond the Sea/ }));
+  await screen.findByRole("button", { name: /第 1 季/ });
+  expect(requests.at(-1)?.has("q")).toBe(false);
+  await user.click(within(screen.getByRole("navigation", { name: "当前位置" })).getByRole("link", { name: "作品" }));
+  await screen.findByRole("button", { name: /Beyond the Sea/ });
+  expect(screen.getByRole("searchbox")).toHaveValue("Sea");
+  expect(kind()).toHaveValue("series");
+  await user.selectOptions(kind(), "movie");
+  await screen.findByText("没有符合条件的作品");
+  await user.click(screen.getByRole("button", { name: "清除筛选" }));
+  await screen.findByRole("button", { name: /First Page/ });
+  expect(screen.getByRole("searchbox")).toHaveValue("");
 });

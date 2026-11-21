@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
 use std::io;
@@ -6,7 +7,7 @@ use std::path::{Path, PathBuf};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
-const OFFICIAL_PACKAGES_REVISION: &str = "9cdfb5a2ecf4f725ae6024b588cf0af0f183d570";
+const CATALOG: &str = include_str!("catalog.json");
 
 fn collect(root: &Path, dir: &Path, names: &mut Vec<PathBuf>) -> io::Result<()> {
     for entry in fs::read_dir(dir)? {
@@ -33,7 +34,28 @@ fn main() -> Result<(), Box<dyn Error>> {
     let packages = out.join("skin-packages");
     fs::create_dir_all(&packages)?;
     let mut index = Vec::new();
-    for id in ["native", "ink", "gear"] {
+    println!("cargo:rerun-if-changed=catalog.json");
+    let catalog: Value = serde_json::from_str(CATALOG)?;
+    if catalog["schema"] != 1 {
+        return Err("unsupported catalogue format".into());
+    }
+    let mut skin_ids = HashSet::new();
+    let mut plugin_ids = HashSet::new();
+    for entry in catalog["plugins"]
+        .as_array()
+        .ok_or("missing catalogue entries")?
+    {
+        let id = entry["skinId"].as_str().ok_or("missing skin identifier")?;
+        if !(2..=63).contains(&id.len())
+            || !id
+                .bytes()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-' || c == b'.')
+            || id.starts_with(['.', '-'])
+            || id.contains("..")
+            || !skin_ids.insert(id)
+        {
+            return Err(format!("invalid or duplicate catalogue skin identifier: {id}").into());
+        }
         let dir = sources.join(format!("skin-{id}"));
         println!("cargo:rerun-if-changed={}", dir.display());
         let mut names = Vec::new();
@@ -66,13 +88,50 @@ fn main() -> Result<(), Box<dyn Error>> {
             .as_str()
             .ok_or("missing version")?;
         let filename = format!("skin-{id}-{version}.tar");
+        let plugin_id = plugin["plugin"]["id"].as_str().ok_or("missing plugin ID")?;
+        let digest = hex::encode(Sha256::digest(&bytes));
+        let releases = entry["releases"].as_array().ok_or("missing releases")?;
+        let mut matching = releases
+            .iter()
+            .filter(|release| release["version"] == version);
+        let release = matching
+            .next()
+            .ok_or("bundled release missing from catalogue")?;
+        if matching.next().is_some() || !release["yanked"].is_null() {
+            return Err(format!("duplicate or withdrawn bundled release: {id} {version}").into());
+        }
+        let url = release["url"].as_str().ok_or("missing download URL")?;
+        let revision = url
+            .strip_prefix("https://raw.githubusercontent.com/palveni-labs/plugins/")
+            .and_then(|path| path.strip_suffix(&format!("/packages/{filename}")))
+            .ok_or("unexpected catalogue package URL")?;
+        if revision.len() != 40 || !revision.bytes().all(|c| c.is_ascii_hexdigit()) {
+            return Err("package must point to an immutable Git revision".into());
+        }
+        if plugin["plugin"]["runtime"].as_str() != Some("none")
+            || plugin["provides"]["skin"].as_str() != Some("skin.json")
+            || manifest["id"] != id
+            || entry["id"] != plugin_id
+            || !plugin_ids.insert(plugin_id.to_owned())
+            || entry["name"] != manifest["name"]["en"]
+            || entry["description"] != manifest["description"]["en"]
+            || release["runtime"] != "none"
+            || release["permissions"] != json!({})
+            || release["api"].as_str() != plugin["compat"]["api"].as_str()
+            || release["size"] != bytes.len()
+            || release["sha256"] != digest
+        {
+            return Err(
+                format!("offline package does not match the reviewed catalogue: {id}").into(),
+            );
+        }
         fs::write(packages.join(&filename), &bytes)?;
         index.push(json!({
-            "id": id, "pluginId": plugin["plugin"]["id"].as_str().ok_or("missing ID")?,
+            "id": id, "pluginId": plugin_id,
             "name": manifest["name"], "description": manifest["description"], "version": version,
             "sizeBytes": bytes.len(), "previewUrl": format!("/api/v1/skins/registry/{id}/preview"),
-            "publishedAt": "2026-11-21T00:00:00Z", "sha256": hex::encode(Sha256::digest(&bytes)),
-            "downloadUrl": format!("https://raw.githubusercontent.com/palveni-labs/plugins/{OFFICIAL_PACKAGES_REVISION}/packages/{filename}"),
+            "publishedAt": release["publishedAt"].as_str().ok_or("missing publication date")?, "sha256": digest,
+            "downloadUrl": url,
             "filename": filename, "preview": preview.ok_or("missing official preview")?
         }));
     }

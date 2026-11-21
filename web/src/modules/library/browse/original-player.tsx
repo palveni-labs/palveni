@@ -10,7 +10,7 @@ import { spokenProgress } from "./spoken-progress";
 type Ticket = components["schemas"]["PlaybackInfo"];
 type MediaState = components["schemas"]["MediaState"];
 type Opened = { ticket: Ticket; state: MediaState };
-type Props = { id: string; title: string; video?: boolean };
+type Props = { id: string; title: string; video?: boolean; onProgressSaved?: () => void };
 
 function ticketFor(id: string, signal?: AbortSignal) {
   return request<Ticket>(`/items/${encodeURIComponent(id)}/playback`, {
@@ -23,6 +23,7 @@ function MediaSession({
   id,
   title,
   video,
+  onProgressSaved,
   opened,
   retry,
 }: Props & { opened: Opened; retry: () => void }) {
@@ -40,11 +41,14 @@ function MediaSession({
   const [save] = useState(() =>
     spokenProgress(
       opened.state,
-      (body) =>
-        request<MediaState>(`/me/items/${encodeURIComponent(id)}/progress`, {
+      async (body) => {
+        const updated = await request<MediaState>(`/me/items/${encodeURIComponent(id)}/progress`, {
           method: "PUT",
           body,
-        }),
+        });
+        onProgressSaved?.();
+        return updated;
+      },
       (cause) => setProgressError(cause),
     ),
   );
@@ -161,6 +165,7 @@ function OpenRecording({
   id,
   title,
   video,
+  onProgressSaved,
   retry,
 }: Props & { retry: () => void }) {
   const [opened, setOpened] = useState<Opened | null>(null);
@@ -187,13 +192,14 @@ function OpenRecording({
       id={id}
       title={title}
       video={video}
+      onProgressSaved={onProgressSaved}
       opened={opened}
       retry={retry}
     />
   );
 }
 
-export function OriginalPlayer({ id, title, video }: Props) {
+export function OriginalPlayer({ id, title, video, onProgressSaved }: Props) {
   const [attempt, setAttempt] = useState(0);
   return (
     <OpenRecording
@@ -201,6 +207,7 @@ export function OriginalPlayer({ id, title, video }: Props) {
       id={id}
       title={title}
       video={video}
+      onProgressSaved={onProgressSaved}
       retry={() => setAttempt((n) => n + 1)}
     />
   );

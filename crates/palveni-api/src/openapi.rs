@@ -157,6 +157,18 @@ fn parameters(cap: &Capability) -> Vec<Value> {
             };
             if cap.id == "browseVideos" {
                 params.push(parameter(
+                    "q",
+                    "query",
+                    false,
+                    json!({"type":"string","maxLength":128,"description":"Literal substring in a film or series title. Applies only to the works list."}),
+                ));
+                params.push(parameter(
+                    "kind",
+                    "query",
+                    false,
+                    json!({"type":"string","enum":["movie","series"],"description":"Restrict the works list to films or series."}),
+                ));
+                params.push(parameter(
                     "order",
                     "query",
                     false,

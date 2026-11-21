@@ -1,6 +1,6 @@
 import { delay, http, HttpResponse } from "msw";
 import type {
-  ApiErrorDetails, ApiErrorCode, CreateLibraryRequest, Credentials, LoginRequest, RuntimeSettings, User } from "@/api/types";
+  ApiErrorDetails, ApiErrorCode, CreateLibraryRequest, UpdateLibraryRequest, Credentials, LoginRequest, RuntimeSettings, User } from "@/api/types";
 import { ITEM_KIND_ICON, LIBRARY_KINDS } from "@/lib/kinds";
 import type { MockDb } from "./db";
 
@@ -188,6 +188,37 @@ export function createHandlers(db: MockDb, options: HandlerOptions = {}) {
       if ("response" in auth) return auth.response;
       const library = db.getLibrary(String(params.id));
       return library ? HttpResponse.json(library) : fail(404, "not_found", "Library not found");
+    }),
+
+    http.patch(`${BASE}/libraries/:id`, async ({ request, params }) => {
+      await wait();
+      const auth = authenticate(request, true);
+      if ("response" in auth) return auth.response;
+      const library = db.getLibrary(String(params.id));
+      if (!library) return fail(404, "not_found", "Library not found");
+      const body = await readJson<UpdateLibraryRequest>(request);
+      const additions = body?.addPaths ?? [];
+      if (!body || (!body.name && !additions.length) || !Array.isArray(additions))
+        return fail(400, "validation_failed", "Provide a name or folders to add");
+      const name = body.name === undefined ? library.name : body.name?.trim();
+      if (!name || [...name].length > 100) return fail(400, "validation_failed", "Invalid name", { field: "name" });
+      if (db.libraries.some((row) => row.id !== library.id && row.name.toLowerCase() === name.toLowerCase()))
+        return fail(409, "conflict", "Name already in use", { field: "name" });
+      const paths = [...library.paths];
+      for (const [index, raw] of additions.entries()) {
+        if (typeof raw !== "string" || !isAbsolute(raw)) return fail(400, "validation_failed", "Expected an absolute path", { field: "paths", index });
+        const folder = raw.trim();
+        if (/missing|nonexistent/i.test(folder)) return fail(400, "path_not_found", "Folder not found", { field: "paths", index });
+        if (paths.includes(folder)) continue;
+        if (paths.some((p) => p.startsWith(folder + "/") || folder.startsWith(p + "/")))
+          return fail(400, "validation_failed", "Library folders overlap", { field: "paths", index });
+        paths.push(folder);
+      }
+      library.name = name;
+      library.paths = paths;
+      library.updatedAt = db.iso();
+      db.emit("library.updated", library);
+      return HttpResponse.json(library);
     }),
 
     http.delete(`${BASE}/libraries/:id`, async ({ request, params }) => {

@@ -125,6 +125,85 @@ impl Libraries<'_> {
         })
     }
 
+    /// Append folders and optionally rename a library in a single catalog revision.
+    pub async fn update(
+        &self,
+        id: LibraryId,
+        name: Option<&str>,
+        add_paths: &[String],
+    ) -> Result<Library, DbError> {
+        let txn = self.db.main().begin().await?;
+        let rev = revision::next_revision(&txn).await?;
+        let row = libraries::Entity::find_by_id(id.to_string())
+            .filter(libraries::Column::DeletedAt.is_null())
+            .one(&txn)
+            .await?
+            .ok_or(DbError::NotFound("Library"))?;
+        let mut library = assemble(&txn, row).await?;
+        let next_name = name.unwrap_or(&library.name);
+        let key = name_key(next_name);
+        if next_name != library.name
+            && libraries::Entity::find()
+                .filter(libraries::Column::Id.ne(id.to_string()))
+                .filter(libraries::Column::NameKey.eq(&key))
+                .filter(libraries::Column::DeletedAt.is_null())
+                .one(&txn)
+                .await?
+                .is_some()
+        {
+            return Err(DbError::Conflict(format!(
+                "A library named \"{next_name}\" already exists"
+            )));
+        }
+        let now = clock::now();
+        let now_ms = clock::to_millis(now);
+        let initial_count = library.paths.len();
+        for path in add_paths {
+            if library.paths.contains(path) {
+                continue;
+            }
+            let dir = std::path::Path::new(path);
+            if library
+                .paths
+                .iter()
+                .map(std::path::Path::new)
+                .any(|other| other.starts_with(dir) || dir.starts_with(other))
+            {
+                return Err(DbError::Invalid(
+                    "Library folders may not contain one another",
+                ));
+            }
+            let index = i32::try_from(library.paths.len())
+                .map_err(|_| DbError::Invalid("Too many folders"))?;
+            library_paths::Entity::insert(library_paths::ActiveModel {
+                id: ActiveValue::Set(LibraryPathId::generate().to_string()),
+                library_id: ActiveValue::Set(id.to_string()),
+                path: ActiveValue::Set(path.clone()),
+                sort_order: ActiveValue::Set(index),
+                created_at: ActiveValue::Set(now_ms),
+            })
+            .exec_without_returning(&txn)
+            .await?;
+            library.paths.push(path.clone());
+        }
+        if next_name == library.name && initial_count == library.paths.len() {
+            txn.rollback().await?;
+            return Ok(library);
+        }
+        libraries::Entity::update_many()
+            .col_expr(libraries::Column::Name, Expr::val(next_name))
+            .col_expr(libraries::Column::NameKey, Expr::val(key))
+            .col_expr(libraries::Column::UpdatedAt, Expr::val(now_ms))
+            .col_expr(libraries::Column::Revision, Expr::val(rev))
+            .filter(libraries::Column::Id.eq(id.to_string()))
+            .exec(&txn)
+            .await?;
+        library.name = next_name.to_owned();
+        library.updated_at = now;
+        txn.commit().await?;
+        Ok(library)
+    }
+
     /// Tombstones the library and removes its index. Files on disk are
     /// never touched. Returns `false` if it did not exist.
     ///

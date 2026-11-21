@@ -34,6 +34,8 @@ Run `palveni doctor` to check FFmpeg, hardware acceleration and database connect
 
 Choose **Music** when adding a library, then scan its folders. Open the library and choose **Album artists** to browse albums and tracks. Compilation albums stay together under their album artist. Tracks without tags appear under an unknown artist or album and use their filenames as titles. Run a scan after upgrading to index music that is already in your library.
 
+Open an album to play its tracks. **Libraries** brings together your continue-playing list, history and favorites. Administrators can rename a library or add folders under **System → Libraries**. Existing items keep their identities and playback history.
+
 After the first scan, Palveni watches each library for file additions, edits, renames and deletions. It groups bursts of activity into one scan and updates open library views when the scan finishes. Libraries are also checked on startup and every 15 minutes, including network mounts that do not deliver filesystem notifications. Renaming a track gives it a new item ID. Favorites, playback progress and playlist entries stay associated with the old ID.
 
 Clients can play a scanned track in its original format through the native API. Send an authenticated `GET /api/v1/items/{id}/stream` to read the file or seek with an HTTP byte range. For a player that opens URLs, send an authenticated `POST /api/v1/items/{id}/playback` and resolve the returned `url` against the server address. The link is valid for 15 minutes and can be renewed for later seeks.
@@ -49,7 +51,7 @@ Signed-in clients can favorite and rate tracks and videos, browse recently playe
 
 ## Films, TV and spoken audio
 
-Add a **Video** library and scan its folders to browse a poster wall. Films and series with artwork appear first. Choose **By title** to see the whole collection in title order. A film in its own folder can use `movie.nfo` for its title and year and `poster.jpg` for artwork. Series open into seasons and episodes. The file view is also available. Scan an existing video library once after upgrading to pick up its artwork.
+Add a **Video** library and scan its folders to browse a poster wall. Search titles across the library or filter for films or series. Films and series with artwork appear first. Choose **By title** to see the whole collection in title order. A film in its own folder can use `movie.nfo` for its title and year and `poster.jpg` for artwork. Series open into seasons and episodes. The file view is also available. Scan an existing video library once after upgrading to pick up its artwork.
 
 Choose **Audiobooks** or **Podcasts** for a folder of spoken audio. The dashboard groups the files into books or shows. Each file is a chapter or episode, and each listener can return to the position they last played.
 
@@ -66,7 +68,7 @@ Open **Radio & subscriptions** to add a radio or live TV playlist (M3U or groupe
 
 ## Skins and plugins
 
-Install an official skin under **Apps → Appearance**, or upload a community skin as a tar archive. Palveni validates the archive before applying it. Find official packages and contribution guidelines in the [plugins repository](https://github.com/palveni-labs/plugins).
+Open **Apps → Plugin store** to search available and installed plugins. Install an official skin or upload a community skin as a tar archive, then select it in **Appearance**. Palveni validates the archive before applying it. Find official packages and contribution guidelines in the [plugins repository](https://github.com/palveni-labs/plugins).
 
 ## License
 

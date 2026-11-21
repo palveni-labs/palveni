@@ -40,6 +40,24 @@ describe("library management", () => {
     // The live scan alone can take most of the default 5 s.
   }, 15_000);
 
+  it("renames a library and extends its folders in place", async () => {
+    const db = installMockDb();
+    signIn(db, MOCK_ACCOUNTS.admin.username);
+    const user = userEvent.setup();
+    renderApp("/system/libraries");
+    const row = (await screen.findByText("/srv/books")).closest("[data-library-row]") as HTMLElement;
+    const id = db.libraries.find((entry) => entry.paths.includes("/srv/books"))!.id;
+    await user.click(within(row).getByRole("button", { name: "更多" }));
+    await user.click(await screen.findByRole("menuitem", { name: "编辑媒体库" }));
+    const form = within(await screen.findByRole("dialog", { name: "编辑媒体库" }));
+    await user.clear(form.getByLabelText("名称"));
+    await user.type(form.getByLabelText("名称"), "家里的书架");
+    await user.type(form.getByLabelText("追加文件夹"), "/srv/comics");
+    await user.click(form.getByRole("button", { name: "保存" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(db.getLibrary(id)).toMatchObject({ name: "家里的书架", paths: ["/srv/books", "/srv/comics"] });
+  });
+
   it("deletes a library after confirmation", async () => {
     const db = installMockDb();
     signIn(db, MOCK_ACCOUNTS.admin.username);

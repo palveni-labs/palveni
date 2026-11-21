@@ -18,6 +18,7 @@ pub mod actions {
     pub const LOGIN_SUCCEEDED: &str = "auth.login";
     pub const LOGIN_FAILED: &str = "auth.login_failed";
     pub const LOGOUT: &str = "auth.logout";
+    pub const LIBRARY_UPDATED: &str = "library.updated";
     pub const LIBRARY_CREATED: &str = "library.created";
     pub const LIBRARY_DELETED: &str = "library.deleted";
 }

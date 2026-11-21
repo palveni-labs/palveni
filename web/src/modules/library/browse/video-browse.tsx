@@ -210,7 +210,7 @@ function VideoDetails({
 }
 
 export function VideoBrowse({ libraryId }: { libraryId: string }) {
-  const { series, seriesName, season, order } = useSearch({
+  const { series, seriesName, season, order, q, kind } = useSearch({
     from: "/_app/library/$libraryId",
   });
   return (
@@ -221,6 +221,8 @@ export function VideoBrowse({ libraryId }: { libraryId: string }) {
       seriesName={seriesName}
       season={season}
       order={order}
+      q={q}
+      kind={kind}
     />
   );
 }
@@ -231,17 +233,24 @@ function VideoLibraryView({
   seriesName,
   season,
   order,
+  q,
+  kind,
 }: {
   libraryId: string;
   series?: string;
   seriesName?: string;
   season?: number;
   order?: "title";
+  q?: string;
+  kind?: "movie" | "series";
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate({ from: "/library/$libraryId" });
   const [selected, setSelected] = useState<VideoEntry | null>(null);
   const listOrder = series ? undefined : (order ?? "poster");
+  const titleQuery = series ? undefined : q;
+  const workKind = series ? undefined : kind;
+  const workSearch = { view: "works" as const, order, q, kind };
   const listing = useInfiniteQuery({
     queryKey: [
       ...queryKeys.items.libraryLists(libraryId),
@@ -249,10 +258,12 @@ function VideoLibraryView({
       series,
       season,
       listOrder,
+      titleQuery,
+      workKind,
     ],
     queryFn: ({ pageParam, signal }) =>
       request<VideoPage>(`/libraries/${libraryId}/videos`, {
-        query: { series, season, order: listOrder, cursor: pageParam },
+        query: { series, season, order: listOrder, q: titleQuery, kind: workKind, cursor: pageParam },
         signal,
       }),
     initialPageParam: null as string | null,
@@ -274,13 +285,12 @@ function VideoLibraryView({
   const open = (entry: VideoEntry) => {
     if (entry.kind === "series") {
       void navigate({
-        search: { view: "works", order, series: entry.id, seriesName: entry.title },
+        search: { ...workSearch, series: entry.id, seriesName: entry.title },
       });
     } else if (entry.kind === "season" && entry.seasonNumber != null) {
       void navigate({
         search: {
-          view: "works",
-          order,
+          ...workSearch,
           series,
           seriesName,
           season: entry.seasonNumber,
@@ -298,7 +308,7 @@ function VideoLibraryView({
           <Link
             to="/library/$libraryId"
             params={{ libraryId }}
-            search={{ view: "works", order }}
+            search={workSearch}
             onClick={() => setSelected(null)}
           >
             {t("video.works")}
@@ -307,7 +317,7 @@ function VideoLibraryView({
           <Link
             to="/library/$libraryId"
             params={{ libraryId }}
-            search={{ view: "works", order, series, seriesName }}
+            search={{ ...workSearch, series, seriesName }}
             onClick={() => setSelected(null)}
           >
             {seriesName ?? t("video.series")}
@@ -337,7 +347,7 @@ function VideoLibraryView({
               aria-label={t("video.sort")}
               value={listOrder}
               onChange={(event) => void navigate({
-                search: { view: "works", order: event.target.value === "title" ? "title" : undefined },
+                search: { ...workSearch, order: event.target.value === "title" ? "title" : undefined },
               })}
               className="rounded-control border border-line bg-surface px-2 py-1 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
             >
@@ -346,6 +356,49 @@ function VideoLibraryView({
             </select>
           )}
         >
+          {!series && (
+            <form
+              role="search"
+              aria-label={t("video.findTitle")}
+              className="mb-4 flex flex-wrap items-center gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const input = new FormData(event.currentTarget).get("q");
+                const text = typeof input === "string" ? input.trim() : "";
+                void navigate({ search: { ...workSearch, q: text || undefined } });
+              }}
+            >
+              <input
+                key={q ?? ""}
+                type="search"
+                name="q"
+                defaultValue={q ?? ""}
+                maxLength={128}
+                aria-label={t("video.findTitle")}
+                placeholder={t("video.findTitle")}
+                className="min-w-32 flex-1 rounded-control border border-line bg-surface px-3 py-1.5 text-sm text-fg placeholder:text-fg-muted focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+              />
+              <Button size="sm" type="submit" variant="outline">{t("video.search")}</Button>
+              <select
+                aria-label={t("video.workKind")}
+                value={kind ?? ""}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  void navigate({ search: { ...workSearch, kind: value === "movie" || value === "series" ? value : undefined } });
+                }}
+                className="rounded-control border border-line bg-surface px-2 py-1 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+              >
+                <option value="">{t("video.allKinds")}</option>
+                <option value="movie">{t("video.movie")}</option>
+                <option value="series">{t("video.series")}</option>
+              </select>
+              {(q || kind) && (
+                <Button size="sm" variant="ghost" type="button" onPress={() => void navigate({ search: { view: "works", order } })}>
+                  {t("video.clearFilters")}
+                </Button>
+              )}
+            </form>
+          )}
           {listing.isPending ? (
             <LoadingRows />
           ) : listing.isError && entries.length === 0 ? (
@@ -356,8 +409,8 @@ function VideoLibraryView({
           ) : entries.length === 0 ? (
             <EmptyState
               icon={Clapperboard}
-              title={t("video.empty")}
-              detail={t("video.scanHint")}
+              title={titleQuery || workKind ? t("video.noMatches") : t("video.empty")}
+              detail={titleQuery || workKind ? undefined : t("video.scanHint")}
             />
           ) : (
             <VideoWall

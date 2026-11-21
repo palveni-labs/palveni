@@ -26,6 +26,7 @@ export type SetupResponse = Schemas["SetupResponse"];
 export type LoginRequest = Schemas["LoginRequest"];
 export type LoginResponse = Schemas["LoginResponse"];
 export type LibraryList = Schemas["LibraryList"];
+export type UpdateLibraryRequest = Schemas["UpdateLibraryRequest"];
 export type CreateLibraryRequest = Schemas["CreateLibraryRequest"];
 export type ScanResponse = Schemas["ScanAccepted"];
 export type ItemPage = Schemas["ItemList"];

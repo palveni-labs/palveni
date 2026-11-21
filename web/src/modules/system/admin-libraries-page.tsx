@@ -1,6 +1,6 @@
 import { AlertDialog, Button, Dropdown, Label, Separator, Spinner, toast } from "@heroui/react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { Ellipsis, FolderOpen, FolderPlus, Library as LibraryIcon, ScanSearch, Trash2 } from "lucide-react";
+import { Ellipsis, FolderOpen, FolderPlus, Pencil, Library as LibraryIcon, ScanSearch, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
@@ -80,7 +80,9 @@ function ScanStatus({ library }: { library: Library }) {
   );
 }
 
-function LibraryRow({ library, index, onDelete }: { library: Library; index: number; onDelete: (library: Library) => void }) {
+type LibraryActions = { onDelete: (library: Library) => void; onEdit: (library: Library) => void };
+
+function LibraryRow({ library, index, onDelete, onEdit }: { library: Library; index: number } & LibraryActions) {
   const { t, i18n } = useTranslation();
   const variant = useSectionVariant();
   const itemCount = useItemCountLabel();
@@ -167,12 +169,17 @@ function LibraryRow({ library, index, onDelete }: { library: Library; index: num
                 aria-label={t("libraries.actionsFor", { name: library.name })}
                 onAction={(key) => {
                   if (key === "browse") void navigate({ to: "/library/$libraryId", params: { libraryId: library.id } });
+                  else if (key === "edit") onEdit(library);
                   else if (key === "delete") onDelete(library);
                 }}
               >
                 <Dropdown.Item id="browse" textValue={t("adminLibraries.browse")}>
                   <FolderOpen className="size-4 text-fg-muted" aria-hidden />
                   <Label>{t("adminLibraries.browse")}</Label>
+                </Dropdown.Item>
+                <Dropdown.Item id="edit" textValue={t("adminLibraries.edit")}>
+                  <Pencil className="size-4 text-fg-muted" aria-hidden />
+                  <Label>{t("adminLibraries.edit")}</Label>
                 </Dropdown.Item>
                 <Separator />
                 <Dropdown.Item id="delete" textValue={t("common.delete")} variant="danger">
@@ -188,7 +195,7 @@ function LibraryRow({ library, index, onDelete }: { library: Library; index: num
   );
 }
 
-function LibraryTable({ libraries, onDelete }: { libraries: Library[]; onDelete: (library: Library) => void }) {
+function LibraryTable({ libraries, onDelete, onEdit }: { libraries: Library[] } & LibraryActions) {
   const { t } = useTranslation();
   const variant = useSectionVariant();
   const edge = variant === "panel" ? "first:ps-(--pv-pad-panel) last:pe-(--pv-pad-panel)" : variant === "plain" ? "first:ps-3 last:pe-3" : "";
@@ -213,7 +220,7 @@ function LibraryTable({ libraries, onDelete }: { libraries: Library[]; onDelete:
       </thead>
       <tbody className={cn("block md:table-row-group", variant !== "plain" && "max-md:border-t max-md:border-line")}>
         {libraries.map((library, index) => (
-          <LibraryRow key={library.id} library={library} index={index} onDelete={onDelete} />
+          <LibraryRow key={library.id} library={library} index={index} onDelete={onDelete} onEdit={onEdit} />
         ))}
       </tbody>
     </table>
@@ -295,6 +302,7 @@ export function AdminLibrariesPage() {
   const query = useLibraries();
   // The library stays set after closing so the dialog keeps its text while it animates out.
   const [deleting, setDeleting] = useState<Library | null>(null);
+  const [editing, setEditing] = useState<Library | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const createOpen = search.create === true;
   const setCreateOpen = (open: boolean) => void navigate({ search: { create: open ? true : undefined }, replace: true });
@@ -338,6 +346,7 @@ export function AdminLibrariesPage() {
         <Section title={t("nav.libraries")} count={libraries.length}>
           <LibraryTable
             libraries={libraries}
+            onEdit={setEditing}
             onDelete={(library) => {
               setDeleting(library);
               setDeleteOpen(true);
@@ -347,6 +356,7 @@ export function AdminLibrariesPage() {
       )}
 
       <CreateLibraryDialog open={createOpen} onOpenChange={setCreateOpen} />
+      {editing && <CreateLibraryDialog key={editing.id} library={editing} open onOpenChange={(open) => { if (!open) setEditing(null); }} />}
       <DeleteLibraryDialog library={deleting} open={deleteOpen} onClose={() => setDeleteOpen(false)} />
     </PageFrame>
   );

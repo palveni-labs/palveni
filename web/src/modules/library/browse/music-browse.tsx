@@ -1,10 +1,13 @@
 import { Button } from "@heroui/react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
-import { ChevronRight, Disc3, Music2, UsersRound } from "lucide-react";
+import { ChevronRight, Disc3, Music2, Play, UsersRound } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "@/api/endpoints";
 import { queryKeys } from "@/api/query-keys";
+import { useFeature } from "@/modules/access";
+import { OriginalPlayer } from "./original-player";
 import { formatDuration } from "@/lib/format";
 import { Section } from "@/ui/section";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
@@ -12,6 +15,8 @@ import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 export function MusicBrowse({ libraryId }: { libraryId: string }) {
   const { t } = useTranslation();
   const { artist, album, artistName, albumName } = useSearch({ from: "/_app/library/$libraryId" });
+  const playbackEnabled = useFeature("personal");
+  const [playing, setPlaying] = useState<{id: string; title: string} | null>(null);
   const listing = useInfiniteQuery({
     queryKey: queryKeys.items.music(libraryId, artist, album),
     queryFn: ({ pageParam, signal }) => api.music.browse(libraryId, artist, album, pageParam, signal),
@@ -34,6 +39,7 @@ export function MusicBrowse({ libraryId }: { libraryId: string }) {
           <ChevronRight className="size-4" aria-hidden /><span aria-current="page">{albumTitle}</span>
         </> : <span aria-current="page">{artistTitle}</span>}
       </nav>}
+      {playing && <OriginalPlayer key={playing.id} id={playing.id} title={playing.title} />}
       <Section title={group} bare>
         {listing.isPending ? <LoadingRows /> : listing.isError && entries.length === 0 ? (
           <ErrorState error={listing.error} onRetry={() => void listing.refetch()} />
@@ -49,6 +55,10 @@ export function MusicBrowse({ libraryId }: { libraryId: string }) {
                     <div className="flex flex-wrap gap-x-2 text-sm text-fg-muted"><span>{entry.artist ?? t("music.unknownArtist")}</span>{entry.discNumber != null && <span>{t("music.disc", { number: entry.discNumber })}</span>}</div>
                   </div>
                   {entry.durationMs != null && <span className="text-sm tabular-nums text-fg-muted">{formatDuration(entry.durationMs)}</span>}
+                  {playbackEnabled && <Button size="sm" isIconOnly variant="ghost" aria-label={t("spoken.play", { title: entry.title })}
+                    onPress={() => setPlaying({ id: entry.id, title: entry.title })}>
+                    <Play aria-hidden className="size-4" />
+                  </Button>}
                 </div> : (
                   <Link to="/library/$libraryId" params={{ libraryId }} search={entry.kind === "artist"
                     ? { view: "music", artist: entry.id, artistName: entry.name ?? undefined }

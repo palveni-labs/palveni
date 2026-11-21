@@ -1,7 +1,6 @@
 import { LayoutGrid, Palette, Puzzle } from "lucide-react";
 import type { ModuleDefinition } from "../types";
 
-/** 应用: plugins (M0 API) and theme packs (client side). */
 const apps: ModuleDefinition = {
   id: "apps",
   order: 60,
@@ -10,8 +9,8 @@ const apps: ModuleDefinition = {
   home: "/apps",
   group: "manage",
   nav: [
+    { to: "/apps/plugins", titleKey: "plugins.storeTitle", icon: Puzzle, adminOnly: true, feature: "plugins" },
     { to: "/apps/themes", titleKey: "nav.appearance", icon: Palette },
-    { to: "/apps/plugins", titleKey: "nav.plugins", icon: Puzzle, adminOnly: true, feature: "plugins" },
   ],
   commands: [
     {
