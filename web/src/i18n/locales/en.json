@@ -3,6 +3,14 @@
     "name": "Palveni",
     "edition": "Server"
   },
+  "linkDevices": {
+    "title": "Paired Link devices",
+    "empty": "No paired devices",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "revoke": "Revoke pairing",
+    "confirm": "Disconnect {{name}} and revoke its sessions?"
+  },
   "languages": {
     "zh-CN": "简体中文",
     "en": "English"

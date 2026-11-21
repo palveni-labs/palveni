@@ -8,7 +8,9 @@
 //! into the client apps.
 
 mod identity;
+#[cfg(feature = "quic")]
+pub mod quic;
 mod transport;
 
 pub use identity::{IdentityError, NodeId, NodeIdentity, SIGNATURE_LENGTH};
-pub use transport::{AllowList, PeerPolicy, Transport};
+pub use transport::{AllowList, PairedPeers, PeerPolicy, Transport};

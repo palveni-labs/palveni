@@ -26,6 +26,10 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub port: Option<u16>,
 
+    /// Enable direct Link connections on this UDP address [env: PALVENI_LINK_BIND]
+    #[arg(long, global = true, value_name = "IP:PORT")]
+    pub link_bind: Option<std::net::SocketAddr>,
+
     /// Log filter, e.g. info or info,palveni_db=debug [env: PALVENI_LOG_LEVEL]
     #[arg(long, global = true, value_name = "FILTER")]
     pub log_level: Option<String>,
@@ -54,6 +58,7 @@ impl Cli {
             data_dir: self.data_dir.clone(),
             listen: self.listen.clone(),
             port: self.port,
+            link_bind: self.link_bind,
             log_level: self.log_level.clone(),
             database_url: self.database_url.clone(),
             ..ConfigLayer::default()

@@ -3,6 +3,14 @@
     "name": "Palveni",
     "edition": "Server"
   },
+  "linkDevices": {
+    "title": "Link 配对设备",
+    "empty": "还没有配对设备",
+    "connected": "已连接",
+    "disconnected": "未连接",
+    "revoke": "撤销配对",
+    "confirm": "断开「{{name}}」并撤销这台设备的登录？"
+  },
   "languages": {
     "zh-CN": "简体中文",
     "en": "English"

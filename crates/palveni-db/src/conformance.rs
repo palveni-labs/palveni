@@ -425,7 +425,71 @@ async fn conformance_sessions_and_devices() {
     );
 
     let other = sessions.create(user.id, "Laptop", None).await.unwrap();
+    let key = "ab".repeat(32);
+    sessions
+        .pair_device(user.id, other.device_id, other.session_id, &key)
+        .await
+        .unwrap();
+    sessions
+        .pair_device(user.id, other.device_id, other.session_id, &key)
+        .await
+        .unwrap();
+    let paired = sessions.paired_devices(Some(user.id)).await.unwrap();
+    assert_eq!(paired.len(), 1);
+    assert_eq!(paired[0].id, other.device_id);
+    let elsewhere = h.db.users().create("other", "h", Role::User).await.unwrap();
+    assert!(
+        sessions
+            .paired_devices(Some(elsewhere.id))
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    let next = sessions.create(elsewhere.id, "Tablet", None).await.unwrap();
+    assert!(matches!(
+        sessions
+            .pair_device(elsewhere.id, next.device_id, next.session_id, &key)
+            .await,
+        Err(DbError::Conflict(_))
+    ));
+    let relogin = sessions.create(user.id, "Laptop", None).await.unwrap();
+    assert_eq!(
+        sessions
+            .pair_device(user.id, relogin.device_id, relogin.session_id, &key)
+            .await
+            .unwrap(),
+        other.device_id
+    );
+    assert_eq!(
+        sessions
+            .authenticate(&relogin.token)
+            .await
+            .unwrap()
+            .unwrap()
+            .device_id,
+        Some(other.device_id)
+    );
     sessions.revoke_device(other.device_id).await.unwrap();
+    assert!(
+        sessions
+            .authenticate(&relogin.token)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(sessions.paired_devices(None).await.unwrap().is_empty());
+    assert!(matches!(
+        sessions
+            .pair_device(user.id, other.device_id, other.session_id, &key)
+            .await,
+        Err(DbError::Conflict(_))
+    ));
+    assert!(matches!(
+        sessions
+            .pair_device(elsewhere.id, next.device_id, next.session_id, &key)
+            .await,
+        Err(DbError::Conflict(_))
+    ));
     assert!(sessions.authenticate(&other.token).await.unwrap().is_none());
 
     let past = clock::now() - chrono::Duration::hours(1);

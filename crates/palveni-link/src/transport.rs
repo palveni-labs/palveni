@@ -10,6 +10,13 @@ pub trait PeerPolicy: Send + Sync {
     fn is_allowed(&self, peer: &NodeId) -> bool;
 }
 
+/// Publishes the durable pairing policy to a running listener.
+pub trait PairedPeers: Send + Sync {
+    fn allow_incoming(&self, node: NodeId);
+    fn disconnect(&self, node: NodeId);
+    fn connected(&self, node: NodeId) -> bool;
+}
+
 /// A peer-to-peer transport.
 pub trait Transport: Send + Sync {
     type Connection: Send;

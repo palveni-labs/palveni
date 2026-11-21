@@ -8,13 +8,21 @@ publish.workspace = true
 license.workspace = true
 
 # This crate can be compiled independently by client applications.
+[features]
+default = []
+quic = ["dep:iroh"]
+relay-tests = ["quic", "dep:iroh-relay"]
+
 [dependencies]
+iroh-relay = { version = "1", default-features = false, features = ["server", "tls-ring"], optional = true }
+iroh = { version = "1", default-features = false, features = ["tls-ring"], optional = true }
 ed25519-dalek.workspace = true
 getrandom.workspace = true
 hex.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+tokio = { workspace = true, features = ["time", "macros", "rt-multi-thread"] }
 tempfile.workspace = true
 
 [lints]

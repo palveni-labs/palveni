@@ -454,7 +454,10 @@ fn operation(endpoint: &Endpoint) -> Value {
     if cap.permission != Permission::Public {
         op["security"] = json!([{"bearerAuth":[]}]);
     }
-    if cap.id == "getOpdsAccess" {
+    if matches!(
+        cap.id,
+        "createLinkChallenge" | "getOpdsAccess" | "listLinkDevices"
+    ) {
         op["responses"]["200"]["headers"]["Cache-Control"] =
             json!({"schema":{"type":"string","const":"private, no-store"}});
     }

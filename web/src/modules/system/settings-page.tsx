@@ -13,6 +13,7 @@ import { localized } from "@/skins/schema";
 import { useSkin, type ModeSetting } from "@/skins/store";
 import { UserAvatar } from "@/shell/user-menu";
 import { PageFrame } from "@/ui/frame";
+import { LinkDevices } from "./link-devices";
 import { OpdsReaderAccess } from "./opds-reader-access";
 import { MusicClientAccess } from "./music-client-access";
 import { PageHeader } from "@/ui/page";
@@ -127,6 +128,7 @@ function Account() {
         </SettingRow>
         <MusicClientAccess key={user.id} user={user} />
         <OpdsReaderAccess key={`opds-${user.id}`} />
+        <LinkDevices key={`link-${user.id}`} userId={user.id} />
       </SectionRows>
     </Section>
   );

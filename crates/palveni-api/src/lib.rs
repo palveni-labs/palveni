@@ -6,7 +6,9 @@ mod error;
 mod json;
 mod login_limit;
 mod openapi;
+mod pairings;
 pub use login_limit::LoginLimit;
+pub use pairings::LinkPairings;
 mod routes;
 mod state;
 
@@ -29,6 +31,9 @@ const REQUEST_ID_HEADER: &str = "x-request-id";
 pub fn router(state: AppState) -> Router {
     let mut v1 = Router::new();
     for endpoint in endpoints::endpoints() {
+        if endpoint.capability.module == "link" && !state.link.enabled() {
+            continue;
+        }
         let path = endpoint
             .capability
             .path

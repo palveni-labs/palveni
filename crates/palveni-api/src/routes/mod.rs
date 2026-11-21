@@ -6,6 +6,7 @@ pub mod events;
 pub mod items;
 pub mod jobs;
 pub mod libraries;
+pub mod link;
 pub mod music;
 pub mod opds;
 pub mod personal;

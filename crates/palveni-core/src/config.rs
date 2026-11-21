@@ -11,6 +11,7 @@
 //! | `data_dir`                  | `PALVENI_DATA_DIR`                   |
 //! | `listen`                    | `PALVENI_LISTEN`                     |
 //! | `port`                      | `PALVENI_PORT`                       |
+//! | `link_bind`                 | `PALVENI_LINK_BIND`                  |
 //! | `ffmpeg_path`               | `PALVENI_FFMPEG_PATH`                |
 //! | `log_level`                 | `PALVENI_LOG_LEVEL`                  |
 //! | `perf_tier`                 | `PALVENI_PERF_TIER`                  |
@@ -58,6 +59,8 @@ pub struct Config {
     pub data_dir: PathBuf,
     pub listen: IpAddr,
     pub port: u16,
+    /// Direct UDP listen address. Link stays disabled when unset.
+    pub link_bind: Option<SocketAddr>,
     /// Explicit ffmpeg binary (or directory containing ffmpeg and ffprobe).
     pub ffmpeg_path: Option<PathBuf>,
     /// `tracing` filter directive, e.g. `info` or `info,palveni_db=debug`.
@@ -193,6 +196,7 @@ impl Config {
             data_dir,
             listen,
             port: layer.port.unwrap_or(DEFAULT_PORT),
+            link_bind: layer.link_bind,
             ffmpeg_path: layer.ffmpeg_path,
             log_level,
             perf_tier,
@@ -222,6 +226,7 @@ pub struct ConfigLayer {
     pub data_dir: Option<PathBuf>,
     pub listen: Option<String>,
     pub port: Option<u16>,
+    pub link_bind: Option<SocketAddr>,
     pub ffmpeg_path: Option<PathBuf>,
     pub log_level: Option<String>,
     pub perf_tier: Option<String>,
@@ -279,6 +284,14 @@ impl ConfigLayer {
             data_dir: get("PALVENI_DATA_DIR").map(PathBuf::from),
             listen: get("PALVENI_LISTEN"),
             port: parse_u16("PALVENI_PORT")?,
+            link_bind: get("PALVENI_LINK_BIND")
+                .map(|v| {
+                    v.trim().parse().map_err(|_| ConfigError::Invalid {
+                        key: "PALVENI_LINK_BIND",
+                        message: "expected an IP address with UDP port".to_owned(),
+                    })
+                })
+                .transpose()?,
             ffmpeg_path: get("PALVENI_FFMPEG_PATH").map(PathBuf::from),
             log_level: get("PALVENI_LOG_LEVEL"),
             perf_tier: get("PALVENI_PERF_TIER"),
@@ -296,6 +309,7 @@ impl ConfigLayer {
             data_dir: self.data_dir.or(lower.data_dir),
             listen: self.listen.or(lower.listen),
             port: self.port.or(lower.port),
+            link_bind: self.link_bind.or(lower.link_bind),
             ffmpeg_path: self.ffmpeg_path.or(lower.ffmpeg_path),
             log_level: self.log_level.or(lower.log_level),
             perf_tier: self.perf_tier.or(lower.perf_tier),

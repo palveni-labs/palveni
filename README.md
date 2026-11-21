@@ -32,6 +32,10 @@ cargo run --locked -p palveni-server --features embed-web -- serve
 
 Run `palveni doctor` to check FFmpeg, hardware acceleration and database connectivity. The running server publishes its OpenAPI specification at `/api/v1/openapi.json`. Use `palveni openapi` to export it offline.
 
+## Pair Link devices
+
+To accept direct Link connections, build with the `link` feature and start the server with `--link-bind <IP:UDP_PORT>` on a reachable interface. A paired client remembers the server’s public key and can reconnect after a restart. Under **System → Settings → Account → Paired Link devices**, you can see which devices are connected and revoke a device to close its connections and prevent it from reconnecting.
+
 ## Browse a music library
 
 Choose **Music** when adding a library, then scan its folders. Open the library and choose **Album artists** to browse albums and tracks. Compilation albums stay together under their album artist. Tracks without tags appear under an unknown artist or album and use their filenames as titles. Run a scan after upgrading to index music that is already in your library.

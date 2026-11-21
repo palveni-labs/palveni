@@ -14,6 +14,7 @@ path = "src/main.rs"
 [features]
 default = ["sqlite", "postgres", "mysql"]
 sqlite = ["palveni-db/sqlite"]
+link = ["palveni-api/link", "palveni-link/quic"]
 postgres = ["palveni-db/postgres"]
 mysql = ["palveni-db/mysql"]
 # Serve web/dist from the binary. Off by default so the backend builds

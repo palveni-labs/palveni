@@ -3,6 +3,7 @@
 mod cli;
 mod doctor;
 mod library_monitor;
+mod link;
 mod logging;
 mod loudness_job;
 mod scan_job;

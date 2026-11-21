@@ -6,7 +6,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 
 pub const SIGNATURE_LENGTH: usize = 64;
 const KEY_LENGTH: usize = 32;
@@ -27,6 +27,8 @@ pub enum IdentityError {
     Malformed(PathBuf),
     #[error("`{0}` is not a valid node ID")]
     InvalidNodeId(String),
+    #[error("the paired server at {0} has a different node ID")]
+    PinMismatch(PathBuf),
 }
 
 /// Public identity of a node: its Ed25519 verifying key.
@@ -43,6 +45,58 @@ impl NodeId {
             .map_err(|_| IdentityError::InvalidNodeId(hex::encode(bytes)))
     }
 
+    /// Remembers the authenticated server ID without replacing an earlier pairing.
+    pub fn pin(&self, path: &Path) -> Result<(), IdentityError> {
+        let matches = |stored| {
+            if stored == *self {
+                Ok(())
+            } else {
+                Err(IdentityError::PinMismatch(path.to_owned()))
+            }
+        };
+        match Self::load_pin(path) {
+            Ok(stored) => return matches(stored),
+            Err(IdentityError::Io { source, .. })
+                if source.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
+        }
+
+        let io_err = |source| IdentityError::Io {
+            path: path.to_owned(),
+            source,
+        };
+        if let Some(dir) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            fs::create_dir_all(dir).map_err(io_err)?;
+        }
+        let mut nonce = [0u8; 16];
+        getrandom::fill(&mut nonce).map_err(|e| IdentityError::Random(e.to_string()))?;
+        let temporary = path.with_extension(format!("{}.pin-tmp", hex::encode(nonce)));
+        let mut file = fs::File::create_new(&temporary).map_err(io_err)?;
+        let write = writeln!(file, "{self}").and_then(|()| file.sync_all());
+        drop(file);
+        // Publish a fully written pin only if another login has not already pinned a server.
+        let publish = write.and_then(|()| fs::hard_link(&temporary, path));
+        let _ = fs::remove_file(temporary);
+        match publish {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                matches(Self::load_pin(path)?)
+            }
+            Err(error) => Err(io_err(error)),
+        }
+    }
+
+    pub fn load_pin(path: &Path) -> Result<Self, IdentityError> {
+        let value = fs::read_to_string(path).map_err(|source| IdentityError::Io {
+            path: path.to_owned(),
+            source,
+        })?;
+        value
+            .trim()
+            .parse()
+            .map_err(|_| IdentityError::Malformed(path.to_owned()))
+    }
+
     pub fn as_bytes(&self) -> &[u8; KEY_LENGTH] {
         &self.0
     }
@@ -55,7 +109,7 @@ impl NodeId {
         let Ok(signature) = Signature::try_from(&signature[..]) else {
             return false;
         };
-        Verifier::verify(&key, message, &signature).is_ok()
+        key.verify_strict(message, &signature).is_ok()
     }
 }
 
@@ -101,6 +155,11 @@ impl NodeIdentity {
         NodeIdentity {
             signing: SigningKey::from_bytes(secret),
         }
+    }
+
+    #[cfg(feature = "quic")]
+    pub(crate) fn iroh_secret(&self) -> iroh::SecretKey {
+        iroh::SecretKey::from_bytes(self.signing.as_bytes())
     }
 
     pub fn node_id(&self) -> NodeId {
@@ -235,6 +294,21 @@ mod tests {
         assert_eq!(text.parse::<NodeId>().unwrap(), id);
         assert!("zz".parse::<NodeId>().is_err());
         assert!("00".repeat(31).parse::<NodeId>().is_err());
+    }
+
+    #[test]
+    fn remembered_server_survives_restart_and_cannot_be_silently_replaced() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("paired").join("server");
+        let server = NodeIdentity::generate().unwrap().node_id();
+        server.pin(&file).unwrap();
+        server.pin(&file).unwrap();
+        let other = NodeIdentity::generate().unwrap().node_id();
+        assert!(matches!(
+            other.pin(&file),
+            Err(IdentityError::PinMismatch(_))
+        ));
+        assert_eq!(NodeId::load_pin(&file).unwrap(), server);
     }
 
     #[test]

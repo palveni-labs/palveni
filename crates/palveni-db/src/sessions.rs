@@ -7,12 +7,15 @@
 use chrono::{DateTime, Utc};
 use palveni_core::{DeviceId, SessionId, User, UserId, clock};
 use sea_orm::sea_query::Expr;
-use sea_orm::{ActiveValue, ColumnTrait, EntityTrait, QueryFilter, TransactionTrait};
+use sea_orm::{
+    ActiveValue, ColumnTrait, Condition, EntityTrait, JoinType, QueryFilter, QueryOrder,
+    QuerySelect, RelationDef, TransactionTrait,
+};
 
 use crate::Db;
 use crate::convert::{now_ms, parse_id, parse_opt_id, sha256_hex, truncate_chars, ts};
 use crate::entities::{devices, sessions, users};
-use crate::error::DbError;
+use crate::error::{DbError, is_unique_violation};
 use crate::users::to_user;
 
 /// Prefix that makes leaked tokens recognisable to secret scanners.
@@ -22,6 +25,13 @@ const DEVICE_NAME_MAX_CHARS: usize = 128;
 
 pub struct Sessions<'a> {
     pub(crate) db: &'a Db,
+}
+
+/// One active Link pairing on an enabled account.
+pub struct PairedDevice {
+    pub id: DeviceId,
+    pub name: String,
+    pub public_key: String,
 }
 
 /// Result of a successful login. `token` is shown to the client once.
@@ -177,6 +187,138 @@ impl Sessions<'_> {
             .exec(self.db.main())
             .await?;
         Ok(())
+    }
+
+    pub async fn paired_devices(
+        &self,
+        owner: Option<UserId>,
+    ) -> Result<Vec<PairedDevice>, DbError> {
+        let user: RelationDef = devices::Entity::belongs_to(users::Entity)
+            .from(devices::Column::UserId)
+            .to(users::Column::Id)
+            .into();
+        let mut query = devices::Entity::find()
+            .join(JoinType::InnerJoin, user)
+            .filter(devices::Column::PublicKey.is_not_null())
+            .filter(devices::Column::RevokedAt.is_null())
+            .filter(users::Column::DisabledAt.is_null());
+        if let Some(id) = owner {
+            query = query.filter(devices::Column::UserId.eq(id.to_string()));
+        }
+        query
+            .select_only()
+            .columns([
+                devices::Column::Id,
+                devices::Column::Name,
+                devices::Column::PublicKey,
+            ])
+            .order_by_asc(devices::Column::Id)
+            .into_tuple::<(String, String, String)>()
+            .all(self.db.main())
+            .await?
+            .into_iter()
+            .map(|(id, name, public_key)| {
+                Ok(PairedDevice {
+                    id: parse_id(&id, "device id")?,
+                    name,
+                    public_key,
+                })
+            })
+            .collect()
+    }
+
+    pub async fn pair_device(
+        &self,
+        owner: UserId,
+        device: DeviceId,
+        session: SessionId,
+        key: &str,
+    ) -> Result<DeviceId, DbError> {
+        let conflict = || DbError::Conflict("Device or key already assigned or revoked".into());
+        let txn = self.db.main().begin().await?;
+        let original = devices::Entity::find_by_id(device.to_string())
+            .filter(devices::Column::UserId.eq(owner.to_string()))
+            .filter(devices::Column::RevokedAt.is_null())
+            .one(&txn)
+            .await?
+            .ok_or_else(conflict)?;
+        if original
+            .public_key
+            .as_deref()
+            .is_some_and(|value| value != key)
+        {
+            return Err(conflict());
+        }
+        let existing = devices::Entity::find()
+            .filter(devices::Column::PublicKey.eq(key))
+            .one(&txn)
+            .await?;
+        let stable_id = match existing {
+            Some(row) if row.revoked_at.is_none() && row.user_id == original.user_id => {
+                parse_id(&row.id, "paired device id")?
+            }
+            Some(_) => return Err(conflict()),
+            None => device,
+        };
+        // This update locks the same device row as revoke_device before either touches sessions.
+        let registered = devices::Entity::update_many()
+            .col_expr(devices::Column::PublicKey, Expr::val(key.to_owned()))
+            .col_expr(devices::Column::LastSeenAt, Expr::val(now_ms()))
+            .filter(devices::Column::Id.eq(stable_id.to_string()))
+            .filter(devices::Column::RevokedAt.is_null())
+            .filter(
+                Condition::any()
+                    .add(devices::Column::PublicKey.is_null())
+                    .add(devices::Column::PublicKey.eq(key)),
+            )
+            .exec(&txn)
+            .await
+            .map_err(|err| {
+                if is_unique_violation(&err) {
+                    conflict()
+                } else {
+                    err.into()
+                }
+            })?;
+        if registered.rows_affected != 1 {
+            return Err(conflict());
+        }
+        // A normal login starts with a fresh device row. Proof of the existing key
+        // attaches that login to the durable installation so revocation reaches it.
+        let attached = sessions::Entity::update_many()
+            .col_expr(sessions::Column::DeviceId, Expr::val(stable_id.to_string()))
+            .filter(sessions::Column::Id.eq(session.to_string()))
+            .filter(sessions::Column::UserId.eq(owner.to_string()))
+            .filter(sessions::Column::DeviceId.eq(device.to_string()))
+            .filter(sessions::Column::RevokedAt.is_null())
+            .filter(
+                Condition::any()
+                    .add(sessions::Column::ExpiresAt.is_null())
+                    .add(sessions::Column::ExpiresAt.gt(now_ms())),
+            )
+            .exec(&txn)
+            .await?;
+        if attached.rows_affected != 1 {
+            return Err(conflict());
+        }
+        txn.commit().await?;
+        Ok(stable_id)
+    }
+
+    pub async fn paired_device_key(
+        &self,
+        owner: UserId,
+        device: DeviceId,
+    ) -> Result<Option<String>, DbError> {
+        Ok(devices::Entity::find_by_id(device.to_string())
+            .filter(devices::Column::UserId.eq(owner.to_string()))
+            .filter(devices::Column::RevokedAt.is_null())
+            .filter(devices::Column::PublicKey.is_not_null())
+            .select_only()
+            .column(devices::Column::PublicKey)
+            .into_tuple::<String>()
+            .one(self.db.main())
+            .await?)
     }
 
     /// Revokes a device and every session issued on it.

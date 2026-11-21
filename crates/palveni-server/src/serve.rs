@@ -68,6 +68,8 @@ pub async fn run(cli: &Cli) -> anyhow::Result<()> {
     tracing::info!(server_id = %server_id, node_id = %identity.node_id(), "server identity");
 
     let shutdown = CancellationToken::new();
+    let (link, link_listener) =
+        crate::link::start(config.link_bind, &identity, &db, &shutdown).await?;
     let bus = db.event_bus(EVENT_BUS_CAPACITY).await?;
 
     let overrides: RuntimeSettings = db
@@ -154,6 +156,7 @@ pub async fn run(cli: &Cli) -> anyhow::Result<()> {
         )),
         db: db.clone(),
         identity: Arc::new(identity),
+        link,
         login_limit: Arc::new(palveni_api::LoginLimit::new(tier.job_concurrency())),
         subsonic_limit: Arc::new(palveni_api::LoginLimit::for_music_clients()),
         bus,
@@ -203,6 +206,11 @@ pub async fn run(cli: &Cli) -> anyhow::Result<()> {
     }
 
     shutdown.cancel();
+    if let Some(listener) = link_listener
+        && let Err(err) = listener.await
+    {
+        tracing::warn!(error=%err, "Link listener stopped unexpectedly");
+    }
     if let Err(e) = monitor.await {
         tracing::warn!(error=%e, "library monitor stopped unexpectedly");
     }
