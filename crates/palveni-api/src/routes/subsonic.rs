@@ -332,7 +332,11 @@ pub async fn handle(
         Ok(_) => return fail(Failure(30, "Server does not support this protocol version")),
         Err(_) => return fail(MISSING),
     }
-    let attempt = match state.subsonic_limit.begin(peer.ip()) {
+    let attempt = match state
+        .subsonic_limit
+        .begin(peer.ip(), p.value("u").unwrap_or_default())
+        .await
+    {
         Ok(a) => a,
         Err(err) => return err.into_response(),
     };

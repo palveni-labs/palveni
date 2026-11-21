@@ -92,7 +92,7 @@ pub async fn login(
         password,
         device_name,
     } = request;
-    let attempt = state.login_limit.begin(peer.ip())?;
+    let attempt = state.login_limit.begin(peer.ip(), &username).await?;
     let db = state.db.clone();
     let login_name = username.clone();
     let user = tokio::spawn(async move {
