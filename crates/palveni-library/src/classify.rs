@@ -8,8 +8,8 @@ const VIDEO_EXTENSIONS: &[&str] = &[
 ];
 
 const AUDIO_EXTENSIONS: &[&str] = &[
-    "aac", "aif", "aiff", "ape", "dff", "dsf", "flac", "m4a", "mka", "mp3", "mpc", "oga", "ogg",
-    "opus", "tta", "wav", "wma", "wv",
+    "aac", "aif", "aiff", "ape", "dff", "dsf", "dts", "flac", "m4a", "mka", "mp3", "mpc", "oga",
+    "ogg", "opus", "tta", "wav", "wma", "wv",
 ];
 
 // Photo libraries index still images.
@@ -48,6 +48,7 @@ pub(crate) fn audio_content_type(name: &str) -> &'static str {
     match extension_of(name).as_deref() {
         Some("aac") => "audio/aac",
         Some("aif" | "aiff") => "audio/aiff",
+        Some("dts") => "audio/vnd.dts",
         Some("flac") => "audio/flac",
         Some("m4a") => "audio/mp4",
         Some("mka") => "audio/x-matroska",
@@ -134,6 +135,11 @@ mod tests {
             Some(ItemKind::Comic)
         );
         // Right file, wrong library.
+        assert_eq!(
+            classify(LibraryKind::Music, "Album.DTS"),
+            Some(ItemKind::Track)
+        );
+        assert_eq!(audio_content_type("Album.DTS"), "audio/vnd.dts");
         assert_eq!(classify(LibraryKind::Music, "Movie.mkv"), None);
         assert_eq!(classify(LibraryKind::Video, "cover.jpg"), None);
         // Sidecars and junk.

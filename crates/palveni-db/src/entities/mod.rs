@@ -29,4 +29,7 @@ pub mod users;
 // Ops store: high-churn operational data, never joined with the catalog.
 pub mod audit_log;
 pub mod jobs;
+pub mod playlist_entries;
+pub mod playlists;
 pub mod plugin_kv;
+pub mod user_item_state;

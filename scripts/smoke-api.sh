@@ -255,6 +255,60 @@ check "music cursor belongs to its original group" "$STATUS $(field .error.detai
 req GET "/libraries/$LIB/music?album=$ALBUM"
 check "albums require their artist" "$STATUS $(field .error.details.field)" "400 artist"
 
+echo "Personal media and playlists"
+req GET "/me/items/$TRACK"
+check "fresh account has no personal state" "$STATUS $(field '[.favorite,.stars,.positionMs,.playCount,.playbackVersion] | join("|")')" "200 false|0|0|0|0"
+req PUT "/me/items/$TRACK/favorite" '{"favorite":true}'
+check "a track can be favorited" "$STATUS $(field .favorite)" "200 true"
+req PUT "/me/items/$TRACK/rating" '{"stars":5}'
+check "rating is saved without removing the favorite" "$STATUS $(field '[.stars,.favorite] | join("|")')" "200 5|true"
+req PUT "/me/items/$TRACK/rating" '{"stars":6}'
+check "six stars is rejected" "$STATUS" "400"
+req GET "/me/items?view=favorites"
+check "favorites include the selected track and its tagged title" "$STATUS $(field '.items[0].itemId') $(field '.items[0].title')" "200 $TRACK First Light"
+req PUT "/me/items/$TRACK/progress" '{"expectedVersion":0,"positionMs":20,"completed":false}'
+VERSION=$(field .playbackVersion)
+check "playback saves the unfinished position" "$STATUS $(field .positionMs)" "200 20"
+req PUT "/me/items/$TRACK/progress" '{"expectedVersion":0,"positionMs":8,"completed":false}'
+check "a stale device cannot rewind newer progress" "$STATUS $(field .error.code)" "409 conflict"
+req GET "/me/items?view=continue"
+check "continue playback returns the saved position" "$STATUS $(field '.items[0].state.positionMs')" "200 20"
+DONE=$(jq -nc --argjson version "$VERSION" '{expectedVersion:$version,positionMs:50,completed:true}')
+req PUT "/me/items/$TRACK/progress" "$DONE"
+req PUT "/me/items/$TRACK/progress" "$DONE"
+check "retrying completion counts the play only once" "$STATUS $(field '[.playCount,.positionMs] | join("|")')" "200 1|0"
+req GET "/me/items?view=continue"
+check "completed track leaves continue playback" "$STATUS $(field '.items | length')" "200 0"
+req GET "/me/items?view=recent"
+check "completed track remains in recent playback" "$STATUS $(field '.items[0].itemId')" "200 $TRACK"
+PLAYLIST=$(python3 -c 'import uuid; print(uuid.uuid4())')
+PLAYLIST_PATH="/me/playlists/$PLAYLIST"
+MIX=$(jq -nc --arg a "$TRACK" --arg b "$OTHER_TRACK" '{expectedVersion:0,name:"Evening mix",trackIds:[$a,$b,$a]}')
+req PUT "$PLAYLIST_PATH" "$MIX"
+VERSION=$(field .version)
+check "playlists keep ordered duplicate tracks" "$STATUS $(field '.trackIds | join("|")')" "200 $TRACK|$OTHER_TRACK|$TRACK"
+req GET "$PLAYLIST_PATH/tracks?version=$VERSION&limit=2"
+AFTER=$(field .nextAfter)
+check "playlist pages display tagged titles and performers" "$STATUS $(field '.tracks[0] | [.title,.artist,.durationMs] | join("|")') $AFTER" "200 First Light|Guest Quartet|50 1"
+req GET "$PLAYLIST_PATH/tracks?version=$VERSION&after=$AFTER&limit=2"
+check "the last repeated track keeps its own position" "$STATUS $(field '.tracks[0].position') $(field '.tracks[0].itemId') $(field .nextAfter)" "200 2 $TRACK null"
+CHANGE=$(jq -nc --arg a "$OTHER_TRACK" --argjson v "$VERSION" '{expectedVersion:$v,name:"Morning mix",trackIds:[$a]}')
+req PUT "$PLAYLIST_PATH" "$CHANGE"
+UPDATED=$(field .version)
+check "renaming and changing membership are atomic" "$STATUS $(field '[.name,.trackIds[0]] | join("|")')" "200 Morning mix|$OTHER_TRACK"
+req GET "$PLAYLIST_PATH/tracks?version=$VERSION"
+check "a page from an outdated playlist version returns conflict" "$STATUS" "409"
+req PUT "$PLAYLIST_PATH" "$CHANGE"
+check "outdated playlist edit returns conflict" "$STATUS" "409"
+req GET "/me/playlists?limit=1"
+check "saved playlist is visible on the account" "$STATUS $(field '.playlists[0].id')" "200 $PLAYLIST"
+req GET "$PLAYLIST_PATH"
+check "playlist detail preserves the saved revision" "$STATUS $(field .version)" "200 $UPDATED"
+req DELETE "$PLAYLIST_PATH?version=$UPDATED"
+check "the owner can delete the playlist" "$STATUS" "204"
+req GET "$PLAYLIST_PATH"
+check "deleted playlist disappears" "$STATUS" "404"
+
 echo "Original music playback"
 ORIGINAL="$MEDIA/Album A/track 1.flac"
 SIZE=$(wc -c < "$ORIGINAL" | tr -d ' ')

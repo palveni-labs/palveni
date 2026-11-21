@@ -183,6 +183,15 @@ pub(crate) async fn update(
     Ok(())
 }
 
+pub(crate) fn display_title() -> sea_orm::sea_query::Expr {
+    use sea_orm::sea_query::{Expr, Func};
+    Func::coalesce([
+        Expr::col((tracks::Entity, C::Title)),
+        Expr::col((items::Entity, items::Column::Title)),
+    ])
+    .into()
+}
+
 impl Music<'_> {
     pub async fn has_library(&self, id: LibraryId) -> Result<bool, DbError> {
         use crate::entities::libraries;

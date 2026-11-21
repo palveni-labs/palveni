@@ -198,6 +198,7 @@ impl IntoResponse for ApiError {
 impl From<DbError> for ApiError {
     fn from(err: DbError) -> Self {
         match err {
+            DbError::Invalid(message) => Self::validation(message),
             DbError::NotFound(what) => {
                 ApiError::not_found(format!("{} not found", capitalize(what)))
             }

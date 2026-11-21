@@ -87,6 +87,11 @@ define_id!(
     AuditId
 );
 
+define_id!(
+    /// An ordered personal music playlist.
+    PlaylistId
+);
+
 #[cfg(test)]
 mod tests {
     use super::*;

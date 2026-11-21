@@ -31,6 +31,8 @@ pub mod items;
 pub mod jobs;
 pub mod libraries;
 pub mod music;
+pub mod personal;
+pub mod playlists;
 pub mod plugin_kv;
 pub mod sessions;
 pub mod settings;
@@ -169,6 +171,14 @@ impl Db {
 
     pub async fn current_revision(&self) -> Result<i64, DbError> {
         revision::current_revision(self.main()).await
+    }
+
+    pub fn personal(&self) -> personal::PersonalMedia<'_> {
+        personal::PersonalMedia { db: self }
+    }
+
+    pub fn playlists(&self) -> playlists::Playlists<'_> {
+        playlists::Playlists { db: self }
     }
 
     pub fn users(&self) -> users::Users<'_> {

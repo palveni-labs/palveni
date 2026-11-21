@@ -42,7 +42,7 @@ pub const ENV_OPS_DATABASE_URL: &str = "PALVENI_TEST_OPS_DATABASE_URL";
 
 /// Every table the migrations create, children before parents so they can
 /// be dropped in this order on backends that enforce foreign keys.
-const PALVENI_TABLES: [&str; 14] = [
+const PALVENI_TABLES: [&str; 17] = [
     // ops store
     "plugin_kv",
     "audit_log",
@@ -51,6 +51,9 @@ const PALVENI_TABLES: [&str; 14] = [
     // main store
     "sync_state",
     "settings",
+    "playlist_entries",
+    "playlists",
+    "user_item_state",
     "track_metadata",
     "items",
     "library_paths",
@@ -1011,5 +1014,275 @@ async fn conformance_music_backfill_pagination_and_removal() {
             .unwrap()
             .is_empty()
     );
+    h.finish().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn conformance_personal_media_isolation_retries_and_paging() {
+    use crate::personal::MediaChange::{Favorite, Progress, Rating};
+    use palveni_core::personal::{MediaState, MediaView, PlaybackUpdate};
+    let h = Harness::new().await;
+    let user =
+        h.db.users()
+            .create("listener", "x", Role::User)
+            .await
+            .unwrap()
+            .id;
+    let other =
+        h.db.users()
+            .create("other", "x", Role::Admin)
+            .await
+            .unwrap()
+            .id;
+    let lib = new_library(&h.db, "Personal").await.id;
+    let mut song = track("song", "/media/song.flac", None, 2);
+    song.music = Some(palveni_core::music::TrackTags {
+        title: Some("Tagged song".to_owned()),
+        ..Default::default()
+    });
+    let mut movie = track("movie", "/media/movie.mkv", None, 5);
+    movie.kind = ItemKind::Video;
+    let (a, b) = (song.id, movie.id);
+    h.db.items()
+        .apply_scan_batch(lib, &[song, movie], &[])
+        .await
+        .unwrap();
+    let media = h.db.personal();
+    assert_eq!(media.get(user, a).await.unwrap(), MediaState::default());
+    media.update(user, a, Favorite(true)).await.unwrap();
+    media.update(user, b, Favorite(true)).await.unwrap();
+    media.update(user, a, Favorite(true)).await.unwrap();
+    let page = media
+        .list(user, MediaView::Favorites, None, 1)
+        .await
+        .unwrap();
+    assert_eq!(page.items[0].item_id, b);
+    let next = media
+        .list(user, MediaView::Favorites, page.next_before, 1)
+        .await
+        .unwrap();
+    assert_eq!(next.items[0].item_id, a);
+    assert_eq!(next.items[0].title, "Tagged song");
+    assert_eq!(next.next_before, None);
+    let report = |v, ms, done| {
+        Progress(PlaybackUpdate {
+            expected_version: v,
+            position_ms: ms,
+            completed: done,
+        })
+    };
+    let first = media
+        .update(user, b, report(0, 15000, false))
+        .await
+        .unwrap();
+    let v = first.playback_version;
+    let (left, right) = tokio::join!(
+        media.update(user, b, report(v, 4000, false)),
+        media.update(user, b, report(v, 20000, false))
+    );
+    assert!(matches!(
+        (&left, &right),
+        (Ok(_), Err(DbError::Conflict(_))) | (Err(DbError::Conflict(_)), Ok(_))
+    ));
+    let current = left.or(right).unwrap();
+    let replay = media
+        .update(user, b, report(v, current.position_ms, false))
+        .await
+        .unwrap();
+    assert_eq!(current, replay);
+    let rated = media.update(user, b, Rating(5)).await.unwrap();
+    assert_eq!(rated.playback_version, current.playback_version);
+    assert_eq!(
+        media
+            .list(user, MediaView::Continue, None, 10)
+            .await
+            .unwrap()
+            .items
+            .len(),
+        1
+    );
+    let done = report(current.playback_version, 24000, true);
+    let finished = media.update(user, b, done).await.unwrap();
+    assert_eq!(media.update(user, b, done).await.unwrap(), finished);
+    assert_eq!(
+        (finished.play_count, finished.position_ms, finished.stars),
+        (1, 0, 5)
+    );
+    assert!(
+        media
+            .list(user, MediaView::Continue, None, 10)
+            .await
+            .unwrap()
+            .items
+            .is_empty()
+    );
+    assert_eq!(
+        media
+            .list(user, MediaView::Recent, None, 10)
+            .await
+            .unwrap()
+            .items[0]
+            .item_id,
+        b
+    );
+    assert_eq!(media.get(other, b).await.unwrap(), MediaState::default());
+    assert!(
+        media
+            .list(other, MediaView::Recent, None, 10)
+            .await
+            .unwrap()
+            .items
+            .is_empty()
+    );
+    h.db.items().apply_scan_batch(lib, &[], &[b]).await.unwrap();
+    assert!(matches!(
+        media.get(user, b).await,
+        Err(DbError::NotFound(_))
+    ));
+    assert!(
+        media
+            .list(user, MediaView::Recent, None, 10)
+            .await
+            .unwrap()
+            .items
+            .is_empty()
+    );
+    h.finish().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn conformance_playlists_order_atomic_edits_and_ownership() {
+    use palveni_core::ids::PlaylistId;
+    let h = Harness::new().await;
+    let owner =
+        h.db.users()
+            .create("owner", "x", Role::User)
+            .await
+            .unwrap()
+            .id;
+    let other =
+        h.db.users()
+            .create("admin", "x", Role::Admin)
+            .await
+            .unwrap()
+            .id;
+    let lib = new_library(&h.db, "Playlist library").await.id;
+    let mut a = track("a", "/media/a.flac", None, 2);
+    a.music = Some(palveni_core::music::TrackTags {
+        title: Some("Workshop".to_owned()),
+        artist: Some("Quartet".into()),
+        duration_ms: Some(41000),
+        ..Default::default()
+    });
+    let b = track("b", "/media/b.flac", None, 3);
+    let ids = [a.id, b.id];
+    h.db.items()
+        .apply_scan_batch(lib, &[a, b], &[])
+        .await
+        .unwrap();
+    let repo = h.db.playlists();
+    let id = PlaylistId::generate();
+    let created = repo
+        .save(owner, id, 0, "  My mix ", vec![ids[1], ids[0], ids[1]])
+        .await
+        .unwrap();
+    let v = created.summary.version;
+    let page = repo.tracks(owner, id, v, None, 2).await.unwrap();
+    assert_eq!(page.next_after, Some(1));
+    assert_eq!(page.tracks[0].title, "b");
+    assert_eq!(page.tracks[1].title, "Workshop");
+    assert_eq!(page.tracks[1].artist.as_deref(), Some("Quartet"));
+    assert_eq!(page.tracks[1].duration_ms, Some(41000));
+    let next = repo.tracks(owner, id, v, page.next_after, 2).await.unwrap();
+    assert_eq!(
+        (
+            next.tracks[0].item_id,
+            next.tracks[0].position,
+            next.next_after
+        ),
+        (ids[1], 2, None)
+    );
+    assert!(matches!(
+        repo.tracks(other, id, v, None, 1).await,
+        Err(DbError::NotFound(_))
+    ));
+    assert_eq!(created.summary.name, "My mix");
+    assert_eq!(
+        repo.get(owner, id).await.unwrap().track_ids,
+        created.track_ids
+    );
+    assert!(matches!(
+        repo.get(other, id).await,
+        Err(DbError::NotFound(_))
+    ));
+    assert!(matches!(
+        repo.save(other, id, 0, "mine", vec![]).await,
+        Err(DbError::NotFound(_))
+    ));
+    assert!(matches!(
+        repo.delete(other, id, v).await,
+        Err(DbError::NotFound(_))
+    ));
+    assert!(
+        repo.list(other, None, 10)
+            .await
+            .unwrap()
+            .playlists
+            .is_empty()
+    );
+    assert!(matches!(
+        repo.save(owner, id, v, "failed", vec![ItemId::generate()])
+            .await,
+        Err(DbError::NotFound(_))
+    ));
+    assert_eq!(repo.get(owner, id).await.unwrap().summary.version, v);
+    let reordered = repo
+        .save(owner, id, v, "Renamed", vec![ids[0], ids[1]])
+        .await
+        .unwrap();
+    assert!(matches!(
+        repo.save(owner, id, v, "stale", vec![]).await,
+        Err(DbError::Conflict(_))
+    ));
+    assert!(matches!(
+        repo.delete(owner, id, v).await,
+        Err(DbError::Conflict(_))
+    ));
+    let second = PlaylistId::generate();
+    repo.save(owner, second, 0, "Empty", vec![]).await.unwrap();
+    let page = repo.list(owner, None, 1).await.unwrap();
+    assert_eq!(page.playlists[0].id, second);
+    assert_eq!(
+        repo.list(owner, page.next_before, 1)
+            .await
+            .unwrap()
+            .playlists[0]
+            .id,
+        id
+    );
+    h.db.items().apply_scan_batch(lib, &[], &ids).await.unwrap();
+    assert!(repo.get(owner, id).await.unwrap().track_ids.is_empty());
+    assert!(matches!(
+        repo.tracks(owner, id, v, None, 5).await,
+        Err(DbError::Conflict(_))
+    ));
+    assert!(
+        repo.tracks(owner, id, reordered.summary.version, None, 5)
+            .await
+            .unwrap()
+            .tracks
+            .is_empty()
+    );
+    repo.delete(owner, id, reordered.summary.version)
+        .await
+        .unwrap();
+    assert!(matches!(
+        repo.get(owner, id).await,
+        Err(DbError::NotFound(_))
+    ));
+    assert!(matches!(
+        repo.save(owner, id, 0, "late retry", vec![]).await,
+        Err(DbError::NotFound(_))
+    ));
     h.finish().await;
 }

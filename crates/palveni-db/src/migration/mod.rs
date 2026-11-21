@@ -16,6 +16,7 @@ use sea_orm_migration::prelude::*;
 mod m20261120_000001_main_init;
 mod m20261120_000001_ops_init;
 mod m20261121_000002_track_metadata;
+mod m20261121_000003_personal_media;
 
 pub struct MainMigrator;
 
@@ -25,6 +26,7 @@ impl MigratorTrait for MainMigrator {
         vec![
             Box::new(m20261120_000001_main_init::Migration),
             Box::new(m20261121_000002_track_metadata::Migration),
+            Box::new(m20261121_000003_personal_media::Migration),
         ]
     }
 

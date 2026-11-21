@@ -148,6 +148,37 @@ fn parameters(cap: &Capability) -> Vec<Value> {
         params.push(parameter("ticket", "query", false, json!({"type":"string","description":"Single-track credential from the playback URL, as an alternative to a bearer header."})));
     }
     match cap.id {
+        "listPersonalItems" | "listPlaylists" => {
+            params.push(parameter(
+                "before",
+                "query",
+                false,
+                json!({"type":"integer","minimum":1}),
+            ));
+            if cap.id == "listPersonalItems" {
+                params.push(parameter("view", "query", true, reference("MediaView")));
+            }
+        }
+        "listPlaylistTracks" => {
+            params.push(parameter(
+                "version",
+                "query",
+                true,
+                json!({"type":"integer","minimum":1}),
+            ));
+            params.push(parameter(
+                "after",
+                "query",
+                false,
+                json!({"type":"integer","minimum":0}),
+            ));
+        }
+        "deletePlaylist" => params.push(parameter(
+            "version",
+            "query",
+            true,
+            json!({"type":"integer","minimum":1}),
+        )),
         "browseMusic" => {
             for name in ["artist", "album"] {
                 params.push(parameter(
@@ -200,7 +231,15 @@ fn parameters(cap: &Capability) -> Vec<Value> {
         }
         _ => (),
     }
-    if matches!(cap.id, "listItems" | "listJobs" | "browseMusic") {
+    if matches!(
+        cap.id,
+        "listItems"
+            | "listJobs"
+            | "browseMusic"
+            | "listPersonalItems"
+            | "listPlaylists"
+            | "listPlaylistTracks"
+    ) {
         params.push(parameter("limit","query",false,json!({"type":"integer","minimum":1,"default":50,"description":"Values above 200 are clamped to 200."})));
     }
     params

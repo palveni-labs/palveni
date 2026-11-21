@@ -6,6 +6,9 @@ pub enum DbError {
     NotFound(&'static str),
 
     #[error("{0}")]
+    Invalid(&'static str),
+
+    #[error("{0}")]
     Conflict(String),
 
     #[error("invalid database configuration: {0}")]
@@ -26,6 +29,7 @@ impl From<DbError> for palveni_core::Error {
     fn from(err: DbError) -> Self {
         match err {
             DbError::NotFound(what) => palveni_core::Error::NotFound(what.to_owned()),
+            DbError::Invalid(message) => palveni_core::Error::invalid(message),
             DbError::Conflict(message) => palveni_core::Error::Conflict(message),
             other => palveni_core::Error::Internal(other.to_string()),
         }

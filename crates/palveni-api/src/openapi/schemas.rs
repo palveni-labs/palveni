@@ -83,11 +83,16 @@ use crate::routes::{
     items::ItemList,
     jobs::JobList,
     libraries::{CreateLibraryRequest, LibraryList, ScanAccepted},
+    personal::{FavoriteUpdate, PlaylistUpdate, RatingUpdate},
     playback::{PlaybackInfo, PlaybackMode},
     plugins::PluginList,
     system::{Health, SystemInfo},
 };
 use palveni_core::music::{MusicEntry, MusicPage};
+use palveni_core::personal::{
+    MediaState, MediaView, PersonalItem, PersonalItemPage, PlaybackUpdate, Playlist, PlaylistPage,
+    PlaylistSummary, PlaylistTrack, PlaylistTrackPage,
+};
 use palveni_core::{
     Item, ItemKind, Job, Library, User, features::Capability, settings::RuntimeSettings,
 };
@@ -111,6 +116,19 @@ use utoipa::OpenApi;
     ItemList,
     MusicEntry,
     MusicPage,
+    MediaState,
+    MediaView,
+    PersonalItem,
+    PersonalItemPage,
+    PlaybackUpdate,
+    Playlist,
+    PlaylistPage,
+    PlaylistSummary,
+    PlaylistTrack,
+    PlaylistTrackPage,
+    FavoriteUpdate,
+    RatingUpdate,
+    PlaylistUpdate,
     PlaybackInfo,
     PlaybackMode,
     Item,
