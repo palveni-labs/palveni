@@ -16,6 +16,7 @@ pub mod probe;
 pub mod process;
 pub mod report;
 pub mod service;
+pub mod subtitles;
 
 pub use discovery::{LocatedTool, ToolSource};
 pub use encoders::EncodeMethod;

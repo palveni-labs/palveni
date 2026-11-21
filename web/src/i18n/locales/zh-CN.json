@@ -898,12 +898,12 @@
     "playbackFailed": "无法播放此音频"
   },
   "videoSubtitles": {
-    "label": "外挂字幕",
+    "label": "字幕",
     "off": "关闭字幕",
     "unspecified": "未标记语言",
     "forced": "强制字幕",
     "sdh": "听障字幕",
-    "limited": "此目录只显示部分字幕轨。",
+    "limited": "仅显示部分字幕轨。",
     "unreadable": "无法载入这条字幕"
   },
   "video": {

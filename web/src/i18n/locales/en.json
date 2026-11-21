@@ -928,12 +928,12 @@
     "playbackFailed": "Could not play this audio"
   },
   "videoSubtitles": {
-    "label": "External subtitles",
+    "label": "Subtitles",
     "off": "Subtitles off",
     "unspecified": "Unspecified language",
     "forced": "Forced",
     "sdh": "Hard of hearing",
-    "limited": "Only some subtitle tracks in this directory are shown.",
+    "limited": "Only some subtitle tracks are shown.",
     "unreadable": "Could not load this subtitle track"
   },
   "video": {

@@ -53,6 +53,44 @@ fn renders_browser_cues_preserving_text_and_discards_global_styles() {
     }
 }
 
+#[test]
+fn embedded_tracks_keep_sidecars_and_share_the_list_limit() {
+    let mut list = SubtitleList {
+        tracks: vec![descriptor("fr.vtt").unwrap()],
+        truncated: false,
+    };
+    append_embedded(&mut list, 3, Some("ENG"), true, false);
+    append_embedded(&mut list, 5, Some("und"), false, true);
+    append_embedded(&mut list, 7, Some("bad-tag!"), false, false);
+    let en = &list.tracks[1];
+    assert_eq!(list.tracks[0].id, "fr.vtt");
+    assert_eq!(
+        (&*en.id, en.language.as_deref()),
+        ("embedded-3", Some("en"))
+    );
+    assert!(en.forced && !en.hearing_impaired);
+    assert_eq!(en.format, SubtitleFormat::Vtt);
+    assert!(list.tracks[2].hearing_impaired);
+    assert!(list.tracks[2].language.is_none() && list.tracks[3].language.is_none());
+    for i in 4..u32::try_from(MAX_TRACKS).unwrap() {
+        append_embedded(&mut list, i + 10, None, false, false);
+    }
+    assert!(!list.truncated);
+    append_embedded(&mut list, 100, None, false, false);
+    assert!(list.truncated);
+    assert_eq!(list.tracks.len(), MAX_TRACKS);
+}
+
+#[tokio::test]
+async fn limits_embedded_subtitles_after_escaping_cue_text() {
+    let mut content = b"WEBVTT\n\n00:00.250 --> 00:01.400\n".to_vec();
+    content.resize(MAX_BYTES / 4, b'&');
+    assert!(matches!(
+        render_embedded(content).await,
+        Err(Error::Invalid(_))
+    ));
+}
+
 #[cfg(unix)]
 #[tokio::test]
 async fn finds_only_same_video_regular_sidecars_and_reopens_with_bounds() {
@@ -76,18 +114,45 @@ async fn finds_only_same_video_regular_sidecars_and_reopens_with_bounds() {
     fs::write(root.join("Film.2024.it.srt"), vec![0; MAX_BYTES + 1]).unwrap();
     fs::write(dir.path().join("other.vtt"), "outside").unwrap();
     symlink(dir.path().join("other.vtt"), root.join("Film.2024.en.vtt")).unwrap();
-    let entries = list(location()).await.unwrap();
+    let (entries, mut input) = list(location()).await.unwrap();
+    let mut contents = String::new();
+    input.read_to_string(&mut contents).unwrap();
+    assert_eq!(contents, "frame");
     assert_eq!(entries.tracks.len(), 1);
     assert_eq!(entries.tracks[0].id, "zh.srt");
     assert!(!entries.truncated);
-    assert!(read(location(), "zh.srt").await.unwrap().contains("你好"));
+    assert!(
+        matches!(read(location(), "zh.srt").await.unwrap(), SubtitleSource::WebVtt(text) if text.contains("你好"))
+    );
+    assert!(matches!(
+        read(location(), "embedded-2").await.unwrap(),
+        SubtitleSource::Embedded { index: 2, .. }
+    ));
+    for id in [
+        "embedded-",
+        "embedded-01",
+        "embedded-+1",
+        "embedded-2.srt",
+        "embedded-4294967296",
+    ] {
+        assert!(
+            matches!(read(location(), id).await, Err(Error::Invalid(_))),
+            "{id}"
+        );
+    }
     assert!(read(location(), "en.vtt").await.is_err());
     assert!(read(location(), "it.srt").await.is_err());
     fs::remove_file(root.join("Film.2024.zh.srt")).unwrap();
     assert!(read(location(), "zh.srt").await.is_err());
-    assert!(list(location()).await.unwrap().tracks.is_empty());
+    assert!(list(location()).await.unwrap().0.tracks.is_empty());
     fs::remove_file(root.join("Film.2024.mp4")).unwrap();
     assert!(list(location()).await.is_err());
+    symlink(dir.path().join("other.vtt"), root.join("Film.2024.mp4")).unwrap();
+    assert!(matches!(
+        read(location(), "embedded-2").await,
+        Err(Error::NotFound(_))
+    ));
+    fs::remove_file(root.join("Film.2024.mp4")).unwrap();
     fs::create_dir(root.join("Film.2024.mp4")).unwrap();
     assert!(matches!(list(location()).await, Err(Error::NotFound(_))));
 }

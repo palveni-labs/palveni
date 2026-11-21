@@ -21,7 +21,10 @@ it("defers subtitle content until selection and keeps the film available when th
       })),
       http.post(`/api/v1/items/${id}/playback`, () => HttpResponse.json({ mode: "direct", url: "/media/beacon.webm", expiresAt: new Date(Date.now()+900_000).toISOString() })),
       http.get(`/api/v1/me/items/${id}`, () => HttpResponse.json({ favorite: false, stars: 0, positionMs: 0, completed: false, playbackVersion: 0, lastPlayedAt: null, playCount: 0 })),
-      http.get(`/api/v1/items/${id}/subtitles`, () => HttpResponse.json({ tracks: [{ id: "zh.forced.srt", language: "zh", forced: true, hearingImpaired: false, format: "srt" }], truncated: false })),
+      http.get(`/api/v1/items/${id}/subtitles`, () => HttpResponse.json({ tracks: [
+        { id: "zh.forced.srt", language: "zh", forced: true, hearingImpaired: false, format: "srt" },
+        { id: "embedded-2", language: "en", forced: false, hearingImpaired: false, format: "vtt" },
+      ], truncated: false })),
       http.get(`/api/v1/items/${id}/subtitles/zh.forced.srt`, ({ request }) => {
         seen.push(request.headers.get("Authorization")?.split(" ")[0] ?? "");
         return HttpResponse.json({ error: { code: "not_found", message: "Subtitle unavailable" } }, { status: 404 });
@@ -31,10 +34,11 @@ it("defers subtitle content until selection and keeps the film available when th
     const { container } = await renderLoadedApp(`/library/${library.id}`);
     await user.click(await screen.findByRole("button", { name: /Beacon/ }));
     await user.click(await screen.findByRole("button", { name: "预览原片" }));
-    const select = await screen.findByRole("combobox", { name: "外挂字幕" });
+    const select = await screen.findByRole("combobox", { name: "字幕" });
     expect(select).toHaveValue("");
     expect(seen).toEqual([]);
     expect(screen.getByRole("option", { name: /强制字幕/ })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /VTT/ })).toHaveValue("embedded-2");
     await user.selectOptions(select, "zh.forced.srt");
     await screen.findByRole("alert");
     expect(seen).toEqual(["Bearer"]);

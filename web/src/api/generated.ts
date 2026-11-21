@@ -384,7 +384,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description List external subtitles for an indexed video. */
+        /** @description List sidecar and embedded text subtitles for an indexed video. */
         get: operations["listVideoSubtitles"];
         put?: never;
         post?: never;
@@ -401,7 +401,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Read one external subtitle track as WebVTT. */
+        /** @description Read one sidecar or embedded text subtitle track as WebVTT. */
         get: operations["readVideoSubtitle"];
         put?: never;
         post?: never;
@@ -3805,6 +3805,15 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorBody"];
                 };
             };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
         };
     };
     readVideoSubtitle: {
@@ -3868,6 +3877,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

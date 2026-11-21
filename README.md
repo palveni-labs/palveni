@@ -65,6 +65,8 @@ Signed-in clients can favorite and rate tracks and videos, browse recently playe
 
 Add a **Video** library and scan its folders to browse a poster wall. Search titles across the library or filter for films or series. Films and series with artwork appear first. Choose **By title** to see the whole collection in title order. A film in its own folder can use `movie.nfo` for its title and year and `poster.jpg` for artwork. Series open into seasons and episodes. The file view is also available. Scan an existing video library once after upgrading to pick up its artwork.
 
+Open **Subtitles** in the player to select a language or turn captions off. Palveni reads matching SRT and WebVTT files beside the video, such as `Film.en.srt`. It can also read text tracks embedded in MP4 and Matroska when the server’s FFmpeg build can decode the track and write WebVTT.
+
 Choose **Audiobooks** or **Podcasts** for a folder of spoken audio. The dashboard groups the files into books or shows. Each file is a chapter or episode, and each listener can return to the position they last played.
 
 <picture>

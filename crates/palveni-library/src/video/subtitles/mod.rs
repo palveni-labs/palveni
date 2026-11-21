@@ -1,7 +1,7 @@
-//! Read-only subtitle sidecars for indexed local and mounted videos.
+//! Read-only subtitles for indexed local and mounted videos.
 mod webvtt;
 
-use std::{collections::BTreeMap, io::Read, path::Path};
+use std::{collections::BTreeMap, fs::File, io::Read, path::Path};
 
 use palveni_core::{
     Error, Result,
@@ -15,6 +15,7 @@ use crate::local::{LocalStorage, track_path};
 const MAX_TRACKS: usize = 32;
 const MAX_ENTRIES: usize = 65_536;
 const MAX_BYTES: usize = 2 * 1024 * 1024;
+const EMBEDDED_PREFIX: &str = "embedded-";
 
 fn language(value: &str) -> Option<String> {
     let named = match value {
@@ -109,6 +110,7 @@ fn descriptor(id: &str) -> Option<SubtitleTrack> {
 }
 
 struct VideoDirectory {
+    file: File,
     storage: LocalStorage,
     parent: StoragePath,
     stem: String,
@@ -119,7 +121,7 @@ async fn directory(location: TrackLocation) -> Result<VideoDirectory> {
         .await
         .map_err(|_| Error::not_found("Video"))?;
     tokio::task::spawn_blocking(move || {
-        storage
+        let file = storage
             .open_file_blocking(&path)
             .map_err(|_| Error::not_found("Video"))?;
         let parent = path.parent().ok_or_else(|| Error::not_found("Video"))?;
@@ -130,6 +132,7 @@ async fn directory(location: TrackLocation) -> Result<VideoDirectory> {
             .ok_or_else(|| Error::not_found("Video"))?
             .to_owned();
         Ok(VideoDirectory {
+            file,
             storage,
             parent,
             stem,
@@ -139,7 +142,8 @@ async fn directory(location: TrackLocation) -> Result<VideoDirectory> {
     .map_err(|e| Error::internal(e.to_string()))?
 }
 
-pub async fn list(location: TrackLocation) -> Result<SubtitleList> {
+/// Returns the sidecars and the same authorized file handle for container probing.
+pub async fn list(location: TrackLocation) -> Result<(SubtitleList, File)> {
     let video = directory(location).await?;
     tokio::task::spawn_blocking(move || {
         let mut tracks = BTreeMap::new();
@@ -172,16 +176,79 @@ pub async fn list(location: TrackLocation) -> Result<SubtitleList> {
                 truncated = true;
             }
         }
-        Ok(SubtitleList {
-            tracks: tracks.into_values().collect(),
-            truncated,
-        })
+        Ok((
+            SubtitleList {
+                tracks: tracks.into_values().collect(),
+                truncated,
+            },
+            video.file,
+        ))
     })
     .await
     .map_err(|e| Error::internal(e.to_string()))?
 }
 
-pub async fn read(location: TrackLocation, id: &str) -> Result<String> {
+pub fn append_embedded(
+    list: &mut SubtitleList,
+    index: u32,
+    tag: Option<&str>,
+    forced: bool,
+    hearing_impaired: bool,
+) {
+    if list.tracks.len() >= MAX_TRACKS {
+        list.truncated = true;
+        return;
+    }
+    let language = tag
+        .filter(|s| s.len() <= 64 && !s.eq_ignore_ascii_case("und"))
+        .and_then(|s| language(&s.to_ascii_lowercase()));
+    list.tracks.push(SubtitleTrack {
+        id: format!("{EMBEDDED_PREFIX}{index}"),
+        language,
+        forced,
+        hearing_impaired,
+        format: SubtitleFormat::Vtt,
+    });
+}
+
+pub enum SubtitleSource {
+    WebVtt(String),
+    Embedded { file: File, index: u32 },
+}
+
+fn stream_index(id: &str) -> Result<u32> {
+    id.parse::<u32>()
+        .ok()
+        .filter(|index| index.to_string() == id)
+        .ok_or_else(|| Error::invalid("Invalid embedded subtitle identifier"))
+}
+
+fn render(bytes: &[u8], format: SubtitleFormat) -> Result<String> {
+    webvtt::render(bytes, format)
+        .ok_or_else(|| Error::invalid("Invalid or unsupported subtitle content"))
+}
+
+pub async fn render_embedded(bytes: Vec<u8>) -> Result<String> {
+    tokio::task::spawn_blocking(move || {
+        let body = render(&bytes, SubtitleFormat::Vtt)?;
+        if body.len() > MAX_BYTES {
+            return Err(Error::invalid("Subtitle exceeds 2 MiB"));
+        }
+        Ok(body)
+    })
+    .await
+    .map_err(|e| Error::internal(e.to_string()))?
+}
+
+pub async fn read(location: TrackLocation, id: &str) -> Result<SubtitleSource> {
+    if let Some(suffix) = id.strip_prefix(EMBEDDED_PREFIX) {
+        let index = stream_index(suffix)?;
+        let video = directory(location).await?;
+        return Ok(SubtitleSource::Embedded {
+            file: video.file,
+            index,
+        });
+    }
     let track = descriptor(id).ok_or_else(|| Error::invalid("Invalid subtitle identifier"))?;
     let video = directory(location).await?;
     tokio::task::spawn_blocking(move || {
@@ -196,8 +263,7 @@ pub async fn read(location: TrackLocation, id: &str) -> Result<String> {
         if bytes.len() > MAX_BYTES {
             return Err(Error::invalid("Subtitle exceeds 2 MiB"));
         }
-        webvtt::render(&bytes, track.format)
-            .ok_or_else(|| Error::invalid("Invalid or unsupported subtitle content"))
+        render(&bytes, track.format).map(SubtitleSource::WebVtt)
     })
     .await
     .map_err(|e| Error::internal(e.to_string()))?
