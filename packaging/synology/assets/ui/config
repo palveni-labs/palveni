@@ -1,0 +1,14 @@
+{
+  ".url": {
+    "com.palveni.Server": {
+      "type": "url",
+      "title": "Palveni",
+      "desc": "Open your media library",
+      "icon": "images/palveni_{0}.png",
+      "protocol": "http",
+      "port": "7258",
+      "url": "/",
+      "allUsers": true
+    }
+  }
+}

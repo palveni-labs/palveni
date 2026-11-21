@@ -1,6 +1,6 @@
 # Synology DSM package
 
-Install the SPK for your NAS architecture in **Package Center → Manual Install**, then open **Palveni**. The dashboard listens on TCP 7258. First launch creates a separate Palveni administrator account. Give the **Palveni** system internal user read permission on just the media shares you want to index, then add their absolute folder paths under **System → Libraries**.
+Install the SPK for your NAS architecture in **Package Center → Manual Install**, then open **Palveni** from the DSM main menu or Package Center. The dashboard listens on TCP 7258. First launch creates a separate Palveni administrator account. Give the **Palveni** system internal user read permission on just the media shares you want to index, then add their absolute folder paths under **System → Libraries**.
 
 The package targets DSM 7.0-41890 or later. The x86_64 package contains x86-64 musl programs. The armv8 package requires AArch64 musl programs. Check the model in Synology's [architecture table](https://help.synology.com/developer-guide/appendix/platarchs.html).
 

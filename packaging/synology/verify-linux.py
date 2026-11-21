@@ -40,6 +40,13 @@ def verify(package, temp):
         directory.mkdir()
     with tarfile.open(payload) as contents:
         contents.extractall(target, filter="data")
+    ui = target / info["dsmuidir"].strip('"')
+    menu = json.loads((ui / "config").read_text())[".url"][info["dsmappname"].strip('"')]
+    for field, info_field in (("protocol", "adminprotocol"), ("port", "adminport"), ("url", "adminurl")):
+        assert menu[field] == info[info_field].strip('"')
+    for size in (16, 24, 32, 48, 64, 72, 256):
+        data = (ui / menu["icon"].format(size)).read_bytes()
+        assert data[:8] == b"\x89PNG\r\n\x1a\n" and int.from_bytes(data[16:20], "big") == int.from_bytes(data[20:24], "big") == size
     with socket.socket() as reserve:
         reserve.bind(("127.0.0.1", 0))
         port = reserve.getsockname()[1]

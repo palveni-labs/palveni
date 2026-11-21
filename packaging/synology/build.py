@@ -96,6 +96,11 @@ def pack(args):
             for name, path in sorted(skins.items()):
                 add(archive, "bin/skin-packages/" + name, path)
             add(archive, "port_conf/Palveni.sc", HERE / "assets/Palveni.sc")
+            add(archive, "ui/config", HERE / "assets/ui/config")
+            menu_icons = {size: HERE / f"assets/ui/palveni_{size}.png" for size in (16, 24, 32, 48, 72)}
+            menu_icons.update({64: HERE / "assets/PACKAGE_ICON.PNG", 256: HERE / "assets/PACKAGE_ICON_256.PNG"})
+            for size, path in sorted(menu_icons.items()):
+                add(archive, f"ui/images/palveni_{size}.png", path)
             add(archive, "share/licenses/Palveni-MPL-2.0", ROOT / "LICENSE")
             add(archive, "share/licenses/FFmpeg-LGPL-2.1", args.media_dir / "COPYING.LGPLv2.1")
             add(archive, "share/src/jellyfin-ffmpeg.tar.gz", args.ffmpeg_source)
@@ -104,6 +109,7 @@ def pack(args):
                   "description": "Self-hosted media server for music, films and TV.",
                   "maintainer": "palveni-labs", "arch": arch, "os_min_ver": "7.0-41890",
                   "adminprotocol": "http", "adminport": "7258", "adminurl": "/",
+                  "dsmuidir": "ui", "dsmappname": "com.palveni.Server",
                   "checkport": "yes", "startable": "yes", "checksum": digest(payload, "md5")}
         with tarfile.open(temp / output.name, "w", format=tarfile.USTAR_FORMAT) as spk:
             add(spk, "INFO", "".join(f'{k}="{v}"\n' for k, v in fields.items()).encode())
