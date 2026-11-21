@@ -1,0 +1,32 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Web
+node_modules/
+/web/dist/
+/web/.vite/
+*.tsbuildinfo
+
+# 运行时数据：数据库、缓存、密钥
+/data/
+*.db
+*.db-shm
+*.db-wal
+
+# 本地配置与密钥
+.env
+.env.*
+!.env.example
+/palveni.toml
+
+# 编辑器与系统
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+*.log
+*.jsonl
+**/data/
+*.key

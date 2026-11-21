@@ -1,0 +1,102 @@
+//! Programmatic, backend-agnostic migrations.
+//!
+//! Each store has its own migrator and its own bookkeeping table, because on
+//! PostgreSQL/MySQL both stores live in the same database and SeaORM refuses
+//! to run when the bookkeeping table lists migrations it does not know.
+//!
+//! Rules for migrations in this crate:
+//! - no raw SQL, no backend-specific column types or index features
+//!   (no partial indexes, no FTS, no `IF NOT EXISTS` on indexes because
+//!   MySQL does not support it);
+//! - index names are globally unique (PostgreSQL scopes them per schema,
+//!   and both stores may share one schema).
+
+use sea_orm_migration::prelude::*;
+
+mod m20261120_000001_main_init;
+mod m20261120_000001_ops_init;
+
+pub struct MainMigrator;
+
+#[async_trait::async_trait]
+impl MigratorTrait for MainMigrator {
+    fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+        vec![Box::new(m20261120_000001_main_init::Migration)]
+    }
+
+    fn migration_table_name() -> DynIden {
+        Alias::new("palveni_main_migrations").into_iden()
+    }
+}
+
+pub struct OpsMigrator;
+
+#[async_trait::async_trait]
+impl MigratorTrait for OpsMigrator {
+    fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+        vec![Box::new(m20261120_000001_ops_init::Migration)]
+    }
+
+    fn migration_table_name() -> DynIden {
+        Alias::new("palveni_ops_migrations").into_iden()
+    }
+}
+
+// Column helpers shared by the migrations of both stores.
+
+const ID_LEN: u32 = 36;
+const SHA256_HEX_LEN: u32 = 64;
+
+/// `VARCHAR(36) NOT NULL PRIMARY KEY`.
+fn id_pk<T: IntoIden>(name: T) -> ColumnDef {
+    ColumnDef::new(name)
+        .string_len(ID_LEN)
+        .not_null()
+        .primary_key()
+        .take()
+}
+
+/// `VARCHAR(36) NOT NULL`.
+fn id_ref<T: IntoIden>(name: T) -> ColumnDef {
+    ColumnDef::new(name).string_len(ID_LEN).not_null().take()
+}
+
+/// `VARCHAR(36) NULL`.
+fn id_ref_null<T: IntoIden>(name: T) -> ColumnDef {
+    ColumnDef::new(name).string_len(ID_LEN).null().take()
+}
+
+/// `BIGINT NOT NULL`: timestamps (Unix milliseconds), revisions, sizes.
+fn bigint<T: IntoIden>(name: T) -> ColumnDef {
+    ColumnDef::new(name).big_integer().not_null().take()
+}
+
+/// `BIGINT NULL`.
+fn bigint_null<T: IntoIden>(name: T) -> ColumnDef {
+    ColumnDef::new(name).big_integer().null().take()
+}
+
+/// `INTEGER NOT NULL`.
+fn int<T: IntoIden>(name: T) -> ColumnDef {
+    ColumnDef::new(name).integer().not_null().take()
+}
+
+/// `VARCHAR(len) NOT NULL`; use for anything that is indexed.
+fn varchar<T: IntoIden>(name: T, len: u32) -> ColumnDef {
+    ColumnDef::new(name).string_len(len).not_null().take()
+}
+
+/// `VARCHAR(len) NULL`.
+fn varchar_null<T: IntoIden>(name: T, len: u32) -> ColumnDef {
+    ColumnDef::new(name).string_len(len).null().take()
+}
+
+/// `TEXT NOT NULL`; never indexed.
+fn text<T: IntoIden>(name: T) -> ColumnDef {
+    ColumnDef::new(name).text().not_null().take()
+}
+
+/// `TEXT NULL`.
+fn text_null<T: IntoIden>(name: T) -> ColumnDef {
+    ColumnDef::new(name).text().null().take()
+}

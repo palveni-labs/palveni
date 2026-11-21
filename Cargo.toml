@@ -1,0 +1,97 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.100"
+publish = false
+license = "MPL-2.0"
+
+[workspace.dependencies]
+# Workspace crates
+palveni-api = { path = "crates/palveni-api" }
+palveni-core = { path = "crates/palveni-core" }
+# Backends are opt-in per consumer; palveni-server enables all three.
+palveni-db = { path = "crates/palveni-db", default-features = false }
+palveni-jobs = { path = "crates/palveni-jobs" }
+palveni-library = { path = "crates/palveni-library" }
+palveni-link = { path = "crates/palveni-link" }
+palveni-media = { path = "crates/palveni-media" }
+palveni-plugin-host = { path = "crates/palveni-plugin-host" }
+
+# Third-party. TLS, if it is ever enabled on any of these, must be rustls + ring.
+anyhow = "1.0.104"
+argon2 = "0.6.0"
+async-trait = "0.1.92"
+axum = "0.8.9"
+chrono = { version = "0.4.45", default-features = false, features = ["std", "clock", "serde"] }
+clap = { version = "4.6.9", features = ["derive"] }
+ed25519-dalek = "3.0.0"
+futures-util = "0.3.34"
+getrandom = "0.4.3"
+hex = "0.4.3"
+mime_guess = "2.0.5"
+rust-embed = "8.14.0"
+# Backend drivers are enabled per crate (palveni-db features `sqlite`, `postgres`, `mysql`).
+# `runtime-tokio-rustls` maps to sqlx `tls-rustls` = rustls with the ring provider.
+sea-orm = { version = "2.0.4", default-features = false, features = [
+    "macros",
+    "runtime-tokio-rustls",
+] }
+# Default features would pull in the migration CLI (clap, dotenvy, sea-orm-cli).
+# Note: sea-orm-migration itself depends on sea-orm with default features.
+sea-orm-migration = { version = "2.0.4", default-features = false, features = [
+    "runtime-tokio-rustls",
+] }
+semver = "1.0.28"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+serde_path_to_error = "0.1.20"
+sha2 = "0.11.1"
+# Only used directly for SQLite connection tuning types; must stay on the same
+# minor version as the one sea-orm depends on (sea-orm 2.0.4 requires ^0.9.0).
+sqlx = { version = "0.9.1", default-features = false, features = ["runtime-tokio"] }
+tempfile = "3.27.0"
+thiserror = "2.0.21"
+tokio = { version = "1.54.1", features = [
+    "rt-multi-thread",
+    "macros",
+    "sync",
+    "time",
+    "fs",
+    "io-util",
+    "process",
+    "signal",
+    "net",
+] }
+tokio-util = "0.7.20"
+toml = "1.2.1"
+tower-http = { version = "0.7.1", features = ["trace", "request-id"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+utoipa = { version = "5.4", features = ["chrono", "uuid"] }
+uuid = { version = "1.29.3", features = ["v7", "serde"] }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+unwrap_used = "warn"
+panic = "warn"
+mem_forget = "warn"
+cast_possible_truncation = "warn"
+cast_sign_loss = "warn"
+large_futures = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+panic = "unwind"

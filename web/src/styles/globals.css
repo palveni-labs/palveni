@@ -1,0 +1,584 @@
+@import "tailwindcss";
+@import "@heroui/styles";
+@import "./areas/library.css";
+@import "./areas/tasks.css";
+@import "./areas/apps.css";
+
+/*
+ * Every visual value comes from the active skin (src/skins): the skin writes `--pv-*` custom
+ * properties on :root, HeroUI's theme variables point at them (src/skins/css.ts), and the
+ * Tailwind theme below exposes them as utilities. Nothing here names a colour or a font.
+ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-sans: var(--pv-font-ui);
+  --font-ui: var(--pv-font-ui);
+  --font-heading: var(--pv-font-heading);
+  --font-mono: var(--pv-font-mono);
+
+  --text-xs: var(--pv-text-xs);
+  --text-xs--line-height: 1.45;
+  --text-sm: var(--pv-text-sm);
+  --text-sm--line-height: 1.5;
+  --text-base: var(--pv-text-base);
+  --text-base--line-height: var(--pv-leading);
+  --text-md: var(--pv-text-md);
+  --text-md--line-height: 1.45;
+  --text-lg: var(--pv-text-lg);
+  --text-lg--line-height: 1.35;
+  --text-xl: var(--pv-text-xl);
+  --text-xl--line-height: 1.3;
+  --text-headline: var(--pv-text-page);
+  --text-headline--line-height: 1.2;
+  --text-stat: var(--pv-text-stat);
+  --text-stat--line-height: 1.15;
+
+  /* Skin weights: font-body, font-mid, font-strong, font-title. */
+  --font-weight-body: var(--pv-weight-regular);
+  --font-weight-mid: var(--pv-weight-medium);
+  --font-weight-strong: var(--pv-weight-strong);
+  --font-weight-title: var(--pv-weight-heading);
+
+  --color-page: var(--pv-bg);
+  --color-shell: var(--pv-shell);
+  --color-aside: var(--pv-aside);
+  --color-raised: var(--pv-surface-raised);
+  --color-sunken: var(--pv-surface-sunken);
+  --color-hover: var(--pv-hover);
+  --color-fg: var(--pv-fg);
+  --color-fg-muted: var(--pv-fg-muted);
+  --color-fg-subtle: var(--pv-fg-subtle);
+  --color-fg-disabled: var(--pv-fg-disabled);
+  --color-fg-inverse: var(--pv-fg-inverse);
+  --color-heading: var(--pv-heading);
+  --color-shell-fg: var(--pv-shell-fg);
+  --color-shell-fg-muted: var(--pv-shell-fg-muted);
+  --color-shell-line: var(--pv-shell-line);
+  --color-shell-field: var(--pv-shell-field);
+  --color-nav-track: var(--pv-nav-track);
+  --color-nav-active: var(--pv-nav-active);
+  --color-nav-active-fg: var(--pv-nav-active-fg);
+  --color-nav-indicator: var(--pv-nav-indicator);
+  --color-line: var(--pv-line);
+  --color-line-strong: var(--pv-line-strong);
+  --color-line-control: var(--pv-line-control);
+  --color-action: var(--pv-action);
+  --color-action-fg: var(--pv-action-fg);
+  --color-action-hover: var(--pv-action-hover);
+  --color-secondary: var(--pv-secondary);
+  --color-secondary-fg: var(--pv-secondary-fg);
+  --color-secondary-hover: var(--pv-secondary-hover);
+  --color-confirm: var(--pv-confirm);
+  --color-confirm-fg: var(--pv-confirm-fg);
+  --color-selected: var(--pv-selected);
+  --color-selected-fg: var(--pv-selected-fg);
+  --color-active: var(--pv-active);
+  --color-active-mark: var(--pv-active-mark);
+  --color-active-soft: var(--pv-active-soft);
+  --color-attention: var(--pv-attention);
+  --color-attention-mark: var(--pv-attention-mark);
+  --color-attention-soft: var(--pv-attention-soft);
+  --color-attention-line: var(--pv-attention-line);
+  --color-ok: var(--pv-ok);
+  --color-ok-soft: var(--pv-ok-soft);
+  --color-degraded: var(--pv-degraded);
+  --color-degraded-soft: var(--pv-degraded-soft);
+  --color-degraded-line: var(--pv-degraded-line);
+  --color-failed: var(--pv-failed);
+  --color-failed-soft: var(--pv-failed-soft);
+  --color-idle: var(--pv-idle);
+  --color-idle-soft: var(--pv-idle-soft);
+  --color-progress-done: var(--pv-progress-done);
+  --color-progress-rest: var(--pv-progress-rest);
+  --color-chart-1: var(--pv-chart-1);
+  --color-chart-2: var(--pv-chart-2);
+  --color-chart-3: var(--pv-chart-3);
+  --color-chart-4: var(--pv-chart-4);
+  --color-chart-5: var(--pv-chart-5);
+
+  --radius-check: var(--pv-radius-sm);
+  --radius-control: var(--pv-radius-control);
+  --radius-chip: var(--pv-radius-chip);
+  --radius-tile: var(--pv-radius-tile);
+  --radius-panel: var(--pv-radius-panel);
+
+  --shadow-panel: var(--pv-shadow-panel);
+  --shadow-raised: var(--pv-shadow-raised);
+  --shadow-art: var(--pv-shadow-art);
+
+  --ease-skin: var(--pv-ease);
+}
+
+/* ---------------------------------------------------------------- base and browser surfaces */
+
+@layer base {
+  html {
+    background: var(--pv-bg);
+    color: var(--pv-fg);
+    font-family: var(--pv-font-ui);
+    font-size: 100%;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+    font-kerning: normal;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    min-height: 100svh;
+    background: var(--pv-bg);
+    color: var(--pv-fg);
+    font-size: var(--pv-text-base);
+    line-height: var(--pv-leading);
+    font-weight: var(--pv-weight-regular);
+  }
+  ::selection {
+    background: var(--pv-text-selection);
+    color: inherit;
+  }
+  input,
+  textarea {
+    caret-color: var(--pv-focus);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--pv-line-strong) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--pv-line-strong);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href] {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--pv-focus);
+    outline-offset: 2px;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    letter-spacing: var(--pv-heading-tracking);
+  }
+  p {
+    text-wrap: pretty;
+  }
+  a {
+    text-underline-offset: 0.2em;
+  }
+  /* Numbers in tables, meters and timers line up. */
+  time,
+  table,
+  [data-num] {
+    font-variant-numeric: tabular-nums;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------- HeroUI components, through tokens */
+
+@layer components {
+  .button {
+    height: var(--pv-control-h);
+    padding-inline: calc(var(--pv-control-h) * 0.42);
+    border-radius: var(--pv-radius-control);
+    font-size: var(--pv-text-sm);
+    font-weight: var(--pv-weight-medium);
+    gap: 0.375rem;
+    transition:
+      background-color var(--pv-duration-fast) var(--pv-ease),
+      color var(--pv-duration-fast) var(--pv-ease),
+      box-shadow var(--pv-duration-fast) var(--pv-ease),
+      transform 120ms var(--pv-ease);
+    & svg:not([data-slot="spinner"] svg) {
+      width: 1rem;
+      height: 1rem;
+      margin: 0;
+    }
+  }
+  .button--sm {
+    height: var(--pv-control-h-sm);
+    padding-inline: calc(var(--pv-control-h-sm) * 0.38);
+  }
+  .button--lg {
+    height: calc(var(--pv-control-h) + 0.375rem);
+    padding-inline: calc(var(--pv-control-h) * 0.55);
+    font-size: var(--pv-text-base);
+  }
+  .button--icon-only {
+    width: var(--pv-control-h);
+    padding: 0;
+  }
+  .button--icon-only.button--sm {
+    width: var(--pv-control-h-sm);
+  }
+  .button--primary {
+    --button-bg: var(--pv-action);
+    --button-bg-hover: var(--pv-action-hover);
+    --button-bg-pressed: var(--pv-action-hover);
+    --button-fg: var(--pv-action-fg);
+  }
+  .button--secondary,
+  .button--tertiary {
+    --button-bg: var(--pv-secondary);
+    --button-bg-hover: var(--pv-secondary-hover);
+    --button-bg-pressed: var(--pv-secondary-hover);
+    --button-fg: var(--pv-secondary-fg);
+  }
+  .button--outline {
+    --button-bg: var(--pv-surface);
+    --button-bg-hover: var(--pv-hover);
+    --button-bg-pressed: var(--pv-hover);
+    --button-fg: var(--pv-fg);
+    border: 1px solid var(--pv-line-control);
+  }
+  .button--ghost {
+    --button-bg: transparent;
+    --button-bg-hover: var(--pv-hover);
+    --button-bg-pressed: var(--pv-hover);
+    --button-fg: var(--pv-fg-muted);
+    &:hover,
+    &[data-hovered="true"] {
+      color: var(--pv-fg);
+    }
+  }
+  .button--danger {
+    --button-bg: var(--pv-failed);
+    --button-bg-hover: color-mix(in oklab, var(--pv-failed) 88%, var(--pv-fg-inverse));
+    --button-fg: var(--pv-fg-inverse);
+  }
+
+  .button.button--confirm {
+    --button-bg: var(--pv-confirm);
+    --button-bg-hover: color-mix(in oklab, var(--pv-confirm) 88%, var(--pv-confirm-fg));
+    --button-bg-pressed: color-mix(in oklab, var(--pv-confirm) 82%, var(--pv-confirm-fg));
+    --button-fg: var(--pv-confirm-fg);
+    border: 0;
+  }
+  .button:disabled,
+  .button[aria-disabled="true"] {
+    opacity: 1;
+    --button-bg: var(--pv-secondary);
+    --button-fg: var(--pv-fg-disabled);
+    border-color: var(--pv-line);
+  }
+  /* Buttons drawn on a work-colour field. */
+  .button.button--on-field {
+    --button-bg: color-mix(in oklab, var(--pv-on-field) 16%, transparent);
+    --button-bg-hover: color-mix(in oklab, var(--pv-on-field) 24%, transparent);
+    --button-fg: var(--pv-on-field);
+    border: 0;
+  }
+
+  .checkbox__control {
+    width: 1.125rem;
+    height: 1.125rem;
+    border-radius: var(--pv-radius-sm);
+    border: 1.5px solid var(--pv-line-control);
+    background: var(--pv-field);
+    box-shadow: none;
+    &::before {
+      border-radius: 0;
+      background: var(--pv-selected);
+    }
+  }
+  .checkbox:hover .checkbox__control::before,
+  .checkbox [data-slot="checkbox-content"][data-hovered="true"] .checkbox__control::before {
+    background: var(--pv-selected);
+  }
+  .checkbox[data-selected="true"] .checkbox__control,
+  .checkbox[data-indeterminate="true"] .checkbox__control {
+    border-color: var(--pv-selected);
+    background: var(--pv-selected);
+    color: var(--pv-selected-fg);
+  }
+  .checkbox [data-slot="checkbox-default-indicator--checkmark"],
+  .checkbox [data-slot="checkbox-default-indicator--indeterminate"] {
+    color: var(--pv-selected-fg);
+  }
+  .checkbox[data-selected="true"] .checkbox__indicator,
+  .checkbox[data-indeterminate="true"] .checkbox__indicator {
+    border-color: var(--pv-selected-fg);
+  }
+
+  .switch {
+    --switch-control-bg: var(--pv-surface-sunken);
+    --switch-control-bg-hover: var(--pv-secondary-hover);
+    --switch-control-bg-pressed: var(--pv-secondary-hover);
+    --switch-control-bg-checked: var(--pv-selected);
+    --switch-control-bg-checked-hover: var(--pv-selected);
+  }
+  .switch__control {
+    border-radius: calc(var(--pv-radius-control) * 1);
+    box-shadow: inset 0 0 0 1.5px var(--pv-line-control);
+  }
+  .switch[data-selected="true"] .switch__control {
+    box-shadow: inset 0 0 0 1.5px var(--pv-selected);
+  }
+  .switch__thumb {
+    border-radius: calc(var(--pv-radius-control) * 1);
+    background: var(--pv-surface);
+  }
+  .switch[data-selected="true"] .switch__thumb {
+    background: var(--pv-selected-fg);
+  }
+
+  .kbd {
+    font-family: var(--pv-font-ui);
+    font-size: 0.6875rem;
+    color: var(--pv-fg-subtle);
+    background: var(--pv-surface);
+    border: 1px solid var(--pv-line);
+    border-radius: calc(var(--pv-radius-sm) + 1px);
+    box-shadow: none;
+  }
+
+  .chip {
+    border-radius: var(--pv-radius-chip);
+    font-size: var(--pv-text-xs);
+    font-weight: var(--pv-weight-medium);
+  }
+
+  .tooltip {
+    background: var(--pv-fg);
+    color: var(--pv-fg-inverse);
+    font-size: var(--pv-text-xs);
+    border-radius: var(--pv-radius-sm);
+  }
+
+  .popover,
+  .dropdown__popover,
+  .select__popover {
+    background: var(--pv-surface-raised);
+    color: var(--pv-fg);
+    border: 1px solid var(--pv-line);
+    box-shadow: var(--pv-shadow-overlay);
+    border-radius: calc(var(--pv-radius-panel) * 0.85 + 2px);
+  }
+  .modal__dialog,
+  .alert-dialog__dialog,
+  .drawer__dialog {
+    background: var(--pv-surface-raised);
+    color: var(--pv-fg);
+    box-shadow: var(--pv-shadow-overlay);
+  }
+  .modal__dialog,
+  .alert-dialog__dialog {
+    border-radius: calc(var(--pv-radius-panel) + 2px);
+    border: 1px solid var(--pv-line);
+  }
+  .menu-item,
+  .list-box-item {
+    border-radius: calc(var(--pv-radius-panel) * 0.5 + 2px);
+    font-size: var(--pv-text-sm);
+  }
+
+  .input,
+  .textarea,
+  .search-field__group,
+  .input-group {
+    border-radius: var(--pv-radius-field);
+    font-size: var(--pv-text-base);
+  }
+
+  .tabs__tab {
+    font-size: var(--pv-text-sm);
+  }
+
+  .skeleton {
+    background: var(--pv-surface-sunken);
+  }
+}
+
+/* ---------------------------------------------------------------- host components with slot variants */
+
+@layer components {
+  /* Work colour: hue and chroma come from the cover, lightness from the skin per mode. */
+  .work-field {
+    background: var(--work-field);
+    color: var(--work-field-fg);
+  }
+  .work-field :focus-visible {
+    outline-color: var(--work-field-fg);
+  }
+
+  /* Indeterminate motion shared by every progress variant. */
+  @keyframes pv-sweep {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(260%);
+    }
+  }
+  .pv-sweep {
+    animation: pv-sweep 1.6s var(--pv-ease) infinite;
+  }
+  /* Without motion a parked sweep would read as a value: unknown progress becomes a dashed
+     line across the whole track instead. */
+  @media (prefers-reduced-motion: reduce) {
+    .pv-sweep {
+      width: 100% !important;
+      transform: none !important;
+      animation: none !important;
+      mask-image: repeating-linear-gradient(90deg, #000 0 8px, transparent 8px 12px);
+    }
+  }
+  @keyframes pv-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .pv-spin {
+    animation: pv-spin 1.2s linear infinite;
+  }
+  @keyframes pv-dash {
+    to {
+      background-position: 24px 0;
+    }
+  }
+  .pv-dashed {
+    background-image: repeating-linear-gradient(90deg, currentColor 0 8px, transparent 8px 12px);
+    background-size: 24px 100%;
+    animation: pv-dash 1.2s linear infinite;
+  }
+
+  /* 朱印 / seal: a square stamp with an inner frame in the page colour. */
+  .pv-seal {
+    display: inline-grid;
+    place-items: center;
+    background: var(--pv-attention-mark);
+    color: var(--pv-confirm-fg);
+    border-radius: 2px;
+    box-shadow:
+      inset 0 0 0 1.5px var(--pv-attention-mark),
+      inset 0 0 0 2.5px var(--pv-bg);
+    font-weight: var(--pv-weight-strong);
+    line-height: 1;
+  }
+
+  @keyframes pv-enter {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+  .pv-enter > * {
+    animation: pv-enter var(--pv-duration-base) var(--pv-ease) backwards;
+  }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------- segmented filters */
+
+@layer components {
+  .pv-segmented {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: var(--pv-radius-control);
+    background: var(--pv-surface-sunken);
+  }
+  .pv-segmented .toggle-button {
+    height: calc(var(--pv-control-h) - 4px);
+    padding-inline: 0.75rem;
+    gap: 0.375rem;
+    border-radius: var(--pv-radius-control);
+    font-size: var(--pv-text-sm);
+    font-weight: var(--pv-weight-medium);
+    color: var(--pv-fg-muted);
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+  .pv-segmented .toggle-button[data-selected="true"] {
+    background: var(--pv-surface-raised);
+    color: var(--pv-fg);
+    font-weight: var(--pv-weight-strong);
+    box-shadow: var(--pv-shadow-raised);
+  }
+  .pv-segmented .toggle-button-group__separator {
+    display: none;
+  }
+  /* HeroUI rounds the outer ends of an attached group with its own radius; mixed with a pill
+     radius the corners scale down to square. Every segment keeps the skin's control radius. */
+  .pv-segmented.toggle-button-group .toggle-button:is(:first-child, :last-child) {
+    border-radius: var(--pv-radius-control);
+  }
+}
+
+/* ---------------------------------------------------------------- slider: a thin rail and a round thumb */
+
+@layer components {
+  .slider[data-orientation="horizontal"] .slider__track {
+    height: 1rem;
+    border-inline-width: 0.5rem;
+    border-color: transparent;
+    background: transparent;
+  }
+  .slider[data-orientation="horizontal"] .slider__track::before {
+    content: "";
+    position: absolute;
+    inset-inline: -0.5rem;
+    top: 50%;
+    height: 4px;
+    translate: 0 -50%;
+    border-radius: 999px;
+    background: var(--pv-progress-rest);
+  }
+  .slider[data-orientation="horizontal"] .slider__fill {
+    top: 50%;
+    height: 4px;
+    translate: 0 -50%;
+    background: var(--pv-selected);
+  }
+  .slider[data-orientation="horizontal"] .slider__fill::before {
+    content: "";
+    position: absolute;
+    right: 100%;
+    width: 0.5rem;
+    height: 100%;
+    border-radius: 999px 0 0 999px;
+    background: inherit;
+  }
+  .slider .slider__thumb,
+  .slider[data-orientation="horizontal"] .slider__thumb {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 999px;
+    background: var(--pv-surface);
+    border: 1.5px solid var(--pv-selected);
+    box-shadow: var(--pv-shadow-raised);
+    &::after {
+      display: none;
+    }
+  }
+  .slider[data-disabled="true"] .slider__fill {
+    background: var(--pv-line-strong);
+  }
+}

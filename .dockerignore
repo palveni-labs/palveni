@@ -1,0 +1,17 @@
+.git
+target
+**/node_modules
+web/dist
+data
+docs
+packaging
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+palveni.toml
+**/*.log
+**/*.jsonl
+**/*.key
+**/data

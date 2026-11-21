@@ -1,0 +1,21 @@
+[package]
+name = "palveni-link"
+description = "Device identity and peer transport traits shared by servers and clients"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+# This crate can be compiled independently by client applications.
+[dependencies]
+ed25519-dalek.workspace = true
+getrandom.workspace = true
+hex.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

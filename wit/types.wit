@@ -1,0 +1,170 @@
+/// Palveni plugin contract.
+package palveni:plugin@0.1.0;
+
+/// Types shared by host and extension interfaces.
+interface types {
+    /// Error returned by any fallible call, in either direction.
+    record error {
+        code: error-code,
+        /// Human-readable detail; never shown to end users verbatim.
+        message: string,
+    }
+
+    enum error-code {
+        not-found,
+        invalid-input,
+        unauthorized,
+        permission-denied,
+        rate-limited,
+        unavailable,
+        timeout,
+        internal,
+    }
+
+    /// Media kinds a provider can handle. Finer-grained than library kinds.
+    enum media-kind {
+        movie,
+        series,
+        season,
+        episode,
+        artist,
+        album,
+        track,
+        book,
+        comic,
+        photo,
+    }
+
+    /// An ID of an item in some external catalogue (TMDB, MusicBrainz, ISBN…).
+    record external-id {
+        provider: string,
+        id: string,
+    }
+
+    /// Clues for finding an item; providers use what they understand.
+    record search-query {
+        kind: media-kind,
+        title: string,
+        year: option<u32>,
+        /// BCP 47 tag, e.g. "zh-CN".
+        language: option<string>,
+        artist: option<string>,
+        album: option<string>,
+        duration-ms: option<u64>,
+        external-ids: list<external-id>,
+    }
+
+    record search-hit {
+        provider-id: string,
+        title: string,
+        year: option<u32>,
+        /// 0.0–1.0 confidence as judged by the provider.
+        score: option<f32>,
+        image-url: option<string>,
+        summary: option<string>,
+    }
+
+    enum image-kind {
+        poster,
+        backdrop,
+        cover,
+        logo,
+        thumbnail,
+        portrait,
+    }
+
+    record image-candidate {
+        kind: image-kind,
+        url: string,
+        width: option<u32>,
+        height: option<u32>,
+        language: option<string>,
+    }
+
+    record credit {
+        name: string,
+        /// "director", "actor", "composer", "author", …
+        role: string,
+        character: option<string>,
+        order: option<u32>,
+    }
+
+    record item-metadata {
+        provider-id: string,
+        title: string,
+        original-title: option<string>,
+        sort-title: option<string>,
+        summary: option<string>,
+        year: option<u32>,
+        /// ISO 8601 date.
+        release-date: option<string>,
+        genres: list<string>,
+        tags: list<string>,
+        /// 0.0–10.0.
+        rating: option<f32>,
+        credits: list<credit>,
+        images: list<image-candidate>,
+        external-ids: list<external-id>,
+        /// Provider-specific fields the host may store but not interpret.
+        extra: list<tuple<string, string>>,
+    }
+
+    record lyrics-query {
+        title: string,
+        artist: option<string>,
+        album: option<string>,
+        duration-ms: option<u64>,
+        language: option<string>,
+    }
+
+    record lyrics-hit {
+        provider-id: string,
+        title: string,
+        artist: option<string>,
+        synced: bool,
+        score: option<f32>,
+    }
+
+    record lyric-word {
+        start-ms: u64,
+        end-ms: option<u64>,
+        text: string,
+    }
+
+    record lyric-line {
+        start-ms: u64,
+        end-ms: option<u64>,
+        text: string,
+        /// Word-level timing when available.
+        words: list<lyric-word>,
+        translation: option<string>,
+        transliteration: option<string>,
+    }
+
+    record lyrics {
+        provider-id: string,
+        language: option<string>,
+        /// True when `lines` carry real timestamps.
+        synced: bool,
+        lines: list<lyric-line>,
+    }
+
+    enum entry-kind {
+        file,
+        directory,
+    }
+
+    record dir-entry {
+        name: string,
+        kind: entry-kind,
+        size: option<u64>,
+        /// Unix milliseconds.
+        modified-ms: option<s64>,
+    }
+
+    /// Half-open byte range; `end: none` reads to the end of the file.
+    record byte-range {
+        start: u64,
+        end: option<u64>,
+    }
+}

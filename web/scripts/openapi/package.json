@@ -1,0 +1,9 @@
+{
+  "name": "palveni-openapi-types",
+  "private": true,
+  "type": "module",
+  "license": "MPL-2.0",
+  "dependencies": {
+    "openapi-typescript": "7.13.0"
+  }
+}

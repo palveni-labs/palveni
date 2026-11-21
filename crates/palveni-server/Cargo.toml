@@ -1,0 +1,45 @@
+[package]
+name = "palveni-server"
+description = "The `palveni` server executable"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "palveni"
+path = "src/main.rs"
+
+[features]
+default = ["sqlite", "postgres", "mysql"]
+sqlite = ["palveni-db/sqlite"]
+postgres = ["palveni-db/postgres"]
+mysql = ["palveni-db/mysql"]
+# Serve web/dist from the binary. Off by default so the backend builds
+# without a frontend build; requires web/dist to exist at compile time.
+embed-web = ["dep:rust-embed", "dep:mime_guess"]
+
+[dependencies]
+palveni-api.workspace = true
+palveni-core.workspace = true
+palveni-db.workspace = true
+palveni-jobs.workspace = true
+palveni-library.workspace = true
+palveni-link.workspace = true
+palveni-media.workspace = true
+palveni-plugin-host.workspace = true
+anyhow.workspace = true
+async-trait.workspace = true
+axum.workspace = true
+clap.workspace = true
+mime_guess = { workspace = true, optional = true }
+rust-embed = { workspace = true, optional = true }
+serde_json.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

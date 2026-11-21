@@ -1,0 +1,27 @@
+# 用法（在本目录下）：
+#   docker compose up -d --build
+# 然后打开 http://<主机>:7258 完成初始化。
+
+services:
+  palveni:
+    build:
+      context: ../..
+      dockerfile: packaging/docker/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "7258:7258"
+    volumes:
+      # 数据库、缓存、设备密钥。备份这个目录即可。
+      - ./data:/data
+      # 媒体目录。按需增加；只读挂载即可满足播放和扫描。
+      - /path/to/media:/media:ro
+    # 媒体目录的属主不是 1000:1000 时改这里，并保证 ./data 对该用户可写。
+    # user: "1000:1000"
+    #
+    # Intel / AMD 核显硬件转码：
+    # devices:
+    #   - /dev/dri:/dev/dri
+    #
+    # 改用 PostgreSQL 或 MySQL（默认是 /data 下的 SQLite，无需配置）：
+    # environment:
+    #   PALVENI_DATABASE_URL: postgres://palveni:password@db:5432/palveni

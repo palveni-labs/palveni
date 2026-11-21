@@ -1,0 +1,787 @@
+{
+  "app": {
+    "name": "Palveni",
+    "edition": "Server"
+  },
+  "languages": {
+    "zh-CN": "简体中文",
+    "en": "English"
+  },
+  "common": {
+    "back": "Back",
+    "backHome": "Back to overview",
+    "cancel": "Cancel",
+    "create": "Create",
+    "delete": "Delete",
+    "none": "None",
+    "retry": "Retry",
+    "selected": "Selected",
+    "loading": "Loading"
+  },
+  "a11y": {
+    "breadcrumb": "Breadcrumb",
+    "close": "Close",
+    "more": "More",
+    "navigation": "Navigation",
+    "toggleSidebar": "Toggle sidebar"
+  },
+  "boot": {
+    "unreachable": "Can't reach the server",
+    "recover": "Check that the server is running and that this device is on the same network, then try again."
+  },
+  "nav": {
+    "overview": "Overview",
+    "libraries": "Libraries",
+    "admin": "Administration",
+    "manageLibraries": "Manage libraries",
+    "hardware": "Hardware & transcoding",
+    "plugins": "Plugins",
+    "jobs": "Jobs",
+    "more": "More",
+    "settings": "Settings",
+    "themes": "Themes",
+    "manage": "Manage",
+    "appearance": "Appearance"
+  },
+  "theme": {
+    "label": "Appearance",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "packs": "Theme packs"
+  },
+  "language": {
+    "label": "Language"
+  },
+  "user": {
+    "menu": "Account menu",
+    "logout": "Sign out",
+    "roles": {
+      "admin": "Administrator",
+      "user": "Member"
+    }
+  },
+  "kinds": {
+    "video": "Video",
+    "music": "Music",
+    "photo": "Photos",
+    "book": "Books",
+    "comic": "Comics"
+  },
+  "itemKinds": {
+    "folder": "Folder",
+    "video": "Video",
+    "track": "Track",
+    "photo": "Photo",
+    "book": "Book",
+    "comic": "Comic"
+  },
+  "counts": {
+    "items_one": "{{formatted}} item",
+    "items_other": "{{formatted}} items"
+  },
+  "auth": {
+    "username": "Username",
+    "password": "Password",
+    "serverVersion": "{{name}} · {{version}}"
+  },
+  "login": {
+    "title": "Sign in",
+    "submit": "Sign in",
+    "invalidCredentials": "Incorrect username or password",
+    "server": "Server: {{name}}",
+    "invalidRecovery": "Check the capitalisation and try again. If you forgot your password, ask the household's administrator to reset it.",
+    "unreachableRecovery": "Make sure the server is running and reachable, then try again.",
+    "usernameRequired": "Enter your username",
+    "passwordRequired": "Enter your password"
+  },
+  "setup": {
+    "progress": "Setup: step {{current}} of {{total}}",
+    "steps": {
+      "welcome": "Welcome",
+      "account": "Admin account",
+      "done": "Done",
+      "appearance": "Appearance"
+    },
+    "welcome": {
+      "title": "Welcome to Palveni Server",
+      "lead": "Create an administrator account first, then add your libraries.",
+      "serverName": "Server",
+      "version": "Version",
+      "serverId": "Server ID",
+      "start": "Get started"
+    },
+    "account": {
+      "title": "Create the administrator",
+      "lead": "This account manages libraries, users and server settings.",
+      "usernameHint": "1–{{max}} characters, no spaces",
+      "passwordHint": "At least {{min}} characters",
+      "confirmPassword": "Confirm password",
+      "submit": "Create and sign in",
+      "goToLogin": "Go to sign in",
+      "alreadyDone": "This server is already set up. Sign in instead.",
+      "failed": "The account wasn't created: {{reason}}"
+    },
+    "done": {
+      "title": "You're all set",
+      "signedInAs": "Signed in as {{username}}",
+      "addLibrary": "Add your first library",
+      "openOverview": "Open the overview"
+    },
+    "stepDone": "(done)",
+    "appearance": {
+      "title": "Choose how it looks",
+      "lead": "The skin decides how the workspace looks; light and dark can follow the system or stay fixed.",
+      "useBuiltin": "Use {{name}}",
+      "later": "More skins come as plugins; install and switch them later in Apps › Appearance.",
+      "next": "Continue"
+    }
+  },
+  "validation": {
+    "username": {
+      "required": "Enter a username",
+      "tooLong": "Usernames can be at most {{max}} characters",
+      "whitespace": "Usernames can't contain spaces"
+    },
+    "password": {
+      "tooShort": "Use at least {{min}} characters",
+      "mismatch": "Passwords don't match"
+    }
+  },
+  "overview": {
+    "server": "Server",
+    "recentJobs": "Recent jobs",
+    "stats": {
+      "libraries": "Libraries",
+      "kindsInUse_one": "{{count}} media type",
+      "kindsInUse_other": "{{count}} media types",
+      "items": "Items",
+      "itemsHint": "Files across all libraries",
+      "perfTier": "Performance tier",
+      "activeJobs": "Active jobs",
+      "recentJobs_one": "{{count}} recent job",
+      "recentJobs_other": "{{count}} recent jobs"
+    },
+    "greeting": {
+      "night": "Still up, {{name}}?",
+      "morning": "Good morning, {{name}}",
+      "noon": "Good afternoon, {{name}}",
+      "afternoon": "Good afternoon, {{name}}",
+      "evening": "Good evening, {{name}}"
+    },
+    "editLayout": "Adjust overview",
+    "doneEditing": "Done",
+    "resetLayout": "Reset",
+    "hiddenWidgets": "Hidden:",
+    "hide": "Hide",
+    "moveEarlier": "Move up",
+    "moveLater": "Move down",
+    "aside": "At home right now",
+    "summary": {
+      "attention_one": "{{count}} thing needs you",
+      "attention_other": "{{count}} things need you",
+      "running_one": "{{count}} job running",
+      "running_other": "{{count}} jobs running",
+      "separator": ", ",
+      "calm": "All quiet — nothing needs you"
+    }
+  },
+  "libraries": {
+    "emptyAdmin": "No libraries yet. Add a folder to get started",
+    "emptyUser": "No libraries are shared with you yet",
+    "neverScanned": "Never scanned",
+    "scannedAt": "Scanned {{time}}",
+    "morePaths_one": "{{count}} more path",
+    "morePaths_other": "{{count}} more paths",
+    "sectionMeta_one": "{{count}} library · {{items}}",
+    "sectionMeta_other": "{{count}} libraries · {{items}}",
+    "scanning": "Scanning",
+    "addFolder": "Add folder",
+    "actionsFor": "Actions for “{{name}}”",
+    "summary_one": "{{count}} library, {{items}} in all",
+    "summary_other": "{{count}} libraries, {{items}} in all",
+    "summaryScanning_one": "{{count}} scanning",
+    "summaryScanning_other": "{{count}} scanning",
+    "scanNow": "Scan now",
+    "scanNamed": "Scan “{{name}}”",
+    "emptyAdminDetail": "A library points at folders on the server. Once it's scanned you can browse it here.",
+    "emptyUserDetail": "Libraries appear here once an admin adds them.",
+    "notScannedHint": "Scan it to browse",
+    "folders": "Folders"
+  },
+  "browse": {
+    "root": "All files",
+    "view": "View",
+    "grid": "Grid",
+    "list": "List",
+    "emptyFolder": "This folder is empty",
+    "emptyLibrary": "No media files were found in this library",
+    "notScannedAdmin": "This library hasn't been scanned yet",
+    "notScannedUser": "This library has no content yet",
+    "columns": {
+      "name": "Name",
+      "kind": "Type",
+      "size": "Size",
+      "modified": "Modified"
+    },
+    "details": {
+      "size": "Size",
+      "modified": "Modified",
+      "indexed": "Indexed",
+      "path": "Path",
+      "id": "Item ID",
+      "kind": "Type",
+      "library": "Library",
+      "title": "File details"
+    },
+    "select": "Select",
+    "selected_other": "{{count}} selected",
+    "selectLoaded": "Select loaded",
+    "selected_one": "{{count}} selected",
+    "files": "Files",
+    "up": "Up one level",
+    "hiddenFolders": "Folders in between",
+    "notScannedDetailAdmin": "Scanning reads this library's folders and builds the index you browse here.",
+    "notScannedDetailUser": "Files appear here once an admin scans it.",
+    "emptyLibraryDetail": "The scan finished but found no files of this type. Check the library's paths.",
+    "notFound": "This library can't be found",
+    "notFoundDetail": "It may have been deleted.",
+    "backToLibraries": "Back to libraries",
+    "loadingMore": "Loading more…",
+    "loadMoreFailed": "Couldn't load more files: {{error}}",
+    "selectHint": "Choose files",
+    "selectionTools": "Actions for the selected files",
+    "cancelSelect": "Cancel selection"
+  },
+  "adminLibraries": {
+    "create": "New library",
+    "created": "Created library “{{name}}”",
+    "empty": "No libraries yet",
+    "browse": "Browse",
+    "scan": "Scan",
+    "scanning": "Scanning",
+    "scanStarted": "Started scanning “{{name}}”",
+    "scanFailed": "Scan failed",
+    "columns": {
+      "library": "Library",
+      "items": "Items",
+      "lastScan": "Last scan",
+      "actions": "Actions"
+    },
+    "form": {
+      "description": "Name the library, choose its media type and add folder paths on the server",
+      "name": "Name",
+      "namePlaceholder": "e.g. Movies",
+      "nameRequired": "Enter a name",
+      "kind": "Media type",
+      "paths": "Folder paths",
+      "pathPlaceholder": "/srv/media/movies",
+      "pathRequired": "Add at least one path",
+      "pathAbsolute": "Use absolute paths on the server",
+      "addPath": "Add path",
+      "removePath": "Remove path",
+      "scanAfter": "Scan right after creating",
+      "pathMissing": "“{{path}}” doesn't exist or isn't a folder",
+      "pathHint": "Absolute paths on the server. Add as many folders as you need.",
+      "pathN": "Folder path {{n}}",
+      "removePathN": "Remove path {{n}}",
+      "scanAfterHint": "Runs in the background. Follow it in Tasks."
+    },
+    "delete": {
+      "title": "Delete library “{{name}}”?",
+      "description": "Only the index is removed. Files on disk are not touched.",
+      "done": "Deleted library “{{name}}”",
+      "removes_one": "{{formatted}} item in “{{name}}” is removed from the index.",
+      "removes_other": "{{formatted}} items in “{{name}}” are removed from the index.",
+      "keeps": "These folders and the files in them stay as they are:"
+    },
+    "scanNamed": "Scan “{{name}}”",
+    "queued": "Queued",
+    "emptyDetail": "A library points at folders on the server. Create one, choose its media type, then add folder paths."
+  },
+  "hardware": {
+    "probedAt": "Probed {{time}}",
+    "refresh": "Probe again",
+    "refreshing": "Probing…",
+    "refreshed": "Hardware probed again",
+    "perfTier": "Performance tier",
+    "cpu": "Processor",
+    "coresArch": "{{cores}} cores · {{arch}}",
+    "memory": "Memory",
+    "hwaccels": "Hardware acceleration",
+    "ffmpeg": "FFmpeg",
+    "hwEncoding": "Hardware encoding",
+    "softwareOnly": "Software only",
+    "toolFound": "Found",
+    "toolMissing": "Not found",
+    "version": "Version",
+    "path": "Path",
+    "source": "Source",
+    "sources": {
+      "config": "Configured",
+      "bundled": "Bundled",
+      "path": "System PATH"
+    },
+    "matrix": "Encoders",
+    "matrixCounts": "{{verified}} verified · {{listed}} listed · {{total}} total",
+    "method": "Method",
+    "noEncoders": "No encoders were detected",
+    "failures_one": "Listed but failed verification ({{count}})",
+    "failures_other": "Listed but failed verification ({{count}})",
+    "noErrorSummary": "No error summary",
+    "status": {
+      "verified": "Verified",
+      "listed": "Listed, failed verification",
+      "unlisted": "Not listed"
+    },
+    "methods": {
+      "software": "Software",
+      "vaapi": "VAAPI",
+      "qsv": "Intel QSV",
+      "nvenc": "NVIDIA NVENC",
+      "amf": "AMD AMF",
+      "rkmpp": "Rockchip MPP",
+      "v4l2m2m": "V4L2 M2M",
+      "videotoolbox": "VideoToolbox"
+    },
+    "tiers": {
+      "tiny": {
+        "name": "Tiny",
+        "summary": "Direct play only, no transcoding"
+      },
+      "lite": {
+        "name": "Lite",
+        "summary": "Audio transcoding, up to 1 hardware video stream"
+      },
+      "standard": {
+        "name": "Standard",
+        "summary": "Multiple hardware transcodes, full thumbnails"
+      },
+      "performance": {
+        "name": "Performance",
+        "summary": "Transcoding, thumbnails and AI all enabled"
+      }
+    },
+    "overview": "Overview",
+    "cores_one": "{{count}} core",
+    "cores_other": "{{count}} cores",
+    "tools": "Transcoding tools",
+    "toolMissingHint": "Transcoding and thumbnails are unavailable. Set the path to {{name}} in the configuration or add it to the system PATH, then probe again.",
+    "statusShort": {
+      "verified": "Works",
+      "listed": "Failed",
+      "unlisted": "Not listed"
+    },
+    "explain": {
+      "verified": "a trial encode succeeded",
+      "listed": "ffmpeg lists it, but a trial encode failed",
+      "unlisted": "this ffmpeg doesn't support it"
+    },
+    "codec": "Codec",
+    "matrixCaption": "Encoders for each codec and acceleration method, with their status",
+    "failuresDetail": "ffmpeg lists these encoders, but trial encodes failed. This is usually a driver or permission problem.",
+    "verifiedHw_one": "{{count}} hardware encoder works",
+    "verifiedHw_other": "{{count}} hardware encoders work",
+    "noneVerified": "No hardware encoder works"
+  },
+  "plugins": {
+    "empty": "No plugins installed yet",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "runtimes": {
+      "none": "Resource package",
+      "recipe": "Recipe",
+      "wasm": "WASM component",
+      "sidecar": "Sidecar service"
+    },
+    "summary_one": "{{count}} plugin, {{enabled}} enabled",
+    "summary_other": "{{count}} plugins, {{enabled}} enabled",
+    "installedTitle": "Installed plugins",
+    "version": "Version {{version}}",
+    "emptyDetail": "Plugins connect cloud drives, metadata sources, lyrics and notification channels. Once plugins are installed you can see and manage them here; skins live in Appearance.",
+    "toAppearance": "Go to Appearance",
+    "provides": "Extension points",
+    "isolation": {
+      "none": "No executable code",
+      "recipe": "no executable code",
+      "wasm": "runs in a sandbox",
+      "sidecar": "not sandboxed; runs because you trust it"
+    },
+    "points": {
+      "storage": "Storage",
+      "content": "Content source",
+      "metadata": "Metadata",
+      "lyrics": "Lyrics",
+      "subtitles": "Subtitles",
+      "danmaku": "Danmaku",
+      "sync": "Sync",
+      "notify": "Notifications",
+      "downloader": "Downloader",
+      "indexer": "Indexer",
+      "auth": "Sign-in",
+      "ai": "AI backend",
+      "hooks": "Event hooks",
+      "schedule": "Scheduled jobs",
+      "importer": "Importer",
+      "http": "HTTP endpoint",
+      "tool": "Assistant tool",
+      "home": "Home bridge",
+      "skin": "Skin",
+      "widget": "Widget"
+    }
+  },
+  "jobs": {
+    "empty": "No jobs yet",
+    "emptyFiltered": "No jobs match this filter",
+    "filter": "Filter jobs",
+    "filters": {
+      "all": "All",
+      "active": "Active",
+      "failed": "Failed"
+    },
+    "kinds": {
+      "libraryScan": "Library scan"
+    },
+    "states": {
+      "queued": "Queued",
+      "running": "Running",
+      "succeeded": "Succeeded",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "columns": {
+      "job": "Job",
+      "state": "State",
+      "progress": "Progress",
+      "message": "Message",
+      "created": "Created",
+      "duration": "Duration"
+    }
+  },
+  "errors": {
+    "withDetail": "{{title}} ({{detail}})",
+    "pageNotFound": "Page not found",
+    "unknown": "Something went wrong",
+    "validation_failed": "The request was not valid",
+    "path_not_found": "Path doesn't exist or isn't a folder",
+    "unauthorized": "Your session has expired. Sign in again",
+    "too_many_requests": "Too many login attempts. Try again shortly.",
+    "invalid_credentials": "Incorrect username or password",
+    "forbidden": "You don't have permission to do that",
+    "not_found": "Not found or already deleted",
+    "setup_already_completed": "This server has already been set up",
+    "conflict": "Conflicts with something that already exists",
+    "internal": "Internal server error",
+    "network_error": "Can't reach the server",
+    "unexpected_response": "The server sent an unexpected response",
+    "tryAgain": "Try again in a moment. If it keeps happening, check the server under System.",
+    "method_not_allowed": "That action is not supported"
+  },
+  "modules": {
+    "overview": {
+      "title": "Overview"
+    },
+    "library": {
+      "title": "Library"
+    },
+    "tasks": {
+      "title": "Tasks"
+    },
+    "apps": {
+      "title": "Apps"
+    },
+    "system": {
+      "title": "System"
+    }
+  },
+  "feature": {
+    "unavailableTitle": "Not enabled yet",
+    "unavailableDetail": "This server ({{version}}) doesn't provide “{{feature}}” yet.",
+    "adminOnly": "Only administrators can see this",
+    "unavailableHint": "It appears here by itself once the server is updated and the feature is turned on."
+  },
+  "palette": {
+    "title": "Search and commands",
+    "placeholder": "Search or run a command",
+    "empty": "No matches",
+    "actions": "Actions",
+    "goTo": "Go to"
+  },
+  "inbox": {
+    "title": "Inbox",
+    "empty": "You're all caught up",
+    "approvals_other": "Waiting for you · {{count}}",
+    "notifications": "Recent",
+    "approvals_one": "Waiting for you · {{count}}",
+    "titleWithCount_one": "Inbox, {{count}} thing needs you",
+    "titleWithCount_other": "Inbox, {{count}} things need you",
+    "alerts_one": "Problems · {{count}}",
+    "alerts_other": "Problems · {{count}}"
+  },
+  "commands": {
+    "changeTheme": "Change appearance",
+    "movieScene": "Start movie mode",
+    "scanAll": "Scan all libraries",
+    "scanAllStarted_other": "Started scanning {{count}} libraries",
+    "scanAllStarted_one": "Started scanning {{count}} library"
+  },
+  "widgets": {
+    "libraries": "Libraries",
+    "activeTasks": "In progress",
+    "noTasks": "Nothing running",
+    "attention": "Needs you",
+    "openInbox": "Open inbox",
+    "allTasks": "All tasks",
+    "manageLibraries": "Manage libraries",
+    "server": "Server",
+    "openSystem": "System",
+    "noTasksDetail": "Scan progress appears here when a library is scanned.",
+    "recentlyFinished": "Recently finished"
+  },
+  "tasks": {
+    "empty": "No tasks yet",
+    "emptyFiltered": "No tasks match",
+    "allKinds": "All types",
+    "filters": {
+      "all": "All",
+      "active": "Running",
+      "done": "Done",
+      "failed": "Failed"
+    },
+    "states": {
+      "queued": "Queued",
+      "running": "Running",
+      "succeeded": "Done",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "kinds": {
+      "libraryScan": "Scan"
+    },
+    "created": "Started",
+    "duration": "Duration",
+    "id": "Task ID",
+    "remainingSeconds": "Almost done",
+    "remainingMinutes_one": "About {{count}} minute left",
+    "remainingMinutes_other": "About {{count}} minutes left",
+    "inProgress": "In progress",
+    "totalUnknown": "Total unknown",
+    "realtime": "real-time",
+    "emptyDetail": "Jobs appear here when a library is scanned.",
+    "emptyFilteredDetail": "Try another state or type.",
+    "clearFilters": "Clear filters",
+    "filterLabel": "Filter by state",
+    "kindLabel": "Task type",
+    "loading": "Loading tasks",
+    "adminOnly": "Only administrators can see background tasks",
+    "adminOnlyDetail": "Ask the administrator of this server if you need to follow a task.",
+    "m0Note": "Library scan jobs appear here.",
+    "summary": {
+      "active_one": "{{count}} running",
+      "active_other": "{{count}} running",
+      "idle": "nothing running",
+      "failed_one": "{{count}} did not finish",
+      "failed_other": "{{count}} did not finish",
+      "separator": ", "
+    },
+    "groups": {
+      "active": "Running",
+      "finished": "Finished"
+    },
+    "took": "took {{duration}}",
+    "elapsed": "Running for",
+    "detail": "Task details",
+    "notFound": "This task could not be found",
+    "notFoundDetail": "It may have been cleaned up, or the link is incomplete.",
+    "noSteps": "This server reports only the state of tasks, without steps or results.",
+    "progressOf": "Progress of “{{title}}”",
+    "cancelled": "Task cancelled",
+    "failedTitle": "Did not finish",
+    "recovery": {
+      "transcode": "Check that hardware acceleration is available under System › Hardware & transcoding. The next playback will transcode again.",
+      "libraryScan": "Make sure the library's folders are still reachable, then scan again under System › Libraries.",
+      "download": "Check the download plugin's connection, then restart the download in the plugin.",
+      "default": "Check the server log for the cause, then start the task again once it is fixed.",
+      "openHardware": "Open hardware & transcoding",
+      "openLibraries": "Open library settings"
+    }
+  },
+  "settings": {
+    "editServer": "Edit server settings",
+    "perfTier": "Performance tier",
+    "automatic": "Detect automatically",
+    "defaultName": "Use configured server name",
+    "save": "Save",
+    "appearance": "Appearance",
+    "currentPack": "Current pack",
+    "server": "Server",
+    "signedInAs": "Signed in as",
+    "features": "Enabled features",
+    "mode": "Light and dark",
+    "modeHint": "Follow system switches along with your device",
+    "skin": "Skin",
+    "skinHint": "Preview and change it in Apps › Appearance",
+    "changeSkin": "Change skin",
+    "languageHint": "The language of the interface",
+    "account": "Account",
+    "username": "Username",
+    "role": "Role",
+    "logoutHint": "You'll need to sign in again",
+    "serverName": "Name",
+    "version": "Version",
+    "serverId": "Server ID",
+    "display": "Appearance and language"
+  },
+  "status": {
+    "connected": "Connected",
+    "connecting": "Connecting",
+    "reconnecting": "Connection lost, reconnecting",
+    "serverMenu": "Server",
+    "version": "Version {{version}}",
+    "serverSettings": "Server settings",
+    "idle": "Nothing running",
+    "alerts_one": "{{count}} problem — open the inbox",
+    "alerts_other": "{{count}} problems — open the inbox"
+  },
+  "skins": {
+    "title": "Appearance"
+  },
+  "attention": {
+    "waiting": "Needs your confirmation",
+    "dismiss": "Dismiss",
+    "review": "Review changes",
+    "confirm": "Confirm",
+    "emptyTitle": "Nothing needs you",
+    "emptyDetail": "Changes waiting for your confirmation and anything that went wrong show up here",
+    "details": "Details"
+  },
+  "units": {
+    "video": "videos",
+    "music": "tracks",
+    "photo": "photos",
+    "book": "books",
+    "comic": "volumes"
+  },
+  "server": {
+    "cpu": "CPU",
+    "memory": "Memory",
+    "storage": "Storage",
+    "storageUsed": "{{percent}}% used",
+    "transcoding": "Hardware transcoding",
+    "hwAvailable": "{{method}} available",
+    "devices": "Devices",
+    "devicesOnline_one": "{{count}} online",
+    "devicesOnline_other": "{{count}} online",
+    "running": "The server is running normally"
+  },
+  "time": {
+    "todayAt": "Today {{time}}",
+    "justNow": "just now"
+  },
+  "appearance": {
+    "summary": "{{skin}} skin · {{mode}}",
+    "mode": {
+      "title": "Light and dark",
+      "detail": "Independent of the skin: switching skins keeps this choice.",
+      "systemNow": "Follows the system (now {{mode}})"
+    },
+    "skins": {
+      "title": "Skins",
+      "loading": "Loading installed skins"
+    },
+    "catalog": {
+      "title": "Skins to install",
+      "feature": "skin plugins",
+      "loading": "Loading the skin registry",
+      "allInstalled": "Every available skin is installed",
+      "allInstalledDetail": "New skins appear here when they are published."
+    },
+    "builtin": "Built in; ships with the server and can't be uninstalled",
+    "upload": "Upload skin (.tar)",
+    "unverified": "Unverified source",
+    "tooLarge": "Skin packages must be 16 MiB or smaller.",
+    "installedPlugin": "Installed plugin",
+    "inUse": "In use",
+    "apply": "Apply",
+    "applyNamed": "Apply {{name}}",
+    "applying": "Applying…",
+    "loadingPreview": "Loading the preview…",
+    "previewAlt": "Preview of {{name}}",
+    "previewAfterInstall": "A live preview appears once it's installed",
+    "facts": {
+      "plugin": "Plugin ID",
+      "version": "Version",
+      "versionValue": "Version {{version}}",
+      "size": "Size",
+      "permissions": "Permissions"
+    },
+    "problem": {
+      "findings_one": "Show {{count}} finding",
+      "findings_other": "Show {{count}} findings",
+      "noPreview": "No preview available",
+      "cannotUse": "This skin can't be used right now.",
+      "notApplied": "Not applied."
+    },
+    "reasons": {
+      "missing": "The server no longer has it; it may have been uninstalled.",
+      "unreachable": "Couldn't reach the server to download it. Check the connection and try again.",
+      "invalid": "It failed the checks (token format, contrast or a forbidden colour), so it was refused as a whole and nothing of it was applied."
+    },
+    "fallback": {
+      "title": "Using the built-in {{builtin}} skin",
+      "missing": "The skin you chose is no longer on the server; an administrator may have uninstalled it. Pick another one below.",
+      "unreachable": "Couldn't reach the server to load the skin you chose. Try again once the connection is back.",
+      "invalid": "The skin you chose failed the checks and was refused as a whole. Pick another one below.",
+      "unavailable": "This server doesn't offer skin plugins yet, so the skin you chose can't be used for now."
+    },
+    "install": {
+      "action": "Install",
+      "named": "Install {{name}}",
+      "adminOnly": "An administrator can install it",
+      "title": "Install {{name}}?",
+      "dataOnly": "A skin is a data-only plugin: colours, fonts and layout choices, with no code and no permissions. It is checked for format and contrast before use and refused as a whole if it fails.",
+      "everyone": "Once installed, everyone on this server can choose it in Appearance.",
+      "noPermissions": "None needed",
+      "confirm": "Install",
+      "pending": "Installing…",
+      "failed": "Not installed: {{reason}}",
+      "done": "{{name}} is installed. Apply it under Skins."
+    },
+    "uninstall": {
+      "action": "Uninstall",
+      "named": "Uninstall {{name}}",
+      "title": "Uninstall {{name}}?",
+      "detail": "Browsers using it switch back to the built-in {{builtin}} skin. You can install it again here at any time.",
+      "inUse": "You're using it now; this browser switches to {{builtin}} right away.",
+      "confirm": "Uninstall",
+      "pending": "Uninstalling…",
+      "failed": "Not uninstalled: {{reason}}",
+      "done": "{{name}} was uninstalled"
+    },
+    "preview": {
+      "section": "Tasks",
+      "waitingTitle": "Some library folders are unavailable",
+      "runningKind": "Scan",
+      "runningSubject": "Family photos",
+      "runningDetail": "312 entries indexed",
+      "runningLeft": "Indexing"
+    },
+    "applied": "Switched to {{name}}"
+  },
+  "jobSteps": {
+    "scanTitle": "Scan “{{name}}”",
+    "scanDiscovering": "Found {{found}} files",
+    "scanIndexing": "Indexed {{done}} of {{total}} entries",
+    "scanSummary": "{{added}} added, {{updated}} updated, {{removed}} removed, {{unchanged}} unchanged",
+    "incomplete": "Scan incomplete",
+    "gapPaths_one": "{{count}} library path unavailable",
+    "gapPaths_other": "{{count}} library paths unavailable",
+    "gapFolders_one": "{{count}} folder could not be read",
+    "gapFolders_other": "{{count}} folders could not be read",
+    "gapJoin": ", ",
+    "gapKept": "{{gaps}}; the items there were kept as they were",
+    "gapWhy": "A scan never removes items from places it cannot read, so a disconnected drive or network share does not empty your library. Once the storage is connected again, scan this library again.",
+    "gapTitle": "This scan was incomplete",
+    "rescan": "Scan again"
+  }
+}

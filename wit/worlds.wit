@@ -1,0 +1,35 @@
+/// What every plugin may import and must export. Imports are capabilities;
+/// the host only links those the manifest's permissions allow and traps on
+/// the rest.
+world plugin-base {
+    import log;
+    import http;
+    import kv;
+    import secrets;
+    import config;
+
+    export lifecycle;
+}
+
+world metadata-plugin {
+    include plugin-base;
+    export metadata-provider;
+}
+
+world lyrics-plugin {
+    include plugin-base;
+    export lyrics-provider;
+}
+
+world storage-plugin {
+    include plugin-base;
+    export storage-provider;
+}
+
+/// A plugin implementing several extension points at once.
+world full-plugin {
+    include plugin-base;
+    export metadata-provider;
+    export lyrics-provider;
+    export storage-provider;
+}

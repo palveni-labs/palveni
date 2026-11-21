@@ -1,0 +1,760 @@
+{
+  "app": {
+    "name": "Palveni",
+    "edition": "Server"
+  },
+  "languages": {
+    "zh-CN": "简体中文",
+    "en": "English"
+  },
+  "common": {
+    "back": "返回",
+    "backHome": "回到概览",
+    "cancel": "取消",
+    "create": "创建",
+    "delete": "删除",
+    "none": "无",
+    "retry": "重试",
+    "selected": "已选中",
+    "loading": "正在加载"
+  },
+  "a11y": {
+    "breadcrumb": "当前位置",
+    "close": "关闭",
+    "more": "更多",
+    "navigation": "导航",
+    "toggleSidebar": "展开或收起侧边栏"
+  },
+  "boot": {
+    "unreachable": "无法连接到服务器",
+    "recover": "确认服务器正在运行、这台设备和它在同一个网络里，然后重试。"
+  },
+  "nav": {
+    "overview": "概览",
+    "libraries": "媒体库",
+    "admin": "管理",
+    "manageLibraries": "媒体库管理",
+    "hardware": "硬件与转码",
+    "plugins": "插件",
+    "jobs": "任务",
+    "more": "更多",
+    "settings": "设置",
+    "themes": "主题",
+    "manage": "管理",
+    "appearance": "外观"
+  },
+  "theme": {
+    "label": "外观",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统",
+    "packs": "主题包"
+  },
+  "language": {
+    "label": "语言"
+  },
+  "user": {
+    "menu": "账户菜单",
+    "logout": "退出登录",
+    "roles": {
+      "admin": "管理员",
+      "user": "成员"
+    }
+  },
+  "kinds": {
+    "video": "影视",
+    "music": "音乐",
+    "photo": "相册",
+    "book": "书籍",
+    "comic": "漫画"
+  },
+  "itemKinds": {
+    "folder": "文件夹",
+    "video": "视频",
+    "track": "曲目",
+    "photo": "照片",
+    "book": "图书",
+    "comic": "漫画"
+  },
+  "counts": {
+    "items_other": "{{formatted}} 项"
+  },
+  "auth": {
+    "username": "用户名",
+    "password": "密码",
+    "serverVersion": "{{name}} · {{version}}"
+  },
+  "login": {
+    "title": "登录",
+    "submit": "登录",
+    "invalidCredentials": "用户名或密码错误",
+    "server": "服务器：{{name}}",
+    "invalidRecovery": "检查用户名和密码的大小写后再试一次。忘记密码时，请家里的管理员帮你重置。",
+    "unreachableRecovery": "确认服务器正在运行、网络连通，然后再试一次。",
+    "usernameRequired": "请输入用户名",
+    "passwordRequired": "请输入密码"
+  },
+  "setup": {
+    "progress": "初始化进度：第 {{current}} 步，共 {{total}} 步",
+    "steps": {
+      "welcome": "欢迎",
+      "account": "管理员账号",
+      "done": "完成",
+      "appearance": "外观"
+    },
+    "welcome": {
+      "title": "欢迎使用 Palveni Server",
+      "lead": "先创建一个管理员账号，之后就可以添加媒体库。",
+      "serverName": "服务器",
+      "version": "版本",
+      "serverId": "服务器 ID",
+      "start": "开始设置"
+    },
+    "account": {
+      "title": "创建管理员",
+      "lead": "这个账号可以管理媒体库、用户和服务器设置。",
+      "usernameHint": "1–{{max}} 个字符，不含空格",
+      "passwordHint": "至少 {{min}} 个字符",
+      "confirmPassword": "确认密码",
+      "submit": "创建并登录",
+      "goToLogin": "前往登录",
+      "alreadyDone": "这台服务器已经设置过了，请直接登录。",
+      "failed": "没有创建账号：{{reason}}"
+    },
+    "done": {
+      "title": "设置完成",
+      "signedInAs": "已以 {{username}} 的身份登录",
+      "addLibrary": "添加第一个媒体库",
+      "openOverview": "进入概览"
+    },
+    "stepDone": "（已完成）",
+    "appearance": {
+      "title": "选择外观",
+      "lead": "皮肤决定工作台的样子；明暗可以跟随系统，也可以固定为浅色或深色。",
+      "useBuiltin": "改用「{{name}}」",
+      "later": "更多皮肤以插件形式提供，之后可以在「应用 › 外观」里安装和切换。",
+      "next": "继续"
+    }
+  },
+  "validation": {
+    "username": {
+      "required": "请输入用户名",
+      "tooLong": "用户名不能超过 {{max}} 个字符",
+      "whitespace": "用户名不能包含空格"
+    },
+    "password": {
+      "tooShort": "密码至少 {{min}} 个字符",
+      "mismatch": "两次输入的密码不一致"
+    }
+  },
+  "overview": {
+    "server": "服务器",
+    "recentJobs": "最近任务",
+    "stats": {
+      "libraries": "媒体库",
+      "kindsInUse_other": "覆盖 {{count}} 种媒体类型",
+      "items": "条目",
+      "itemsHint": "所有媒体库中的文件",
+      "perfTier": "性能档位",
+      "activeJobs": "进行中的任务",
+      "recentJobs_other": "最近 {{count}} 个任务"
+    },
+    "greeting": {
+      "night": "夜深了，{{name}}",
+      "morning": "早上好，{{name}}",
+      "noon": "中午好，{{name}}",
+      "afternoon": "下午好，{{name}}",
+      "evening": "晚上好，{{name}}"
+    },
+    "editLayout": "调整概览",
+    "doneEditing": "完成",
+    "resetLayout": "恢复默认",
+    "hiddenWidgets": "已隐藏：",
+    "hide": "隐藏",
+    "moveEarlier": "上移",
+    "moveLater": "下移",
+    "aside": "家里此刻",
+    "summary": {
+      "attention_other": "{{count}} 件事等你处理",
+      "running_other": "{{count}} 项工作正在进行",
+      "separator": "，",
+      "calm": "一切正常，没有需要你处理的事"
+    }
+  },
+  "libraries": {
+    "emptyAdmin": "还没有媒体库，添加一个文件夹开始吧",
+    "emptyUser": "暂时没有可以访问的媒体库",
+    "neverScanned": "从未扫描",
+    "scannedAt": "{{time}}扫描",
+    "morePaths_other": "另有 {{count}} 个路径",
+    "sectionMeta_other": "{{count}} 个媒体库 · {{items}}",
+    "scanning": "扫描中",
+    "addFolder": "添加文件夹",
+    "actionsFor": "「{{name}}」的操作",
+    "summary_other": "{{count}} 个媒体库，共 {{items}}",
+    "summaryScanning_other": "{{count}} 个正在扫描",
+    "scanNow": "立即扫描",
+    "scanNamed": "扫描「{{name}}」",
+    "emptyAdminDetail": "媒体库指向服务器上的文件夹，扫描之后就能在这里浏览。",
+    "emptyUserDetail": "管理员添加媒体库之后会出现在这里。",
+    "notScannedHint": "扫描之后才能浏览",
+    "folders": "文件夹"
+  },
+  "browse": {
+    "root": "全部文件",
+    "view": "显示方式",
+    "grid": "网格",
+    "list": "列表",
+    "emptyFolder": "这个文件夹是空的",
+    "emptyLibrary": "这个媒体库里还没有识别到文件",
+    "notScannedAdmin": "这个媒体库还没有扫描过",
+    "notScannedUser": "这个媒体库还没有内容",
+    "columns": {
+      "name": "名称",
+      "kind": "类型",
+      "size": "大小",
+      "modified": "修改时间"
+    },
+    "details": {
+      "size": "大小",
+      "modified": "修改时间",
+      "indexed": "入库时间",
+      "path": "路径",
+      "id": "条目 ID",
+      "kind": "类型",
+      "library": "媒体库",
+      "title": "文件详情"
+    },
+    "select": "选择",
+    "selected_other": "已选 {{count}} 项",
+    "selectLoaded": "全选已加载",
+    "files": "文件",
+    "up": "回到上一级",
+    "hiddenFolders": "中间的文件夹",
+    "notScannedDetailAdmin": "扫描会读取这个媒体库的文件夹，建立可以浏览的索引。",
+    "notScannedDetailUser": "管理员扫描之后，这里会出现文件。",
+    "emptyLibraryDetail": "扫描已完成，但文件夹里没有这种类型的文件。请检查媒体库的路径。",
+    "notFound": "找不到这个媒体库",
+    "notFoundDetail": "它可能已经被删除了。",
+    "backToLibraries": "回到媒体库",
+    "loadingMore": "正在加载更多…",
+    "loadMoreFailed": "没能加载更多文件：{{error}}",
+    "selectHint": "点选要选择的文件",
+    "selectionTools": "已选文件的操作",
+    "cancelSelect": "取消选择"
+  },
+  "adminLibraries": {
+    "create": "新建媒体库",
+    "created": "已创建媒体库「{{name}}」",
+    "empty": "还没有媒体库",
+    "browse": "浏览内容",
+    "scan": "扫描",
+    "scanning": "扫描中",
+    "scanStarted": "已开始扫描「{{name}}」",
+    "scanFailed": "扫描失败",
+    "columns": {
+      "library": "媒体库",
+      "items": "条目",
+      "lastScan": "上次扫描",
+      "actions": "操作"
+    },
+    "form": {
+      "description": "填写名称、选择媒体类型并添加服务器上的文件夹路径",
+      "name": "名称",
+      "namePlaceholder": "例如：电影",
+      "nameRequired": "请输入名称",
+      "kind": "媒体类型",
+      "paths": "文件夹路径",
+      "pathPlaceholder": "/srv/media/movies",
+      "pathRequired": "至少添加一个路径",
+      "pathAbsolute": "请填写服务器上的绝对路径",
+      "addPath": "添加路径",
+      "removePath": "移除路径",
+      "scanAfter": "创建后立即扫描",
+      "pathMissing": "「{{path}}」不存在或不是文件夹",
+      "pathHint": "服务器上的绝对路径，可以添加多个文件夹",
+      "pathN": "文件夹路径 {{n}}",
+      "removePathN": "移除第 {{n}} 个路径",
+      "scanAfterHint": "扫描在后台进行，进度可以在任务里查看"
+    },
+    "delete": {
+      "title": "删除媒体库「{{name}}」？",
+      "description": "只删除索引，磁盘上的文件不会被改动。",
+      "done": "已删除媒体库「{{name}}」",
+      "removes_other": "「{{name}}」的 {{formatted}} 个条目会从索引中移除。",
+      "keeps": "这些文件夹和里面的文件保持原样："
+    },
+    "scanNamed": "扫描「{{name}}」",
+    "queued": "排队中",
+    "emptyDetail": "媒体库指向服务器上的文件夹。新建一个，选好媒体类型，再添加文件夹路径。"
+  },
+  "hardware": {
+    "probedAt": "{{time}}探测",
+    "refresh": "重新探测",
+    "refreshing": "探测中…",
+    "refreshed": "已重新探测硬件",
+    "perfTier": "性能档位",
+    "cpu": "处理器",
+    "coresArch": "{{cores}} 核 · {{arch}}",
+    "memory": "内存",
+    "hwaccels": "硬件加速接口",
+    "ffmpeg": "FFmpeg",
+    "hwEncoding": "硬件编码",
+    "softwareOnly": "仅软件编码",
+    "toolFound": "已找到",
+    "toolMissing": "未找到",
+    "version": "版本",
+    "path": "路径",
+    "source": "来源",
+    "sources": {
+      "config": "配置指定",
+      "bundled": "随附",
+      "path": "系统 PATH"
+    },
+    "matrix": "编码器",
+    "matrixCounts": "已验证 {{verified}} · 已列出 {{listed}} · 共 {{total}}",
+    "method": "加速方式",
+    "noEncoders": "没有探测到编码器",
+    "failures_other": "已列出但未通过验证（{{count}}）",
+    "noErrorSummary": "没有错误摘要",
+    "status": {
+      "verified": "已验证可用",
+      "listed": "已列出，未通过验证",
+      "unlisted": "未列出"
+    },
+    "methods": {
+      "software": "软件",
+      "vaapi": "VAAPI",
+      "qsv": "Intel QSV",
+      "nvenc": "NVIDIA NVENC",
+      "amf": "AMD AMF",
+      "rkmpp": "Rockchip MPP",
+      "v4l2m2m": "V4L2 M2M",
+      "videotoolbox": "VideoToolbox"
+    },
+    "tiers": {
+      "tiny": {
+        "name": "微型",
+        "summary": "只直接播放，不转码"
+      },
+      "lite": {
+        "name": "轻量",
+        "summary": "音频转码，最多 1 路硬件视频转码"
+      },
+      "standard": {
+        "name": "标准",
+        "summary": "多路硬件转码，完整缩略图"
+      },
+      "performance": {
+        "name": "性能",
+        "summary": "转码、缩略图与 AI 全部开启"
+      }
+    },
+    "overview": "概况",
+    "cores_other": "{{count}} 核",
+    "tools": "转码工具",
+    "toolMissingHint": "转码和缩略图暂时不可用。在配置中指定 {{name}} 的路径，或把它加入系统 PATH，然后重新探测。",
+    "statusShort": {
+      "verified": "可用",
+      "listed": "未通过",
+      "unlisted": "未列出"
+    },
+    "explain": {
+      "verified": "试编码成功",
+      "listed": "ffmpeg 列出了它，但试编码失败",
+      "unlisted": "这个 ffmpeg 不支持"
+    },
+    "codec": "编码格式",
+    "matrixCaption": "各加速方式下每种编码格式的编码器及其状态",
+    "failuresDetail": "ffmpeg 列出了这些编码器，但试编码失败，通常是驱动或权限的问题。",
+    "verifiedHw_other": "{{count}} 个硬件编码器可用",
+    "noneVerified": "没有可用的硬件编码器"
+  },
+  "plugins": {
+    "empty": "还没有安装插件",
+    "enabled": "已启用",
+    "disabled": "已停用",
+    "runtimes": {
+      "none": "资源包",
+      "recipe": "声明式配方",
+      "wasm": "WASM 组件",
+      "sidecar": "Sidecar 服务"
+    },
+    "summary_other": "{{count}} 个插件，{{enabled}} 个已启用",
+    "installedTitle": "已安装的插件",
+    "version": "版本 {{version}}",
+    "emptyDetail": "插件可以接入网盘、刮削源、歌词和通知渠道。装了插件之后，可以在这里查看和管理；皮肤在「外观」里管理。",
+    "toAppearance": "前往外观",
+    "provides": "提供的扩展点",
+    "isolation": {
+      "none": "无可执行代码",
+      "recipe": "没有可执行代码",
+      "wasm": "在沙箱里运行",
+      "sidecar": "不在沙箱里，因为你信任它才运行"
+    },
+    "points": {
+      "storage": "存储",
+      "content": "内容源",
+      "metadata": "元数据",
+      "lyrics": "歌词",
+      "subtitles": "字幕",
+      "danmaku": "弹幕",
+      "sync": "同步",
+      "notify": "通知渠道",
+      "downloader": "下载器",
+      "indexer": "资源索引",
+      "auth": "认证",
+      "ai": "AI 后端",
+      "hooks": "事件钩子",
+      "schedule": "定时任务",
+      "importer": "导入器",
+      "http": "HTTP 端点",
+      "tool": "助手工具",
+      "home": "家居桥",
+      "skin": "皮肤",
+      "widget": "界面小组件"
+    }
+  },
+  "jobs": {
+    "empty": "还没有任务",
+    "emptyFiltered": "没有符合条件的任务",
+    "filter": "筛选任务",
+    "filters": {
+      "all": "全部",
+      "active": "进行中",
+      "failed": "失败"
+    },
+    "kinds": {
+      "libraryScan": "扫描媒体库"
+    },
+    "states": {
+      "queued": "排队中",
+      "running": "进行中",
+      "succeeded": "已完成",
+      "failed": "失败",
+      "cancelled": "已取消"
+    },
+    "columns": {
+      "job": "任务",
+      "state": "状态",
+      "progress": "进度",
+      "message": "信息",
+      "created": "创建时间",
+      "duration": "耗时"
+    }
+  },
+  "errors": {
+    "withDetail": "{{title}}（{{detail}}）",
+    "pageNotFound": "页面不存在",
+    "unknown": "出现了意外错误",
+    "validation_failed": "请求参数不正确",
+    "path_not_found": "路径不存在或不是文件夹",
+    "unauthorized": "登录已失效，请重新登录",
+    "too_many_requests": "登录过于频繁，请稍后再试",
+    "invalid_credentials": "用户名或密码错误",
+    "forbidden": "没有权限执行这个操作",
+    "not_found": "内容不存在或已被删除",
+    "setup_already_completed": "服务器已完成初始化",
+    "conflict": "与现有内容冲突",
+    "internal": "服务器内部错误",
+    "network_error": "无法连接到服务器",
+    "unexpected_response": "服务器返回了无法识别的响应",
+    "tryAgain": "稍后重试；如果一直这样，去「系统」查看服务器状态。",
+    "method_not_allowed": "这个操作不被支持"
+  },
+  "modules": {
+    "overview": {
+      "title": "概览"
+    },
+    "library": {
+      "title": "资料"
+    },
+    "tasks": {
+      "title": "任务"
+    },
+    "apps": {
+      "title": "应用"
+    },
+    "system": {
+      "title": "系统"
+    }
+  },
+  "feature": {
+    "unavailableTitle": "此功能尚未启用",
+    "unavailableDetail": "这台服务器（{{version}}）还没有提供「{{feature}}」。",
+    "adminOnly": "只有管理员可以查看这里",
+    "unavailableHint": "服务器升级并启用这个功能后，这里会自动出现。"
+  },
+  "palette": {
+    "title": "搜索与指令",
+    "placeholder": "搜索或执行命令",
+    "empty": "没有找到匹配的结果",
+    "actions": "操作",
+    "goTo": "跳转"
+  },
+  "inbox": {
+    "title": "收件箱",
+    "empty": "没有新消息",
+    "approvals_other": "等待确认 · {{count}}",
+    "notifications": "最近通知",
+    "titleWithCount_other": "收件箱，{{count}} 件事需要处理",
+    "alerts_other": "异常 · {{count}}"
+  },
+  "commands": {
+    "changeTheme": "更改外观",
+    "movieScene": "开启观影模式",
+    "scanAll": "扫描全部媒体库",
+    "scanAllStarted_other": "已开始扫描 {{count}} 个媒体库"
+  },
+  "widgets": {
+    "libraries": "媒体库",
+    "activeTasks": "正在进行",
+    "noTasks": "一切都处理完了",
+    "attention": "需要你处理",
+    "openInbox": "打开收件箱",
+    "allTasks": "全部任务",
+    "manageLibraries": "管理媒体库",
+    "server": "服务器",
+    "openSystem": "系统",
+    "noTasksDetail": "开始扫描媒体库时，进度会出现在这里。",
+    "recentlyFinished": "最近完成"
+  },
+  "tasks": {
+    "empty": "还没有任务",
+    "emptyFiltered": "没有符合条件的任务",
+    "allKinds": "全部类型",
+    "filters": {
+      "all": "全部",
+      "active": "进行中",
+      "done": "已完成",
+      "failed": "失败"
+    },
+    "states": {
+      "queued": "排队中",
+      "running": "进行中",
+      "succeeded": "已完成",
+      "failed": "失败",
+      "cancelled": "已取消"
+    },
+    "kinds": {
+      "libraryScan": "扫描"
+    },
+    "created": "开始于",
+    "duration": "耗时",
+    "id": "任务 ID",
+    "remainingSeconds": "即将完成",
+    "remainingMinutes_other": "剩余约 {{count}} 分钟",
+    "inProgress": "进行中",
+    "totalUnknown": "总数未知",
+    "realtime": "实时速度",
+    "emptyDetail": "开始扫描媒体库时，任务会出现在这里。",
+    "emptyFilteredDetail": "换一个状态或类型看看。",
+    "clearFilters": "清除筛选",
+    "filterLabel": "按状态筛选",
+    "kindLabel": "任务类型",
+    "loading": "正在加载任务",
+    "adminOnly": "只有管理员可以查看后台任务",
+    "adminOnlyDetail": "需要了解进度时，请联系这台服务器的管理员。",
+    "m0Note": "这里显示媒体库扫描任务。",
+    "summary": {
+      "active_other": "{{count}} 项正在进行",
+      "idle": "没有正在进行的任务",
+      "failed_other": "{{count}} 项没有完成",
+      "separator": "，"
+    },
+    "groups": {
+      "active": "正在进行",
+      "finished": "已结束"
+    },
+    "took": "用时 {{duration}}",
+    "elapsed": "已进行",
+    "detail": "任务详情",
+    "notFound": "找不到这个任务",
+    "notFoundDetail": "它可能已经被清理，或者链接不完整。",
+    "noSteps": "这台服务器只报告任务的状态，没有步骤和结果明细。",
+    "progressOf": "「{{title}}」的进度",
+    "cancelled": "已取消任务",
+    "failedTitle": "没有完成",
+    "recovery": {
+      "transcode": "检查「系统 › 硬件与转码」里的硬件加速是否可用。客户端下次播放时会重新转码。",
+      "libraryScan": "确认媒体库的文件夹仍然可以访问，然后在「系统 › 媒体库」里重新扫描。",
+      "download": "检查下载插件的连接，然后在插件里重新开始下载。",
+      "default": "查看服务器日志了解原因，问题解决后重新发起这项任务。",
+      "openHardware": "打开硬件与转码",
+      "openLibraries": "打开媒体库设置"
+    }
+  },
+  "settings": {
+    "editServer": "编辑服务器设置",
+    "perfTier": "性能档位",
+    "automatic": "自动探测",
+    "defaultName": "使用引导配置中的名称",
+    "save": "保存",
+    "appearance": "外观",
+    "currentPack": "当前主题包",
+    "server": "服务器",
+    "signedInAs": "当前账号",
+    "features": "已启用的功能",
+    "mode": "明暗",
+    "modeHint": "跟随系统时，随设备的设置自动切换",
+    "skin": "皮肤",
+    "skinHint": "在 应用 › 外观 里预览和更换",
+    "changeSkin": "更换皮肤",
+    "languageHint": "界面文字使用的语言",
+    "account": "账户",
+    "username": "用户名",
+    "role": "身份",
+    "logoutHint": "退出后需要重新登录",
+    "serverName": "名称",
+    "version": "版本",
+    "serverId": "服务器 ID",
+    "display": "外观与语言"
+  },
+  "status": {
+    "connected": "已连接",
+    "connecting": "正在连接",
+    "reconnecting": "连接中断，正在重连",
+    "serverMenu": "服务器",
+    "version": "版本 {{version}}",
+    "serverSettings": "服务器设置",
+    "idle": "没有正在进行的工作",
+    "alerts_other": "{{count}} 项异常，打开收件箱"
+  },
+  "skins": {
+    "title": "外观"
+  },
+  "attention": {
+    "waiting": "等你确认",
+    "dismiss": "忽略",
+    "review": "查看改动",
+    "confirm": "确认",
+    "emptyTitle": "没有需要你处理的事",
+    "emptyDetail": "需要确认的改动和出了问题的地方会出现在这里",
+    "details": "查看详情"
+  },
+  "units": {
+    "video": "个视频",
+    "music": "首",
+    "photo": "张",
+    "book": "本",
+    "comic": "本"
+  },
+  "server": {
+    "cpu": "处理器",
+    "memory": "内存",
+    "storage": "存储",
+    "storageUsed": "已用 {{percent}}%",
+    "transcoding": "硬件转码",
+    "hwAvailable": "{{method}} 可用",
+    "devices": "设备",
+    "devicesOnline_other": "{{count}} 台在线",
+    "running": "服务器运行正常"
+  },
+  "time": {
+    "todayAt": "今天 {{time}}",
+    "justNow": "刚刚"
+  },
+  "appearance": {
+    "summary": "皮肤「{{skin}}」，{{mode}}",
+    "mode": {
+      "title": "明暗",
+      "detail": "明暗和皮肤互相独立，换皮肤时这里的选择保持不变。",
+      "systemNow": "跟随系统，现在是{{mode}}"
+    },
+    "skins": {
+      "title": "皮肤",
+      "loading": "正在载入已安装的皮肤"
+    },
+    "catalog": {
+      "title": "可以安装的皮肤",
+      "feature": "皮肤插件",
+      "loading": "正在载入皮肤注册表",
+      "allInstalled": "可以安装的皮肤都装好了",
+      "allInstalledDetail": "有新皮肤发布时，会出现在这里。"
+    },
+    "builtin": "内置，随程序提供，不能卸载",
+    "upload": "上传皮肤（.tar）",
+    "unverified": "来源未验证",
+    "tooLarge": "皮肤包大小不能超过 16 MiB。",
+    "installedPlugin": "已安装的插件",
+    "inUse": "正在使用",
+    "apply": "应用",
+    "applyNamed": "应用「{{name}}」",
+    "applying": "正在应用…",
+    "loadingPreview": "正在载入预览…",
+    "previewAlt": "「{{name}}」的预览图",
+    "previewAfterInstall": "安装后可以看到实时预览",
+    "facts": {
+      "plugin": "插件 ID",
+      "version": "版本",
+      "versionValue": "版本 {{version}}",
+      "size": "大小",
+      "permissions": "权限"
+    },
+    "problem": {
+      "findings_other": "查看检查结果（{{count}} 条）",
+      "noPreview": "无法预览",
+      "cannotUse": "这个皮肤现在不能用。",
+      "notApplied": "没有应用。"
+    },
+    "reasons": {
+      "missing": "服务器上找不到它，可能已经被卸载。",
+      "unreachable": "暂时连不上服务器，没能下载它。检查网络后重试。",
+      "invalid": "它没有通过检查（变量格式、对比度或禁用的颜色），按规则整套拒绝，没有应用任何部分。"
+    },
+    "fallback": {
+      "title": "正在使用内置的「{{builtin}}」",
+      "missing": "你选用的皮肤已经不在服务器上了，可能被管理员卸载了。可以在下面另选一个。",
+      "unreachable": "暂时连不上服务器，没能载入你选用的皮肤。连接恢复后重试即可。",
+      "invalid": "你选用的皮肤没有通过检查，按规则整套不应用。可以在下面另选一个。",
+      "unavailable": "这台服务器还没有提供皮肤插件，你之前选用的皮肤暂时用不了。"
+    },
+    "install": {
+      "action": "安装",
+      "named": "安装「{{name}}」",
+      "adminOnly": "需要管理员安装",
+      "title": "安装「{{name}}」？",
+      "dataOnly": "皮肤是纯数据插件：只有颜色、字体和版式的选择，不含任何代码，也不需要任何权限。使用前会先检查格式和对比度，不合格的整套拒绝。",
+      "everyone": "安装后，这台服务器上的每个人都可以在「外观」里选用它。",
+      "noPermissions": "不需要任何权限",
+      "confirm": "安装",
+      "pending": "正在安装…",
+      "failed": "没有装上：{{reason}}",
+      "done": "已安装「{{name}}」，可以在「皮肤」里应用"
+    },
+    "uninstall": {
+      "action": "卸载",
+      "named": "卸载「{{name}}」",
+      "title": "卸载「{{name}}」？",
+      "detail": "卸载后，正在用它的浏览器会换回内置的「{{builtin}}」。之后可以随时在这里重新安装。",
+      "inUse": "你现在正在用它，卸载后会立即换回「{{builtin}}」。",
+      "confirm": "卸载",
+      "pending": "正在卸载…",
+      "failed": "没有卸载：{{reason}}",
+      "done": "已卸载「{{name}}」"
+    },
+    "preview": {
+      "section": "任务",
+      "waitingTitle": "部分媒体目录暂时不可用",
+      "runningKind": "扫描",
+      "runningSubject": "家庭相册",
+      "runningDetail": "已索引 312 个条目",
+      "runningLeft": "索引中"
+    },
+    "applied": "已换成「{{name}}」"
+  },
+  "jobSteps": {
+    "scanTitle": "扫描「{{name}}」",
+    "scanDiscovering": "已发现 {{found}} 个文件",
+    "scanIndexing": "已索引 {{done}} / {{total}} 个条目",
+    "scanSummary": "新增 {{added}}，更新 {{updated}}，移除 {{removed}}，未变 {{unchanged}}",
+    "incomplete": "扫描不完整",
+    "gapPaths": "{{count}} 个路径不可用",
+    "gapFolders": "{{count}} 个文件夹无法读取",
+    "gapJoin": "、",
+    "gapKept": "{{gaps}}，其中的条目保持不变",
+    "gapWhy": "扫描读不到的位置里的条目不会被移除，免得硬盘或网络存储暂时断开时资料被清空。确认存储已经连接后，重新扫描这个媒体库。",
+    "gapTitle": "这次扫描不完整",
+    "rescan": "重新扫描"
+  }
+}

@@ -1,0 +1,49 @@
+/// Lifecycle hooks every plugin exports.
+interface lifecycle {
+    use types.{error};
+
+    /// Called after install or upgrade, before the plugin goes live.
+    /// Should check configuration and reachability cheaply.
+    self-test: func() -> result<_, error>;
+
+    /// Migrates private storage from `from-schema`; returns the new
+    /// schema version.
+    migrate: func(from-schema: u32) -> result<u32, error>;
+}
+
+/// Metadata provider (TMDB, MusicBrainz, Bangumi, …).
+interface metadata-provider {
+    use types.{media-kind, search-query, search-hit, item-metadata, error};
+
+    /// Media kinds this provider supports.
+    supported-kinds: func() -> list<media-kind>;
+
+    /// Finds candidate items from title, year and other clues.
+    search: func(query: search-query) -> result<list<search-hit>, error>;
+
+    /// Full metadata for one of this provider's IDs.
+    fetch: func(kind: media-kind, provider-id: string, language: string) -> result<item-metadata, error>;
+}
+
+/// Lyrics provider (LRCLIB, AMLL TTML DB, …).
+interface lyrics-provider {
+    use types.{lyrics-query, lyrics-hit, lyrics, error};
+
+    search: func(query: lyrics-query) -> result<list<lyrics-hit>, error>;
+
+    fetch: func(provider-id: string) -> result<lyrics, error>;
+}
+
+/// Storage provider (cloud drives). Paths are `/`-separated and relative
+/// to the configured root; `""` is the root.
+interface storage-provider {
+    use types.{dir-entry, byte-range, error};
+
+    list-dir: func(path: string) -> result<list<dir-entry>, error>;
+
+    stat: func(path: string) -> result<dir-entry, error>;
+
+    /// Reads a range. The host requests bounded chunks and may return
+    /// fewer bytes than asked for at end of file.
+    read: func(path: string, range: byte-range) -> result<list<u8>, error>;
+}

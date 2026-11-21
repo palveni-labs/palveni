@@ -1,0 +1,26 @@
+[package]
+name = "palveni-library"
+description = "Local storage provider and the file-level library scanner"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+palveni-core.workspace = true
+palveni-db.workspace = true
+async-trait.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+# Gives `cargo test -p palveni-library` a database backend.
+palveni-db = { workspace = true, features = ["sqlite"] }
+tempfile.workspace = true
+
+[lints]
+workspace = true

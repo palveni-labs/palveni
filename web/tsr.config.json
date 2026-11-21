@@ -1,0 +1,9 @@
+{
+  "target": "react",
+  "routesDirectory": "./src",
+  "generatedRouteTree": "./src/routeTree.gen.ts",
+  "virtualRouteConfig": "./src/routes.ts",
+  "routeFileIgnorePrefix": "-",
+  "quoteStyle": "double",
+  "tmpDir": "./node_modules/.tmp/tsr"
+}

@@ -1,0 +1,73 @@
+/// Structured logging into the server log, tagged with the plugin ID.
+interface log {
+    enum level {
+        trace,
+        debug,
+        info,
+        warn,
+        error,
+    }
+
+    log: func(level: level, message: string);
+}
+
+/// Outbound HTTPS, performed by the host on the plugin's behalf.
+///
+/// Only hosts listed in the manifest's `network` permission are reachable.
+/// The host rejects private, loopback and link-local addresses after DNS
+/// resolution, and enforces timeouts, response-size and rate limits.
+interface http {
+    use types.{error};
+
+    enum http-method {
+        get,
+        head,
+        post,
+        put,
+        patch,
+        delete,
+    }
+
+    record request {
+        method: http-method,
+        url: string,
+        headers: list<tuple<string, string>>,
+        body: option<list<u8>>,
+        /// Capped by the host.
+        timeout-ms: option<u32>,
+    }
+
+    record response {
+        status: u16,
+        headers: list<tuple<string, string>>,
+        body: list<u8>,
+    }
+
+    fetch: func(req: request) -> result<response, error>;
+}
+
+/// Private key/value storage with a quota from the `storage` permission.
+interface kv {
+    use types.{error};
+
+    get: func(key: string) -> result<option<list<u8>>, error>;
+    /// Values are limited to 64 KiB.
+    set: func(key: string, value: list<u8>) -> result<_, error>;
+    delete: func(key: string) -> result<bool, error>;
+    list-keys: func(prefix: string) -> result<list<string>, error>;
+}
+
+/// Secrets entered by the administrator (API keys, OAuth tokens). Only
+/// names listed in the `secrets` permission are readable.
+interface secrets {
+    use types.{error};
+
+    get: func(name: string) -> result<option<string>, error>;
+}
+
+/// The plugin's settings as edited through its JSON Schema form.
+interface config {
+    /// The whole configuration as a JSON object.
+    get-json: func() -> string;
+    get: func(key: string) -> option<string>;
+}
