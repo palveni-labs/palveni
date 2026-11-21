@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw";
 import { expect, it, vi } from "vitest";
 import { M0_FEATURES, MOCK_ACCOUNTS } from "@/mocks/db";
 import { installMockDb, server } from "@/test/msw-server";
-import { renderApp, signIn } from "@/test/render-app";
+import { renderLoadedApp, signIn } from "@/test/render-app";
 
 it("defers subtitle content until selection and keeps the film available when the selected file disappeared", async () => {
   const height = vi.spyOn(Element.prototype, "clientHeight", "get").mockReturnValue(640);
@@ -28,7 +28,7 @@ it("defers subtitle content until selection and keeps the film available when th
       }),
     );
     const user = userEvent.setup();
-    const { container } = renderApp(`/library/${library.id}`);
+    const { container } = await renderLoadedApp(`/library/${library.id}`);
     await user.click(await screen.findByRole("button", { name: /Beacon/ }));
     await user.click(await screen.findByRole("button", { name: "预览原片" }));
     const select = await screen.findByRole("combobox", { name: "外挂字幕" });

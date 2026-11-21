@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw";
 import { expect, it } from "vitest";
 import { M0_FEATURES, MOCK_ACCOUNTS } from "@/mocks/db";
 import { installMockDb, server } from "@/test/msw-server";
-import { renderApp, signIn } from "@/test/render-app";
+import { renderLoadedApp, signIn } from "@/test/render-app";
 
 it("lets a member browse nested entries and plays through the server-scoped URL", async () => {
   const db = installMockDb({ features: [...M0_FEATURES, "connections"] });
@@ -34,7 +34,7 @@ it("lets a member browse nested entries and plays through the server-scoped URL"
     }),
   );
   const user = userEvent.setup();
-  renderApp("/library/connections");
+  await renderLoadedApp("/library/connections");
   await user.click(await screen.findByRole("button", { name: /Family NAS/ }));
   await user.click(await screen.findByRole("button", { name: "Concerts" }));
   await user.click(await screen.findByRole("button", { name: "Recording" }));

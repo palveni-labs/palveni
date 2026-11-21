@@ -12,13 +12,27 @@ export function signIn(db: MockDb, username: string) {
   setSession({ accessToken: db.issueToken(user), expiresAt: null });
 }
 
-/** Renders the whole app (router, guards, shell) at `path` against the MSW mock. */
-export function renderApp(path: string) {
+function createTestApp(path: string) {
   const queryClient = createQueryClient();
   queryClient.setDefaultOptions({
     queries: { ...queryClient.getDefaultOptions().queries, retry: false },
   });
   const router = createAppRouter(queryClient, createMemoryHistory({ initialEntries: [path] }));
-  const view = render(<App router={router} queryClient={queryClient} />);
-  return { ...view, router, queryClient };
+  return { router, queryClient };
+}
+
+function mountApp(app: ReturnType<typeof createTestApp>) {
+  return { ...render(<App {...app} />), ...app };
+}
+
+/** Renders the whole app, including initial navigation and its loading states. */
+export function renderApp(path: string) {
+  return mountApp(createTestApp(path));
+}
+
+/** Runs the real route guards and loads the initial route before mounting its interactive UI. */
+export async function renderLoadedApp(path: string) {
+  const app = createTestApp(path);
+  await app.router.load();
+  return mountApp(app);
 }
