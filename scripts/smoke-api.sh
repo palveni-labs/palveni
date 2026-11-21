@@ -373,6 +373,28 @@ check "deleted file is removed from the index" "$(printf '%s' "$JOB" | jq -r '.s
 req GET "/libraries/$LIB/music?artist=$ARTIST&album=$ALBUM"
 check "removed track disappears from its album" "$(field '[.entries[].title] | join(",")')" "First Light,Interlude"
 
+# Observe index changes through the API without submitting a scan.
+wait_for_title() {
+  local title="$1" present="$2" value
+  for _ in $(seq 1 120); do
+    req GET "/items?libraryId=$LIB"
+    value=$(printf '%s' "$BODY" | jq -r --arg title "$title" 'any(.items[]?; .title == $title)')
+    if [ "$STATUS" = 200 ] && [ "$value" = "$present" ]; then return; fi
+    sleep 0.25
+  done
+  return 1
+}
+printf 'audio fixture' > "$MEDIA/Live addition.mp3"
+wait_for_title "Live addition" true && ok "a new file appears without a manual scan" || bad "a new file appears without a manual scan" "timed out"
+mv "$MEDIA/Live addition.mp3" "$MEDIA/Live rename.mp3"
+if wait_for_title "Live rename" true && wait_for_title "Live addition" false; then
+  ok "a rename updates the index with an unchanged file count"
+else
+  bad "a rename updates the index with an unchanged file count" "timed out"
+fi
+rm "$MEDIA/Live rename.mp3"
+wait_for_title "Live rename" false && ok "a removed file disappears without a manual scan" || bad "a removed file disappears without a manual scan" "timed out"
+
 # ---------------------------------------------------------------- offline protection
 echo "Unavailable library root"
 mv "$MEDIA" "$GONE"

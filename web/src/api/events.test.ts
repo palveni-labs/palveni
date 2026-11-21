@@ -54,6 +54,17 @@ describe("applyServerEvent", () => {
     expect(client.getQueryState(queryKeys.items.list("l1", null))?.isInvalidated).toBe(true);
   });
 
+  it("refreshes only the affected music library when a scan keeps the same count", () => {
+    const client = new QueryClient();
+    const album = queryKeys.items.music("l1", "artist", "album");
+    const other = queryKeys.items.music("l2", "artist", "album");
+    for (const key of [album, other]) client.setQueryData(key, {});
+    client.setQueryData(queryKeys.libraries.detail(library.id), library);
+    applyServerEvent(client, event("library.updated", { ...library, lastScanAt: "2026-11-20T09:00:00Z" }));
+    expect(client.getQueryState(album)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(other)?.isInvalidated).toBe(false);
+  });
+
   it("invalidates all cached state on a lost cursor, including items", () => {
     const client = new QueryClient();
     const keys = [queryKeys.jobs.list(50), queryKeys.items.detail("i1"), queryKeys.libraries.detail("l1"), queryKeys.system.info];

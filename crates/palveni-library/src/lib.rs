@@ -5,6 +5,7 @@ pub mod local;
 pub mod lyrics;
 pub mod scanner;
 mod tags;
+pub mod watch;
 
 pub use local::LocalStorage;
 pub use scanner::{

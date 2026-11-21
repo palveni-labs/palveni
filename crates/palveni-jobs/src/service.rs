@@ -99,6 +99,29 @@ impl JobService {
     /// Persists a job and wakes the runner. Returns the existing job when
     /// an active job with the same dedupe key exists.
     pub async fn enqueue(&self, new: NewJob) -> Result<Job, JobError> {
+        self.enqueue_status(new).await.map(|(job, _)| job)
+    }
+
+    /// Manual scans and filesystem notifications share one active job per library.
+    pub async fn enqueue_library_scan(
+        &self,
+        id: palveni_core::LibraryId,
+        name: String,
+    ) -> Result<(Job, bool), JobError> {
+        use palveni_core::model::{SCAN_JOB_KIND, ScanJobPayload};
+        let payload = serde_json::to_value(ScanJobPayload { library_id: id })
+            .map_err(|e| JobError::InvalidPayload(e.to_string()))?;
+        self.enqueue_status(NewJob {
+            kind: SCAN_JOB_KIND.to_owned(),
+            subject: Some(palveni_core::JobSubject::library(id, name)),
+            payload,
+            required_capabilities: Vec::new(),
+            dedupe_key: Some(format!("{SCAN_JOB_KIND}:{id}")),
+        })
+        .await
+    }
+
+    async fn enqueue_status(&self, new: NewJob) -> Result<(Job, bool), JobError> {
         let enqueued = self
             .shared
             .db
@@ -117,10 +140,13 @@ impl JobService {
                 .bus
                 .publish(ServerEvent::JobUpdated(job.clone()));
             self.shared.wake.notify_one();
-            Ok(job)
+            Ok((job, true))
         } else {
             // Prefer the live snapshot so the caller sees current progress.
-            Ok(lock(&self.shared.live).get(&job.id).cloned().unwrap_or(job))
+            Ok((
+                lock(&self.shared.live).get(&job.id).cloned().unwrap_or(job),
+                false,
+            ))
         }
     }
 

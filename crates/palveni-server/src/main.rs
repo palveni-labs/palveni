@@ -2,6 +2,7 @@
 
 mod cli;
 mod doctor;
+mod library_monitor;
 mod logging;
 mod scan_job;
 mod serve;

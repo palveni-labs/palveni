@@ -4,12 +4,10 @@ use axum::Json;
 use axum::extract::rejection::PathRejection;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use palveni_core::{JobId, JobSubject, Library, LibraryId, LibraryKind, ServerEvent};
+use palveni_core::{JobId, Library, LibraryId, LibraryKind, ServerEvent};
 use palveni_db::DbError;
 use palveni_db::audit::{AuditEntry, actions};
 use palveni_db::libraries::NewLibrary;
-use palveni_jobs::NewJob;
-use palveni_library::{SCAN_JOB_KIND, ScanJobPayload};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -147,18 +145,7 @@ pub async fn scan(
         .get(id)
         .await?
         .ok_or_else(|| ApiError::not_found("Library not found"))?;
-    let payload =
-        serde_json::to_value(ScanJobPayload { library_id: id }).map_err(ApiError::internal)?;
-    let job = state
-        .jobs
-        .enqueue(NewJob {
-            kind: SCAN_JOB_KIND.to_owned(),
-            subject: Some(JobSubject::library(id, library.name)),
-            payload,
-            required_capabilities: Vec::new(),
-            dedupe_key: Some(format!("{SCAN_JOB_KIND}:{id}")),
-        })
-        .await?;
+    let (job, _) = state.jobs.enqueue_library_scan(id, library.name).await?;
     Ok((StatusCode::ACCEPTED, Json(ScanAccepted { job_id: job.id })))
 }
 

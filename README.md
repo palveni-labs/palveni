@@ -33,6 +33,8 @@ Run `palveni doctor` to check FFmpeg, hardware acceleration and database connect
 
 Choose **Music** when adding a library, then scan its folders. Open the library and choose **Album artists** to browse albums and tracks. Compilation albums stay together under their album artist. Tracks without tags appear under an unknown artist or album and use their filenames as titles. Run a scan after upgrading to index music that is already in your library.
 
+After the first scan, Palveni watches each library for file additions, edits, renames and deletions. It groups bursts of activity into one scan and updates open library views when the scan finishes. Libraries are also checked on startup and every 15 minutes, including network mounts that do not deliver filesystem notifications. Renaming a track gives it a new item ID. Favorites, playback progress and playlist entries stay associated with the old ID.
+
 Clients can play a scanned track in its original format through the native API. Send an authenticated `GET /api/v1/items/{id}/stream` to read the file or seek with an HTTP byte range. For a player that opens URLs, send an authenticated `POST /api/v1/items/{id}/playback` and resolve the returned `url` against the server address. The link is valid for 15 minutes and can be renewed for later seeks.
 
 Clients can request lyrics with an authenticated `GET /api/v1/items/{id}/lyrics`. Place a matching `.lrc`, `.LRC` or `.lyrics.txt` beside a track to override its embedded lyrics. Edits are available on the next request, and timed lyrics keep their original timestamps.

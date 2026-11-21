@@ -292,6 +292,14 @@ pub struct Item {
     pub updated_at: DateTime<Utc>,
 }
 
+pub const SCAN_JOB_KIND: &str = "library.scan";
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanJobPayload {
+    pub library_id: LibraryId,
+}
+
 /// Subject types a job can refer to. Clients treat unknown types as a
 /// generic job, so new types can be added freely.
 pub mod subject_types {

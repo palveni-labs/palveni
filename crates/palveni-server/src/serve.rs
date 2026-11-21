@@ -88,6 +88,13 @@ pub async fn run(cli: &Cli) -> anyhow::Result<()> {
         bus.clone(),
     ))));
     let runner = jobs.spawn_runner(shutdown.clone());
+    let monitor = tokio::spawn(crate::library_monitor::run(
+        db.clone(),
+        jobs.clone(),
+        bus.clone(),
+        config.data_dir.canonicalize()?,
+        shutdown.clone(),
+    ));
 
     let hardware = Arc::new(HardwareService::new(
         db.clone(),
@@ -176,6 +183,9 @@ pub async fn run(cli: &Cli) -> anyhow::Result<()> {
     }
 
     shutdown.cancel();
+    if let Err(e) = monitor.await {
+        tracing::warn!(error=%e, "library monitor stopped unexpectedly");
+    }
     jobs.wait_idle(SHUTDOWN_GRACE).await;
     if let Err(err) = runner.await {
         tracing::warn!(error = %err, "job runner ended abnormally");

@@ -34,6 +34,7 @@ getrandom = "0.4.3"
 hex = "0.4.3"
 lofty = { version = "0.24", default-features = false }
 mime_guess = "2.0.5"
+notify = "9.0.0"
 rust-embed = "8.14.0"
 # Backend drivers are enabled per crate (palveni-db features `sqlite`, `postgres`, `mysql`).
 # `runtime-tokio-rustls` maps to sqlx `tls-rustls` = rustls with the ring provider.

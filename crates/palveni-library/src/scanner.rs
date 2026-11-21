@@ -19,25 +19,18 @@ use palveni_core::storage::{DirEntry, EntryKind, StoragePath, StorageProvider};
 use palveni_core::{ItemId, ItemKind, JobStep, LibraryId, LibraryKind, clock};
 use palveni_db::items::{IndexedItem, ItemUpsert};
 use palveni_db::{Db, DbError};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::classify::{classify, is_ignored_name, search_text, sort_key, title_for_file};
 use crate::local::LocalStorage;
 
-/// Job kind handled by the scan job handler.
-pub const SCAN_JOB_KIND: &str = "library.scan";
+pub use palveni_core::model::{SCAN_JOB_KIND, ScanJobPayload};
 
 /// Rows per write transaction. Small enough to keep write locks short on
 /// SQLite and well under every backend's bind-parameter limit.
 const BATCH_SIZE: usize = 500;
 /// Progress is reported every this many files during discovery.
 const DISCOVERY_REPORT_EVERY: usize = 1_000;
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ScanJobPayload {
-    pub library_id: LibraryId,
-}
 
 /// Receives progress from a running scan.
 pub trait ScanObserver: Send + Sync {
@@ -290,7 +283,7 @@ impl Scanner {
             if observer.is_cancelled() {
                 return Err(ScanError::Cancelled);
             }
-            match LocalStorage::open(Path::new(root)).await {
+            match LocalStorage::open_registered(Path::new(root)).await {
                 Ok(storage) => {
                     walk_root(&storage, library.kind, observer, &mut walk).await?;
                     roots.push(storage);
