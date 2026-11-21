@@ -344,7 +344,7 @@ fn parameters(cap: &Capability) -> Vec<Value> {
             true,
             json!({"type":"integer","minimum":1}),
         )),
-        "searchMusic" => params.extend([
+        "searchMusic" | "searchAllMusic" => params.extend([
             parameter(
                 "q",
                 "query",

@@ -1,4 +1,4 @@
-import { FolderOpen, Library } from "lucide-react";
+import { FolderOpen, Library, Search } from "lucide-react";
 import { lazy } from "react";
 import { useLibraries } from "@/api/queries/libraries";
 import type { ModuleDefinition } from "../types";
@@ -15,6 +15,14 @@ const library: ModuleDefinition = {
   icon: FolderOpen,
   home: "/library",
   feature: "libraries",
+  commands: [{
+    id: "library.searchMusic",
+    feature: "globalMusicSearch",
+    titleKey: "musicSearch.globalLabel",
+    queryTitleKey: "musicSearch.searchFor",
+    icon: Search,
+    run: ({ navigate }, query) => navigate("/library/music-search", { q: query || undefined }),
+  }],
   sidebar: { titleKey: "nav.libraries", component: lazy(() => import("./sidebar-libraries")) },
   widgets: [
     {

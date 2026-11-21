@@ -101,8 +101,9 @@ use palveni_core::connections::{
     CreateConnection,
 };
 use palveni_core::music::{
-    LoudnessMeasurement, Lyrics, LyricsFormat, LyricsSource, MusicEntry, MusicPage, MusicSearchHit,
-    MusicSearchKind, MusicSearchPage, TrackLoudness, TrackLyrics,
+    GlobalMusicSearchHit, GlobalMusicSearchPage, LoudnessMeasurement, Lyrics, LyricsFormat,
+    LyricsSource, MusicEntry, MusicPage, MusicSearchHit, MusicSearchKind, MusicSearchPage,
+    TrackLoudness, TrackLyrics,
 };
 use palveni_core::personal::{
     MediaState, MediaView, PersonalItem, PersonalItemPage, PlaybackUpdate, Playlist, PlaylistPage,
@@ -179,6 +180,8 @@ use utoipa::OpenApi;
     MusicSearchPage,
     MusicSearchKind,
     MusicSearchHit,
+    GlobalMusicSearchHit,
+    GlobalMusicSearchPage,
     MediaState,
     MediaView,
     PersonalItem,

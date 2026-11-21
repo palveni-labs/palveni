@@ -665,6 +665,11 @@ check "library is deleted" "$STATUS" "204"
 req GET "/libraries/$LIB"
 check "deleted library is gone" "$STATUS" "404"
 check "library removal makes its media URL unavailable" "$(read_media "$PLAY_URL")" "404"
+if PALVENI_SMOKE_BEARER="$TOKEN" python3 "$(dirname "$0")/smoke-music-search.py" "$BASE" "$MEDIA"; then
+  ok "global music search pages same-name recordings and opens each source library"
+else
+  bad "global music search" "source, playback or cursor check failed"
+fi
 if PALVENI_SMOKE_BEARER="$TOKEN" python3 "$(dirname "$0")/smoke-loudness.py" "$BASE" "$MEDIA"; then
   ok "EBU R128 measures differing levels and silence, preserves results on failure, and cancels active analysis"
 else

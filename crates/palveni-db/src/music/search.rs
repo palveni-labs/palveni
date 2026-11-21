@@ -1,7 +1,9 @@
+use sea_orm::sea_query::{Expr, ExprTrait, Order, Query};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
+use sha2::{Digest, Sha256};
 
 use super::{C, Music, items, tracks};
-use crate::DbError;
+use crate::{DbError, convert::parse_id, entities::libraries};
 use palveni_core::LibraryId;
 
 /// Keyset batches keep search indexing independent of driver-specific text collations.
@@ -19,6 +21,17 @@ pub struct SearchTrack {
 pub struct SearchChanges {
     pub ids: Vec<String>,
     pub tracks: Vec<SearchTrack>,
+}
+
+pub struct SearchLibrary {
+    pub id: LibraryId,
+    pub name: String,
+    pub revision: i64,
+}
+
+pub struct SearchCatalog {
+    pub libraries: Vec<SearchLibrary>,
+    pub stamp: String,
 }
 
 fn project(
@@ -39,20 +52,62 @@ fn project(
 }
 
 impl Music<'_> {
-    /// Includes tombstones so deleting the last track also invalidates its index.
-    pub async fn search_revision(&self, id: LibraryId) -> Result<i64, DbError> {
-        if !self.has_library(id).await? {
-            return Err(DbError::NotFound("music library"));
-        }
-        let latest = items::Entity::find()
-            .filter(items::Column::LibraryId.eq(id.to_string()))
-            .order_by_desc(items::Column::Revision)
+    async fn search_libraries(&self, id: Option<LibraryId>) -> Result<Vec<SearchLibrary>, DbError> {
+        use items::Column as I;
+        use libraries::Column as L;
+
+        // One seek in the (library_id, revision) index per live music library, including tombstones.
+        let latest = Query::select()
+            .column(I::Revision)
+            .from(items::Entity)
+            .and_where(Expr::col((items::Entity, I::LibraryId)).equals((libraries::Entity, L::Id)))
+            .order_by(I::Revision, Order::Desc)
+            .limit(1)
+            .to_owned();
+        let mut query = libraries::Entity::find()
             .select_only()
-            .column(items::Column::Revision)
-            .into_tuple::<i64>()
-            .one(self.db.main())
-            .await?;
-        Ok(latest.unwrap_or_default())
+            .columns([L::Id, L::Name])
+            .expr_as(latest, "latest")
+            .filter(L::Kind.eq("music"))
+            .filter(L::DeletedAt.is_null())
+            .order_by_asc(L::Id);
+        if let Some(id) = id {
+            query = query.filter(L::Id.eq(id.to_string()));
+        }
+        query
+            .into_tuple::<(String, String, Option<i64>)>()
+            .all(self.db.main())
+            .await?
+            .into_iter()
+            .map(|(id, name, revision)| {
+                Ok(SearchLibrary {
+                    id: parse_id(&id, "library id")?,
+                    name,
+                    revision: revision.unwrap_or_default(),
+                })
+            })
+            .collect()
+    }
+
+    pub async fn search_revision(&self, id: LibraryId) -> Result<i64, DbError> {
+        self.search_libraries(Some(id))
+            .await?
+            .first()
+            .map(|l| l.revision)
+            .ok_or(DbError::NotFound("music library"))
+    }
+
+    pub async fn search_catalog(&self) -> Result<SearchCatalog, DbError> {
+        let libraries = self.search_libraries(None).await?;
+        let mut hash = Sha256::new();
+        for library in &libraries {
+            hash.update(library.id.as_uuid().as_bytes());
+            hash.update(library.revision.to_be_bytes());
+        }
+        Ok(SearchCatalog {
+            libraries,
+            stamp: hex::encode(hash.finalize()),
+        })
     }
 
     pub async fn search_tracks(

@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 
-use crate::ItemId;
+use crate::{ItemId, LibraryId};
 
 pub const LOUDNESS_JOB_KIND: &str = "music.loudness";
 
@@ -151,6 +151,23 @@ pub struct MusicSearchHit {
 #[serde(rename_all = "camelCase")]
 pub struct MusicSearchPage {
     pub entries: Vec<MusicSearchHit>,
+    #[schema(required = true)]
+    pub next_cursor: Option<String>,
+}
+
+#[derive(utoipa::ToSchema, Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GlobalMusicSearchHit {
+    pub library_id: LibraryId,
+    pub library_name: String,
+    #[serde(flatten)]
+    pub hit: MusicSearchHit,
+}
+
+#[derive(utoipa::ToSchema, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GlobalMusicSearchPage {
+    pub entries: Vec<GlobalMusicSearchHit>,
     #[schema(required = true)]
     pub next_cursor: Option<String>,
 }

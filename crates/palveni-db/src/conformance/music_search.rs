@@ -7,6 +7,16 @@ async fn conformance_music_search_revision_and_scoped_keysets() {
     let db = &h.db;
     let library = new_library(db, "Music search fixture").await.id;
     let other = new_library(db, "Another music library").await.id;
+    db.libraries()
+        .create(NewLibrary {
+            name: "Spoken search fixture".into(),
+            kind: LibraryKind::Audiobook,
+            paths: vec!["/media/spoken".into()],
+        })
+        .await
+        .unwrap();
+    let initial = db.music().search_catalog().await.unwrap();
+    assert_eq!(initial.libraries.len(), 2);
     assert_eq!(db.music().search_revision(library).await.unwrap(), 0);
     let mut one = track("One", "/media/one.flac", None, 32);
     one.music = Some(TrackTags {
@@ -24,6 +34,20 @@ async fn conformance_music_search_revision_and_scoped_keysets() {
         .unwrap();
     let revision = db.music().search_revision(library).await.unwrap();
     assert!(revision > 0);
+    let catalog = db.music().search_catalog().await.unwrap();
+    assert_ne!(initial.stamp, catalog.stamp);
+    assert!(
+        catalog
+            .libraries
+            .iter()
+            .any(|l| l.id == library && l.name == "Music search fixture" && l.revision == revision)
+    );
+    assert!(
+        catalog
+            .libraries
+            .iter()
+            .any(|l| l.id == other && l.revision == 0)
+    );
     assert_eq!(db.music().search_revision(other).await.unwrap(), 0);
     let rows = db.music().search_tracks(library, "").await.unwrap();
     assert_eq!(rows.len(), 2);
@@ -97,6 +121,9 @@ async fn conformance_music_search_revision_and_scoped_keysets() {
             .is_empty()
     );
     db.libraries().delete(library).await.unwrap();
+    let catalog = db.music().search_catalog().await.unwrap();
+    assert_eq!(catalog.libraries.len(), 1);
+    assert_eq!(catalog.libraries[0].id, other);
     assert!(matches!(
         db.music().search_revision(library).await,
         Err(DbError::NotFound(_))

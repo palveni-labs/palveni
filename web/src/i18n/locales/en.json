@@ -232,6 +232,9 @@
     "folders": "Folders"
   },
   "musicSearch": {
+    "globalLabel": "Search all music libraries",
+    "searchFor": "Search music libraries for “{{query}}”",
+    "submit": "Search",
     "label": "Search this music library",
     "category": "Search in",
     "noResults": "No results for “{{q}}”"

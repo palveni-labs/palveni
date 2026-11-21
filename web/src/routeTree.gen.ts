@@ -20,6 +20,7 @@ import { Route as BroadcastIndexRouteImport } from "./modules/broadcast/routes/i
 import { Route as LibraryIndexRouteImport } from "./modules/library/routes/index"
 import { Route as LibraryLibraryIdRouteImport } from "./modules/library/routes/$libraryId"
 import { Route as LibraryConnectionsRouteImport } from "./modules/library/routes/connections"
+import { Route as LibraryMusicSearchRouteImport } from "./modules/library/routes/music-search"
 import { Route as SystemIndexRouteImport } from "./modules/system/routes/index"
 import { Route as SystemHardwareRouteImport } from "./modules/system/routes/hardware"
 import { Route as SystemLibrariesRouteImport } from "./modules/system/routes/libraries"
@@ -80,6 +81,11 @@ const LibraryConnectionsRoute = LibraryConnectionsRouteImport.update({
   path: "/library/connections",
   getParentRoute: () => shellRoutesAppRoute,
 } as any)
+const LibraryMusicSearchRoute = LibraryMusicSearchRouteImport.update({
+  id: "/library/music-search",
+  path: "/library/music-search",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
 const SystemIndexRoute = SystemIndexRouteImport.update({
   id: "/system/",
   path: "/system/",
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   "/apps/themes": typeof AppsThemesRoute
   "/library/$libraryId": typeof LibraryLibraryIdRoute
   "/library/connections": typeof LibraryConnectionsRoute
+  "/library/music-search": typeof LibraryMusicSearchRoute
   "/system/hardware": typeof SystemHardwareRoute
   "/system/libraries": typeof SystemLibrariesRoute
   "/system/settings": typeof SystemSettingsRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   "/apps/themes": typeof AppsThemesRoute
   "/library/$libraryId": typeof LibraryLibraryIdRoute
   "/library/connections": typeof LibraryConnectionsRoute
+  "/library/music-search": typeof LibraryMusicSearchRoute
   "/system/hardware": typeof SystemHardwareRoute
   "/system/libraries": typeof SystemLibrariesRoute
   "/system/settings": typeof SystemSettingsRoute
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   "/_app/apps/themes": typeof AppsThemesRoute
   "/_app/library/$libraryId": typeof LibraryLibraryIdRoute
   "/_app/library/connections": typeof LibraryConnectionsRoute
+  "/_app/library/music-search": typeof LibraryMusicSearchRoute
   "/_app/system/hardware": typeof SystemHardwareRoute
   "/_app/system/libraries": typeof SystemLibrariesRoute
   "/_app/system/settings": typeof SystemSettingsRoute
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | "/apps/themes"
     | "/library/$libraryId"
     | "/library/connections"
+    | "/library/music-search"
     | "/system/hardware"
     | "/system/libraries"
     | "/system/settings"
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | "/apps/themes"
     | "/library/$libraryId"
     | "/library/connections"
+    | "/library/music-search"
     | "/system/hardware"
     | "/system/libraries"
     | "/system/settings"
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | "/_app/apps/themes"
     | "/_app/library/$libraryId"
     | "/_app/library/connections"
+    | "/_app/library/music-search"
     | "/_app/system/hardware"
     | "/_app/system/libraries"
     | "/_app/system/settings"
@@ -299,6 +311,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof LibraryConnectionsRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
+    "/_app/library/music-search": {
+      id: "/_app/library/music-search"
+      path: "/library/music-search"
+      fullPath: "/library/music-search"
+      preLoaderRoute: typeof LibraryMusicSearchRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
     "/_app/system/": {
       id: "/_app/system/"
       path: "/system"
@@ -343,6 +362,7 @@ interface shellRoutesAppRouteChildren {
   AppsThemesRoute: typeof AppsThemesRoute
   LibraryLibraryIdRoute: typeof LibraryLibraryIdRoute
   LibraryConnectionsRoute: typeof LibraryConnectionsRoute
+  LibraryMusicSearchRoute: typeof LibraryMusicSearchRoute
   SystemHardwareRoute: typeof SystemHardwareRoute
   SystemLibrariesRoute: typeof SystemLibrariesRoute
   SystemSettingsRoute: typeof SystemSettingsRoute
@@ -359,6 +379,7 @@ const shellRoutesAppRouteChildren: shellRoutesAppRouteChildren = {
   AppsThemesRoute: AppsThemesRoute,
   LibraryLibraryIdRoute: LibraryLibraryIdRoute,
   LibraryConnectionsRoute: LibraryConnectionsRoute,
+  LibraryMusicSearchRoute: LibraryMusicSearchRoute,
   SystemHardwareRoute: SystemHardwareRoute,
   SystemLibrariesRoute: SystemLibrariesRoute,
   SystemSettingsRoute: SystemSettingsRoute,

@@ -56,9 +56,11 @@ export interface CommandContext {
 export interface CommandDefinition extends Availability {
   id: string;
   titleKey: MessageKey;
+  /** Label for an action that accepts the current palette text as its query. */
+  queryTitleKey?: MessageKey;
   icon: LucideIcon;
   keywords?: string[];
-  run: (context: CommandContext) => void | Promise<void>;
+  run: (context: CommandContext, query: string) => void | Promise<void>;
 }
 
 /** A button an inbox item offers where it is listed (overview "需要你处理"). */

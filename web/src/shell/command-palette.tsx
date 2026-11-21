@@ -53,7 +53,7 @@ export function CommandPalette() {
     const command = actions.find((entry) => `do:${entry.id}` === id);
     if (command) {
       close();
-      void command.run(context);
+      void command.run(context, query.trim());
       return;
     }
     const destination = destinations.find((entry) => entry.id === id);
@@ -67,7 +67,7 @@ export function CommandPalette() {
     <Modal.Backdrop isOpen={paletteOpen} onOpenChange={(open) => (open ? shell.setPalette(true) : close())}>
       <Modal.Container placement="top" size="lg" className="pt-[14vh]">
         <Modal.Dialog aria-label={t("palette.title")} className="overflow-hidden p-0">
-          <Autocomplete inputValue={query} onInputChange={setQuery} filter={contains}>
+          <Autocomplete inputValue={query} onInputChange={setQuery} filter={(text, input) => contains(text, input.trim())}>
             <SearchField aria-label={t("palette.title")} autoFocus className="border-b border-line">
               <SearchField.Group className="h-13 rounded-none border-0 bg-transparent px-4 shadow-none ring-0 focus-within:ring-0 data-[focus-within=true]:ring-0">
                 <SearchField.SearchIcon />
@@ -87,10 +87,13 @@ export function CommandPalette() {
                   <Header className="px-2 pt-2 pb-1 text-xs font-mid text-fg-muted">{t("palette.actions")}</Header>
                   {actions.map((command) => {
                     const Icon = command.icon;
+                    const label = command.queryTitleKey && query.trim()
+                      ? t(command.queryTitleKey, { query: query.trim() })
+                      : t(command.titleKey);
                     return (
-                      <ListBox.Item key={command.id} id={`do:${command.id}`} textValue={`${t(command.titleKey)} ${(command.keywords ?? []).join(" ")}`}>
+                      <ListBox.Item key={command.id} id={`do:${command.id}`} textValue={`${label} ${(command.keywords ?? []).join(" ")}`}>
                         <Icon className="size-4 text-fg-muted" aria-hidden />
-                        <Label>{t(command.titleKey)}</Label>
+                        <Label>{label}</Label>
                       </ListBox.Item>
                     );
                   })}

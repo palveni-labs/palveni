@@ -37,6 +37,7 @@ export function useLibrary(id: string) {
 
 /** Inserts or replaces a library in every cache that holds it. */
 export function upsertLibrary(queryClient: QueryClient, library: Library) {
+  if (library.kind === "music") void queryClient.invalidateQueries({ queryKey: queryKeys.items.globalMusicSearch });
   queryClient.setQueryData(queryKeys.libraries.detail(library.id), library);
   queryClient.setQueryData<LibraryList>(queryKeys.libraries.list, (list) => {
     if (!list) return list;
@@ -51,6 +52,7 @@ export function upsertLibrary(queryClient: QueryClient, library: Library) {
 
 /** Drops a deleted library and everything browsed inside it. */
 export function removeLibrary(queryClient: QueryClient, id: string) {
+  void queryClient.invalidateQueries({ queryKey: queryKeys.items.globalMusicSearch });
   queryClient.setQueryData<LibraryList>(queryKeys.libraries.list, (list) =>
     list ? { libraries: list.libraries.filter((entry) => entry.id !== id) } : list,
   );

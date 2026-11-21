@@ -1,6 +1,6 @@
 use super::*;
 
-fn track(id: &str, title: &str, artist: &str, album: &str) -> SearchTrack {
+pub(super) fn track(id: &str, title: &str, artist: &str, album: &str) -> SearchTrack {
     SearchTrack {
         id: id.into(),
         title: title.into(),

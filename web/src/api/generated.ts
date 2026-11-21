@@ -792,6 +792,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/music/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Search tracks, albums or artists across music libraries and identify their sources. */
+        get: operations["searchAllMusic"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/openapi.json": {
         parameters: {
             query?: never;
@@ -1256,6 +1273,14 @@ export interface components {
         };
         FavoriteUpdate: {
             favorite: boolean;
+        };
+        GlobalMusicSearchHit: components["schemas"]["MusicSearchHit"] & {
+            libraryId: components["schemas"]["LibraryId"];
+            libraryName: string;
+        };
+        GlobalMusicSearchPage: {
+            entries: components["schemas"]["GlobalMusicSearchHit"][];
+            nextCursor: string | null;
         };
         HardwareReport: {
             cpu: components["schemas"]["CpuInfo"];
@@ -5871,6 +5896,78 @@ export interface operations {
             405: {
                 headers: {
                     Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    searchAllMusic: {
+        parameters: {
+            query: {
+                q: string;
+                kind?: components["schemas"]["MusicSearchKind"];
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlobalMusicSearchPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
                     [name: string]: unknown;
                 };
                 content: {

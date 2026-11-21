@@ -1,6 +1,6 @@
-//! Library-scoped independent music search. The primary database is the source of truth.
+//! Independent per-library music indexes. The primary database is the source of truth.
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, VecDeque},
     fs::{self, File},
     io::{BufReader, BufWriter, Write},
     path::{Path, PathBuf},
@@ -20,10 +20,13 @@ use tokio::{
 };
 
 const FORMAT: u8 = 2;
+const CACHE_BUDGET: usize = 64 * 1024 * 1024;
+mod global;
+pub use global::{GlobalCursor, GlobalMatches};
 
 pub struct MusicSearch {
     directory: PathBuf,
-    cached: Mutex<Option<Arc<Index>>>,
+    cached: Mutex<VecDeque<(Arc<Index>, usize)>>,
     readers: Semaphore,
 }
 
@@ -73,6 +76,18 @@ pub fn terms(query: &str) -> Result<Vec<String>> {
 }
 
 impl Entry {
+    fn sort_key(&self) -> (&str, Option<&str>, &str) {
+        (
+            self.words.split('\0').next().unwrap_or_default(),
+            self.hit.artist_id.as_deref(),
+            &self.hit.id,
+        )
+    }
+
+    fn contains_terms(&self, terms: &[String]) -> bool {
+        terms.iter().all(|s| self.words.contains(s))
+    }
+
     fn new(hit: MusicSearchHit, album_artist: Option<&str>) -> Self {
         let fields = [
             Some(hit.title.as_str()),
@@ -193,14 +208,7 @@ impl Builder {
 
 fn order(entries: &mut [Entry]) {
     // The first field is the pinyin or lowercase title. IDs distinguish equal titles.
-    entries.sort_unstable_by(|a, b| {
-        a.words
-            .split('\0')
-            .next()
-            .cmp(&b.words.split('\0').next())
-            .then_with(|| a.hit.artist_id.cmp(&b.hit.artist_id))
-            .then_with(|| a.hit.id.cmp(&b.hit.id))
-    });
+    entries.sort_unstable_by(|a, b| a.sort_key().cmp(&b.sort_key()));
 }
 
 fn ordered(mut entries: Vec<Entry>) -> Vec<Entry> {
@@ -209,6 +217,31 @@ fn ordered(mut entries: Vec<Entry>) -> Vec<Entry> {
 }
 
 impl Index {
+    fn rows(&self, kind: MusicSearchKind) -> &[Entry] {
+        match kind {
+            MusicSearchKind::Artist => &self.artists,
+            MusicSearchKind::Album => &self.albums,
+            MusicSearchKind::Track => &self.tracks,
+        }
+    }
+
+    fn memory_bytes(&self) -> usize {
+        let mut bytes = size_of::<Self>();
+        for rows in [&self.artists, &self.albums, &self.tracks] {
+            bytes += rows.capacity() * size_of::<Entry>();
+            for entry in rows {
+                let hit = &entry.hit;
+                bytes += entry.words.capacity() + hit.id.capacity() + hit.title.capacity();
+                bytes += [&entry.sample, &hit.artist, &hit.artist_id, &hit.album]
+                    .into_iter()
+                    .flatten()
+                    .map(String::capacity)
+                    .sum::<usize>();
+            }
+        }
+        bytes
+    }
+
     fn load(path: &Path, library: LibraryId, revision: i64) -> Option<Self> {
         let index: Self = serde_json::from_reader(BufReader::new(File::open(path).ok()?)).ok()?;
         (index.version == FORMAT && index.library == library && index.revision <= revision)
@@ -303,18 +336,14 @@ impl Index {
         offset: usize,
         limit: usize,
     ) -> Result<Matches> {
-        let rows = match kind {
-            MusicSearchKind::Artist => &self.artists,
-            MusicSearchKind::Album => &self.albums,
-            MusicSearchKind::Track => &self.tracks,
-        };
+        let rows = self.rows(kind);
         if offset > rows.len() {
             return Err(Error::invalid("Invalid music search position"));
         }
         let mut entries = Vec::with_capacity(limit);
         let mut next = None;
         for (i, entry) in rows.iter().enumerate().skip(offset) {
-            if terms.iter().all(|s| entry.words.contains(s)) {
+            if entry.contains_terms(terms) {
                 if entries.len() == limit {
                     next = Some(i);
                     break;
@@ -338,32 +367,37 @@ impl MusicSearch {
     pub fn new(directory: PathBuf) -> Self {
         Self {
             directory,
-            cached: Mutex::new(None),
+            cached: Mutex::new(VecDeque::new()),
             readers: Semaphore::new(2),
         }
     }
 
-    async fn index(
-        &self,
-        db: &Db,
-        library: LibraryId,
-        expected: Option<i64>,
-    ) -> Result<Arc<Index>> {
-        let mut slot = self.cached.lock().await;
-        let revision = db.music().search_revision(library).await?;
-        if expected.is_some_and(|r| r != revision) {
-            return Err(Error::conflict("Music library changed; restart the search"));
-        }
-        if let Some(index) = slot.as_ref()
-            && index.library == library
-            && index.revision == revision
+    async fn index(&self, db: &Db, library: LibraryId, revision: i64) -> Result<Arc<Index>> {
+        let mut cached = self.cached.lock().await;
+        let active = cached
+            .iter()
+            .position(|(index, _)| index.library == library)
+            .and_then(|i| cached.remove(i));
+        if let Some((index, weight)) = active.as_ref()
+            && index.revision >= revision
         {
-            return Ok(index.clone());
+            cached.push_back((index.clone(), *weight));
+            return if index.revision == revision {
+                Ok(index.clone())
+            } else {
+                Err(Error::conflict("Music library changed; restart the search"))
+            };
+        }
+        if cached
+            .front()
+            .is_some_and(|(_, weight)| *weight > CACHE_BUDGET)
+        {
+            cached.pop_front();
         }
         let path = self.directory.join(format!("music-{library}.json"));
-        let saved = match slot.take() {
-            Some(active) if active.library == library => Arc::try_unwrap(active).ok(),
-            _ => {
+        let saved = match active.and_then(|(index, _)| Arc::try_unwrap(index).ok()) {
+            Some(index) => Some(index),
+            None => {
                 let path = path.clone();
                 spawn_blocking(move || Index::load(&path, library, revision))
                     .await
@@ -410,8 +444,21 @@ impl MusicSearch {
             .await
             .map_err(join_error)?
         };
-        let index = Arc::new(index);
-        *slot = Some(index.clone());
+        let (index, weight) = spawn_blocking(move || {
+            let weight = index.memory_bytes();
+            (Arc::new(index), weight)
+        })
+        .await
+        .map_err(join_error)?;
+        // Keep small indexes hot together. A single larger active library fits as before.
+        let mut total = weight + cached.iter().map(|(_, bytes)| *bytes).sum::<usize>();
+        while total > CACHE_BUDGET || cached.len() >= 8 {
+            let Some((_, evicted)) = cached.pop_front() else {
+                break;
+            };
+            total -= evicted;
+        }
+        cached.push_back((index.clone(), weight));
         Ok(index)
     }
 
@@ -449,10 +496,8 @@ impl MusicSearch {
     }
 
     pub async fn forget(&self, library: LibraryId) {
-        let mut slot = self.cached.lock().await;
-        if slot.as_ref().is_some_and(|index| index.library == library) {
-            *slot = None;
-        }
+        let mut cached = self.cached.lock().await;
+        cached.retain(|(index, _)| index.library != library);
         let path = self.directory.join(format!("music-{library}.json"));
         if let Err(error) = tokio::fs::remove_file(path).await
             && error.kind() != std::io::ErrorKind::NotFound
@@ -475,7 +520,11 @@ impl MusicSearch {
             .acquire()
             .await
             .map_err(|e| Error::internal(e.to_string()))?;
-        let index = self.index(db, library, cursor.map(|c| c.0)).await?;
+        let revision = db.music().search_revision(library).await?;
+        if cursor.is_some_and(|c| c.0 != revision) {
+            return Err(Error::conflict("Music library changed; restart the search"));
+        }
+        let index = self.index(db, library, revision).await?;
         let start = cursor.map_or(0, |c| c.1);
         spawn_blocking(move || index.matches(kind, &query, start, limit.clamp(1, 200)))
             .await

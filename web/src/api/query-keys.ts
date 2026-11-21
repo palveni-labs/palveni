@@ -20,6 +20,7 @@ export const queryKeys = {
   items: {
     all: ["items"] as const,
     lists: ["items", "list"] as const,
+    globalMusicSearch: ["items", "global-music-search"] as const,
     music: (libraryId: string, artist?: string, album?: string) => ["items", "list", libraryId, "music", artist, album] as const,
     libraryLists: (libraryId: string) => ["items", "list", libraryId] as const,
     list: (libraryId: string, parentId: string | null) => ["items", "list", libraryId, parentId ?? "root"] as const,

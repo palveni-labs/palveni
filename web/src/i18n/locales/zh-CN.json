@@ -223,6 +223,9 @@
     "folders": "文件夹"
   },
   "musicSearch": {
+    "globalLabel": "搜索所有音乐库",
+    "searchFor": "在音乐库中搜索“{{query}}”",
+    "submit": "搜索",
     "label": "搜索这个音乐库",
     "category": "搜索范围",
     "noResults": "没有找到“{{q}}”"
