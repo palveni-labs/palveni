@@ -33,6 +33,32 @@ pub async fn open_track(location: palveni_db::music::TrackLocation) -> Result<Tr
     })
 }
 
+pub async fn open_video(location: palveni_db::music::TrackLocation) -> Result<TrackFile> {
+    let (storage, path) = track_path(location).await?;
+    let content_type = video_content_type(path.file_name().unwrap_or_default());
+    Ok(TrackFile {
+        source: storage.open_file(&path).await?,
+        content_type,
+    })
+}
+
+pub(crate) fn video_content_type(name: &str) -> &'static str {
+    match crate::classify::extension_of(name).as_deref() {
+        Some("mp4" | "m4v") => "video/mp4",
+        Some("mkv") => "video/x-matroska",
+        Some("webm") => "video/webm",
+        Some("mov") => "video/quicktime",
+        Some("avi") => "video/x-msvideo",
+        Some("ts" | "mts" | "m2ts") => "video/mp2t",
+        Some("mpeg" | "mpg" | "vob") => "video/mpeg",
+        Some("wmv") => "video/x-ms-wmv",
+        Some("3gp") => "video/3gpp",
+        Some("ogv") => "video/ogg",
+        Some("flv") => "video/x-flv",
+        _ => "application/octet-stream",
+    }
+}
+
 pub(crate) async fn track_path(
     location: palveni_db::music::TrackLocation,
 ) -> Result<(LocalStorage, StoragePath)> {

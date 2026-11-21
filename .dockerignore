@@ -4,7 +4,9 @@ target
 web/dist
 data
 docs
-packaging
+packaging/*
+!packaging/smb-helper/
+packaging/smb-helper/target/
 *.db
 *.db-shm
 *.db-wal

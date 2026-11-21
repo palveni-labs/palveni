@@ -34,7 +34,11 @@ pub fn router(state: AppState) -> Router {
             .path
             .trim_start_matches("/api/v1")
             .replace("{path}", "{*path}");
-        v1 = v1.route(&path, (endpoint.handler)());
+        let mut handler = (endpoint.handler)();
+        if let endpoints::Input::LimitedJson(_, limit) = endpoint.input {
+            handler = handler.layer(axum::extract::DefaultBodyLimit::max(limit));
+        }
+        v1 = v1.route(&path, handler);
         state.features.register(endpoint.capability);
     }
     let v1 = v1

@@ -13,6 +13,8 @@ pub struct TrackTags {
     pub disc_number: Option<u32>,
     pub track_number: Option<u32>,
     pub duration_ms: Option<i64>,
+    /// Local source directory or file that distinguishes identically named books and shows.
+    pub spoken_location: Option<String>,
 }
 
 #[derive(utoipa::ToSchema, Debug, Serialize)]

@@ -66,7 +66,9 @@
     "music": "音乐",
     "photo": "相册",
     "book": "书籍",
-    "comic": "漫画"
+    "comic": "漫画",
+    "audiobook": "有声书",
+    "podcast": "播客"
   },
   "itemKinds": {
     "folder": "文件夹",
@@ -74,7 +76,9 @@
     "track": "曲目",
     "photo": "照片",
     "book": "图书",
-    "comic": "漫画"
+    "comic": "漫画",
+    "chapter": "章节",
+    "episode": "单集"
   },
   "counts": {
     "items_other": "{{formatted}} 项"
@@ -253,7 +257,28 @@
     "loadMoreFailed": "没能加载更多文件：{{error}}",
     "selectHint": "点选要选择的文件",
     "selectionTools": "已选文件的操作",
-    "cancelSelect": "取消选择"
+    "cancelSelect": "取消选择",
+    "works": "作品"
+  },
+  "connections": {
+    "title": "网络媒体源",
+    "add": "添加来源",
+    "protocol": "协议",
+    "name": "名称",
+    "address": "服务器或共享地址",
+    "username": "用户名",
+    "password": "密码",
+    "token": "访问令牌",
+    "connect": "连接",
+    "cancel": "取消",
+    "close": "关闭播放器",
+    "retry": "重试播放",
+    "back": "返回",
+    "emptyFolder": "这个目录为空。",
+    "confirm": "移除这个连接？",
+    "remove": "移除连接",
+    "empty": "还没有网络媒体源",
+    "saved": "已保存的来源"
   },
   "adminLibraries": {
     "create": "新建媒体库",
@@ -489,6 +514,9 @@
     },
     "system": {
       "title": "系统"
+    },
+    "broadcast": {
+      "title": "电台与订阅"
     }
   },
   "feature": {
@@ -649,7 +677,9 @@
     "music": "首",
     "photo": "张",
     "book": "本",
-    "comic": "本"
+    "comic": "本",
+    "audiobook": "章",
+    "podcast": "集"
   },
   "server": {
     "cpu": "处理器",
@@ -768,5 +798,44 @@
     "gapWhy": "扫描读不到的位置里的条目不会被移除，免得硬盘或网络存储暂时断开时资料被清空。确认存储已经连接后，重新扫描这个媒体库。",
     "gapTitle": "这次扫描不完整",
     "rescan": "重新扫描"
+  },
+  "spoken": {
+    "shelf": "书架",
+    "shows": "节目",
+    "chapters": "章节",
+    "episodes": "单集",
+    "play": "播放《{{title}}》",
+    "empty": "暂无音频",
+    "progressConflict": "其他设备已更新进度，重新打开即可续播。",
+    "playbackFailed": "无法播放此音频"
+  },
+  "video": {
+    "sort": "作品排序",
+    "posterFirst": "海报优先",
+    "byTitle": "按片名",
+    "works": "作品",
+    "movie": "电影",
+    "series": "剧集",
+    "season": "第 {{number}} 季",
+    "specials": "特别篇",
+    "episode": "第 {{number}} 集",
+    "entries": "{{count}} 集",
+    "empty": "尚无影视作品",
+    "scanHint": "扫描影视库以读取本地元数据和海报",
+    "preview": "预览原片",
+    "unsupported": "此浏览器无法播放该视频格式",
+    "seasons": "季",
+    "episodes": "单集"
+  },
+  "mounts": {
+    "choose": "从已挂载的共享选择",
+    "mount": "已挂载的共享",
+    "directory": "子目录",
+    "use": "使用此目录",
+    "root": "根目录",
+    "limited": "仅列出前 200 个目录，也可直接填写路径。",
+    "loadError": "无法读取共享目录",
+    "up": "上一级",
+    "chooseFolder": "打开子目录"
   }
 }

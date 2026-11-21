@@ -21,7 +21,7 @@ const routeFiles = import.meta.glob("./*/routes/*.tsx");
 describe("module registry", () => {
   it("discovers every module folder, ordered and with unique ids", () => {
     const ids = MODULES.map((module) => module.id);
-    expect(ids).toEqual(["overview", "library", "tasks", "apps", "system"]);
+    expect(ids).toEqual(["overview", "library", "broadcast", "tasks", "apps", "system"]);
     expect(new Set(ids).size).toBe(ids.length);
     const withRoutes = new Set(Object.keys(routeFiles).map((file) => file.split("/")[1]));
     expect([...withRoutes].sort()).toEqual([...ids].sort());
@@ -73,5 +73,8 @@ describe("module registry", () => {
     expect(isVisible({ adminOnly: true }, admin)).toBe(true);
     expect(isEnabled({ feature: "unknown-feature" }, admin)).toBe(false);
     expect(isEnabled({ feature: "jobs" }, member)).toBe(true);
+    const broadcast = MODULES.find((module) => module.id === "broadcast");
+    expect(broadcast?.feature).toBe("broadcast");
+    expect(broadcast && isEnabled(broadcast, member)).toBe(false);
   });
 });

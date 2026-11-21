@@ -17,6 +17,7 @@ FROM rust:1.100-bookworm AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY crates/ crates/
+COPY packaging/smb-helper/ packaging/smb-helper/
 COPY wit/ wit/
 COPY plugins/ plugins/
 # embed-web 在编译期把 web/dist 打进二进制。
@@ -28,6 +29,10 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
  && bundle_dir="$(perl -MJSON::PP -ne '$m=decode_json($_); print "$m->{out_dir}/skin-packages" if $m->{reason} eq "build-script-executed" && $m->{package_id} =~ m{[/#]palveni-plugin-host[@#]};' /tmp/palveni-build.jsonl)" \
  && cp -r "$bundle_dir" /usr/local/bin/skin-packages \
  && cp target/release/palveni /usr/local/bin/palveni
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/src/target \
+    cargo +1.100.0 build --manifest-path packaging/smb-helper/Cargo.toml --target-dir target --release --locked \
+ && cp target/release/palveni-smb-helper /usr/local/bin/palveni-smb-helper
 
 # ---- 3. 运行镜像 ----
 FROM debian:bookworm-slim AS runtime
@@ -54,6 +59,7 @@ RUN set -eux; \
     /usr/lib/jellyfin-ffmpeg/ffmpeg -version | head -n 1
 
 COPY --from=build /usr/local/bin/palveni /usr/local/bin/palveni
+COPY --from=build /usr/local/bin/palveni-smb-helper /usr/local/bin/palveni-smb-helper
 COPY --from=build /usr/local/bin/skin-packages/ /usr/local/bin/skin-packages/
 
 # 以非 root 运行。媒体目录的属主不是 1000 时，用 `--user <uid>:<gid>` 覆盖，

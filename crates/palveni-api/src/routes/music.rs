@@ -20,14 +20,14 @@ pub struct Browse {
     limit: Option<String>,
 }
 
-fn validate_group(value: Option<&str>, field: &'static str) -> Result<(), ApiError> {
+pub(super) fn validate_group(value: Option<&str>, field: &'static str) -> Result<(), ApiError> {
     if let Some(key) = value
         && (key.len() != 64
             || !key
                 .bytes()
                 .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)))
     {
-        return Err(ApiError::validation("Invalid music group").field(field));
+        return Err(ApiError::validation("Invalid group identifier").field(field));
     }
     Ok(())
 }

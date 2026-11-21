@@ -16,8 +16,10 @@ import { Route as IndexRouteImport } from "./modules/overview/routes/index"
 import { Route as AppsIndexRouteImport } from "./modules/apps/routes/index"
 import { Route as AppsPluginsRouteImport } from "./modules/apps/routes/plugins"
 import { Route as AppsThemesRouteImport } from "./modules/apps/routes/themes"
+import { Route as BroadcastIndexRouteImport } from "./modules/broadcast/routes/index"
 import { Route as LibraryIndexRouteImport } from "./modules/library/routes/index"
 import { Route as LibraryLibraryIdRouteImport } from "./modules/library/routes/$libraryId"
+import { Route as LibraryConnectionsRouteImport } from "./modules/library/routes/connections"
 import { Route as SystemIndexRouteImport } from "./modules/system/routes/index"
 import { Route as SystemHardwareRouteImport } from "./modules/system/routes/hardware"
 import { Route as SystemLibrariesRouteImport } from "./modules/system/routes/libraries"
@@ -58,6 +60,11 @@ const AppsThemesRoute = AppsThemesRouteImport.update({
   path: "/apps/themes",
   getParentRoute: () => shellRoutesAppRoute,
 } as any)
+const BroadcastIndexRoute = BroadcastIndexRouteImport.update({
+  id: "/broadcast/",
+  path: "/broadcast/",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
 const LibraryIndexRoute = LibraryIndexRouteImport.update({
   id: "/library/",
   path: "/library/",
@@ -66,6 +73,11 @@ const LibraryIndexRoute = LibraryIndexRouteImport.update({
 const LibraryLibraryIdRoute = LibraryLibraryIdRouteImport.update({
   id: "/library/$libraryId",
   path: "/library/$libraryId",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
+const LibraryConnectionsRoute = LibraryConnectionsRouteImport.update({
+  id: "/library/connections",
+  path: "/library/connections",
   getParentRoute: () => shellRoutesAppRoute,
 } as any)
 const SystemIndexRoute = SystemIndexRouteImport.update({
@@ -101,10 +113,12 @@ export interface FileRoutesByFullPath {
   "/apps/plugins": typeof AppsPluginsRoute
   "/apps/themes": typeof AppsThemesRoute
   "/library/$libraryId": typeof LibraryLibraryIdRoute
+  "/library/connections": typeof LibraryConnectionsRoute
   "/system/hardware": typeof SystemHardwareRoute
   "/system/libraries": typeof SystemLibrariesRoute
   "/system/settings": typeof SystemSettingsRoute
   "/apps/": typeof AppsIndexRoute
+  "/broadcast/": typeof BroadcastIndexRoute
   "/library/": typeof LibraryIndexRoute
   "/system/": typeof SystemIndexRoute
   "/tasks/": typeof TasksIndexRoute
@@ -116,10 +130,12 @@ export interface FileRoutesByTo {
   "/apps/plugins": typeof AppsPluginsRoute
   "/apps/themes": typeof AppsThemesRoute
   "/library/$libraryId": typeof LibraryLibraryIdRoute
+  "/library/connections": typeof LibraryConnectionsRoute
   "/system/hardware": typeof SystemHardwareRoute
   "/system/libraries": typeof SystemLibrariesRoute
   "/system/settings": typeof SystemSettingsRoute
   "/apps": typeof AppsIndexRoute
+  "/broadcast": typeof BroadcastIndexRoute
   "/library": typeof LibraryIndexRoute
   "/system": typeof SystemIndexRoute
   "/tasks": typeof TasksIndexRoute
@@ -133,10 +149,12 @@ export interface FileRoutesById {
   "/_app/apps/plugins": typeof AppsPluginsRoute
   "/_app/apps/themes": typeof AppsThemesRoute
   "/_app/library/$libraryId": typeof LibraryLibraryIdRoute
+  "/_app/library/connections": typeof LibraryConnectionsRoute
   "/_app/system/hardware": typeof SystemHardwareRoute
   "/_app/system/libraries": typeof SystemLibrariesRoute
   "/_app/system/settings": typeof SystemSettingsRoute
   "/_app/apps/": typeof AppsIndexRoute
+  "/_app/broadcast/": typeof BroadcastIndexRoute
   "/_app/library/": typeof LibraryIndexRoute
   "/_app/system/": typeof SystemIndexRoute
   "/_app/tasks/": typeof TasksIndexRoute
@@ -150,10 +168,12 @@ export interface FileRouteTypes {
     | "/apps/plugins"
     | "/apps/themes"
     | "/library/$libraryId"
+    | "/library/connections"
     | "/system/hardware"
     | "/system/libraries"
     | "/system/settings"
     | "/apps/"
+    | "/broadcast/"
     | "/library/"
     | "/system/"
     | "/tasks/"
@@ -165,10 +185,12 @@ export interface FileRouteTypes {
     | "/apps/plugins"
     | "/apps/themes"
     | "/library/$libraryId"
+    | "/library/connections"
     | "/system/hardware"
     | "/system/libraries"
     | "/system/settings"
     | "/apps"
+    | "/broadcast"
     | "/library"
     | "/system"
     | "/tasks"
@@ -181,10 +203,12 @@ export interface FileRouteTypes {
     | "/_app/apps/plugins"
     | "/_app/apps/themes"
     | "/_app/library/$libraryId"
+    | "/_app/library/connections"
     | "/_app/system/hardware"
     | "/_app/system/libraries"
     | "/_app/system/settings"
     | "/_app/apps/"
+    | "/_app/broadcast/"
     | "/_app/library/"
     | "/_app/system/"
     | "/_app/tasks/"
@@ -247,6 +271,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AppsThemesRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
+    "/_app/broadcast/": {
+      id: "/_app/broadcast/"
+      path: "/broadcast"
+      fullPath: "/broadcast/"
+      preLoaderRoute: typeof BroadcastIndexRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
     "/_app/library/": {
       id: "/_app/library/"
       path: "/library"
@@ -259,6 +290,13 @@ declare module "@tanstack/react-router" {
       path: "/library/$libraryId"
       fullPath: "/library/$libraryId"
       preLoaderRoute: typeof LibraryLibraryIdRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
+    "/_app/library/connections": {
+      id: "/_app/library/connections"
+      path: "/library/connections"
+      fullPath: "/library/connections"
+      preLoaderRoute: typeof LibraryConnectionsRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
     "/_app/system/": {
@@ -304,10 +342,12 @@ interface shellRoutesAppRouteChildren {
   AppsPluginsRoute: typeof AppsPluginsRoute
   AppsThemesRoute: typeof AppsThemesRoute
   LibraryLibraryIdRoute: typeof LibraryLibraryIdRoute
+  LibraryConnectionsRoute: typeof LibraryConnectionsRoute
   SystemHardwareRoute: typeof SystemHardwareRoute
   SystemLibrariesRoute: typeof SystemLibrariesRoute
   SystemSettingsRoute: typeof SystemSettingsRoute
   AppsIndexRoute: typeof AppsIndexRoute
+  BroadcastIndexRoute: typeof BroadcastIndexRoute
   LibraryIndexRoute: typeof LibraryIndexRoute
   SystemIndexRoute: typeof SystemIndexRoute
   TasksIndexRoute: typeof TasksIndexRoute
@@ -318,10 +358,12 @@ const shellRoutesAppRouteChildren: shellRoutesAppRouteChildren = {
   AppsPluginsRoute: AppsPluginsRoute,
   AppsThemesRoute: AppsThemesRoute,
   LibraryLibraryIdRoute: LibraryLibraryIdRoute,
+  LibraryConnectionsRoute: LibraryConnectionsRoute,
   SystemHardwareRoute: SystemHardwareRoute,
   SystemLibrariesRoute: SystemLibrariesRoute,
   SystemSettingsRoute: SystemSettingsRoute,
   AppsIndexRoute: AppsIndexRoute,
+  BroadcastIndexRoute: BroadcastIndexRoute,
   LibraryIndexRoute: LibraryIndexRoute,
   SystemIndexRoute: SystemIndexRoute,
   TasksIndexRoute: TasksIndexRoute,

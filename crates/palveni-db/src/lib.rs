@@ -26,6 +26,8 @@ mod migration;
 mod revision;
 
 pub mod audit;
+pub mod broadcast;
+pub mod connections;
 pub mod health;
 pub mod items;
 pub mod jobs;
@@ -37,6 +39,7 @@ pub mod plugin_kv;
 pub mod sessions;
 pub mod settings;
 pub mod users;
+pub mod video;
 
 use std::fmt;
 use std::path::PathBuf;
@@ -195,6 +198,10 @@ impl Db {
 
     pub fn music(&self) -> music::Music<'_> {
         music::Music { db: self }
+    }
+
+    pub fn video(&self) -> video::Videos<'_> {
+        video::Videos { db: self }
     }
 
     pub fn items(&self) -> items::Items<'_> {

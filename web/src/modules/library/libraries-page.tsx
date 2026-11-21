@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { FolderCog, FolderPlus, Library as LibraryIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
+import { useFeature } from "@/modules/access";
 import { useIsAdmin } from "@/api/queries/auth";
 import { useLibraries } from "@/api/queries/libraries";
 import type { Library, LibraryKind } from "@/api/types";
@@ -46,6 +47,8 @@ export function LibrariesPage() {
   const isAdmin = useIsAdmin();
   const itemCount = useItemCountLabel();
   const query = useLibraries();
+  const subscriptions = useFeature("broadcast");
+  const storage = useFeature("connections");
   const scanning = useScanningLibraries();
   const libraries = query.data?.libraries ?? [];
   const groups = LIBRARY_KINDS.map((kind) => ({
@@ -82,6 +85,16 @@ export function LibrariesPage() {
   return (
     <PageFrame>
       <PageHeader title={t("nav.libraries")} summary={summary} actions={actions} />
+      {(subscriptions || storage) && (
+        <nav aria-label={t("nav.libraries")} className="flex flex-wrap gap-2">
+          {subscriptions && (["radio", "podcast", "iptv"] as const).map((kind) => (
+            <Link key={kind} to="/broadcast" search={{ kind }} className={buttonVariants({ variant: "outline", size: "sm" })}>
+              {t(`broadcast.${kind}`)}
+            </Link>
+          ))}
+          {storage && <Link to="/library/connections" className={buttonVariants({ variant: "outline", size: "sm" })}>{t("connections.title")}</Link>}
+        </nav>
+      )}
       {query.isPending ? (
         <LoadingRows rows={4} />
       ) : query.isError ? (

@@ -175,14 +175,6 @@ pub fn test_encode_args(candidate: &Candidate, render_node: Option<&Path>) -> Ve
             "va".to_owned(),
         ]));
     }
-    args.extend(os_args([
-        "-f",
-        "lavfi",
-        "-i",
-        "testsrc2=size=640x360:rate=30",
-        "-frames:v",
-        "15",
-    ]));
     let filter = match candidate.method {
         EncodeMethod::Vaapi => "format=nv12,hwupload",
         EncodeMethod::Qsv
@@ -191,8 +183,30 @@ pub fn test_encode_args(candidate: &Candidate, render_node: Option<&Path>) -> Ve
         | EncodeMethod::Videotoolbox => "format=nv12",
         EncodeMethod::Software | EncodeMethod::Nvenc | EncodeMethod::V4l2m2m => "format=yuv420p",
     };
-    args.extend(os_args(["-vf", filter]));
-    args.extend(os_args(["-c:v", candidate.id.as_str(), "-f", "null", "-"]));
+    // A separate lavfi input creates another worker pool sized from the host CPU count.
+    // Put the source and the upload/conversion in one single-threaded graph.
+    let graph = format!("testsrc2=size=640x360:rate=30,{filter}[probe]");
+    args.extend(os_args([
+        "-filter_complex_threads",
+        "1",
+        "-filter_complex",
+        &graph,
+        "-map",
+        "[probe]",
+        "-frames:v",
+        "15",
+        "-c:v",
+        candidate.id.as_str(),
+        "-threads:v",
+        "1",
+    ]));
+    // These encoders manage internal pools independently of FFmpeg's thread count.
+    match candidate.id.as_str() {
+        "libx265" => args.extend(os_args(["-x265-params", "pools=none:frame-threads=1"])),
+        "libsvtav1" => args.extend(os_args(["-svtav1-params", "lp=1"])),
+        _ => {}
+    }
+    args.extend(os_args(["-f", "null", "-"]));
     args
 }
 
@@ -286,11 +300,40 @@ mod tests {
                 .collect();
         let joined = args.join(" ");
         assert!(joined.contains("-init_hw_device vaapi=va:/dev/dri/renderD129"));
-        assert!(joined.contains("-vf format=nv12,hwupload"));
-        assert!(joined.ends_with("-c:v hevc_vaapi -f null -"));
-        // Device init must precede the input.
+        assert!(joined.contains("testsrc2=size=640x360:rate=30,format=nv12,hwupload[probe]"));
+        assert!(joined.ends_with("-c:v hevc_vaapi -threads:v 1 -f null -"));
+        // The upload filter needs a device at graph creation.
         let init = args.iter().position(|a| a == "-init_hw_device").unwrap();
-        let input = args.iter().position(|a| a == "-i").unwrap();
-        assert!(init < input);
+        let graph = args.iter().position(|a| a == "-filter_complex").unwrap();
+        assert!(init < graph);
+    }
+
+    #[test]
+    fn software_probes_bound_graph_and_encoder_workers() {
+        for candidate in candidates(&[]) {
+            let args = test_encode_args(&candidate, None);
+            let has_option = |option: &str, value: &str| {
+                args.windows(2)
+                    .any(|pair| pair[0] == option && pair[1] == value)
+            };
+            assert!(!args.iter().any(|arg| arg == "-i"));
+            assert!(has_option("-filter_complex_threads", "1"));
+            assert!(has_option(
+                "-filter_complex",
+                "testsrc2=size=640x360:rate=30,format=yuv420p[probe]"
+            ));
+            assert!(has_option("-map", "[probe]"));
+            assert!(has_option("-frames:v", "15"));
+            assert!(has_option("-c:v", &candidate.id));
+            assert!(has_option("-threads:v", "1"));
+            assert_eq!(
+                has_option("-x265-params", "pools=none:frame-threads=1"),
+                candidate.id == "libx265"
+            );
+            assert_eq!(
+                has_option("-svtav1-params", "lp=1"),
+                candidate.id == "libsvtav1"
+            );
+        }
     }
 }

@@ -37,7 +37,7 @@ async fn load(
 ) -> Result<(state::Model, bool), DbError> {
     let live = items::Entity::find_by_id(id.to_string())
         .filter(items::Column::DeletedAt.is_null())
-        .filter(items::Column::Kind.is_in(["track", "video"]))
+        .filter(items::Column::Kind.is_in(["track", "video", "chapter", "episode"]))
         .select_only()
         .column(items::Column::Id)
         .into_tuple::<String>()
@@ -173,7 +173,7 @@ impl PersonalMedia<'_> {
             .filter(C::UserId.eq(user.to_string()))
             .filter(order.gt(0))
             .filter(items::Column::DeletedAt.is_null())
-            .filter(items::Column::Kind.is_in(["track", "video"]));
+            .filter(items::Column::Kind.is_in(["track", "video", "chapter", "episode"]));
         if matches!(view, MediaView::Continue) {
             query = query
                 .filter(C::Completed.eq(false))

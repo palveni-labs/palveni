@@ -21,15 +21,19 @@ use crate::ids::{ItemId, JobId, LibraryId, UserId};
 pub enum LibraryKind {
     Video,
     Music,
+    Audiobook,
+    Podcast,
     Photo,
     Book,
     Comic,
 }
 
 impl LibraryKind {
-    pub const ALL: [LibraryKind; 5] = [
+    pub const ALL: [LibraryKind; 7] = [
         LibraryKind::Video,
         LibraryKind::Music,
+        LibraryKind::Audiobook,
+        LibraryKind::Podcast,
         LibraryKind::Photo,
         LibraryKind::Book,
         LibraryKind::Comic,
@@ -39,6 +43,8 @@ impl LibraryKind {
         match self {
             LibraryKind::Video => "video",
             LibraryKind::Music => "music",
+            LibraryKind::Audiobook => "audiobook",
+            LibraryKind::Podcast => "podcast",
             LibraryKind::Photo => "photo",
             LibraryKind::Book => "book",
             LibraryKind::Comic => "comic",
@@ -50,6 +56,8 @@ impl LibraryKind {
         match self {
             LibraryKind::Video => ItemKind::Video,
             LibraryKind::Music => ItemKind::Track,
+            LibraryKind::Audiobook => ItemKind::Chapter,
+            LibraryKind::Podcast => ItemKind::Episode,
             LibraryKind::Photo => ItemKind::Photo,
             LibraryKind::Book => ItemKind::Book,
             LibraryKind::Comic => ItemKind::Comic,
@@ -70,6 +78,8 @@ impl FromStr for LibraryKind {
         match s {
             "video" => Ok(LibraryKind::Video),
             "music" => Ok(LibraryKind::Music),
+            "audiobook" => Ok(LibraryKind::Audiobook),
+            "podcast" => Ok(LibraryKind::Podcast),
             "photo" => Ok(LibraryKind::Photo),
             "book" => Ok(LibraryKind::Book),
             "comic" => Ok(LibraryKind::Comic),
@@ -87,6 +97,8 @@ pub enum ItemKind {
     Folder,
     Video,
     Track,
+    Chapter,
+    Episode,
     Photo,
     Book,
     Comic,
@@ -98,6 +110,8 @@ impl ItemKind {
             ItemKind::Folder => "folder",
             ItemKind::Video => "video",
             ItemKind::Track => "track",
+            ItemKind::Chapter => "chapter",
+            ItemKind::Episode => "episode",
             ItemKind::Photo => "photo",
             ItemKind::Book => "book",
             ItemKind::Comic => "comic",
@@ -106,6 +120,10 @@ impl ItemKind {
 
     pub const fn is_folder(self) -> bool {
         matches!(self, ItemKind::Folder)
+    }
+
+    pub const fn is_audio(self) -> bool {
+        matches!(self, Self::Track | Self::Chapter | Self::Episode)
     }
 }
 
@@ -123,6 +141,8 @@ impl FromStr for ItemKind {
             "folder" => Ok(ItemKind::Folder),
             "video" => Ok(ItemKind::Video),
             "track" => Ok(ItemKind::Track),
+            "chapter" => Ok(ItemKind::Chapter),
+            "episode" => Ok(ItemKind::Episode),
             "photo" => Ok(ItemKind::Photo),
             "book" => Ok(ItemKind::Book),
             "comic" => Ok(ItemKind::Comic),

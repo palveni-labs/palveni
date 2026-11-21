@@ -1,4 +1,5 @@
 import { Button, Description, FieldError, Input, Label, Modal, Radio, RadioGroup, Spinner, Switch, TextField, toast } from "@heroui/react";
+import { Link } from "@tanstack/react-router";
 import { AlertCircle, Plus, X } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,6 +10,8 @@ import type { LibraryKind } from "@/api/types";
 import { describeError, errorText } from "@/lib/errors";
 import { isLibraryKind, LIBRARY_KIND_META, LIBRARY_KINDS } from "@/lib/kinds";
 import { isAbsolutePath } from "@/lib/paths";
+import { useFeature } from "@/modules/access";
+import { MountPicker } from "./mount-picker";
 
 interface FormErrors {
   name?: string;
@@ -24,6 +27,7 @@ export function CreateLibraryDialog({ open, onOpenChange }: { open: boolean; onO
   const formId = useId();
   const create = useCreateLibrary();
   const scan = useScanLibrary();
+  const storageEnabled = useFeature("connections");
   const [name, setName] = useState("");
   const [kind, setKind] = useState<LibraryKind>("video");
   const [paths, setPaths] = useState<string[]>([""]);
@@ -203,6 +207,11 @@ export function CreateLibraryDialog({ open, onOpenChange }: { open: boolean; onO
                 </Button>
               </div>
 
+              {open && storageEnabled && <MountPicker onPick={(path) => {
+                setPaths((current) => [...new Set([...current.filter((value) => value.trim()), path])]);
+                setErrors((current) => ({ ...current, paths: undefined, badPaths: undefined }));
+              }} />}
+              {storageEnabled && <Link to="/library/connections" className="w-fit text-sm text-link" onClick={close}>{t("connections.title")}</Link>}
               <Switch isSelected={scanAfter} onChange={setScanAfter}>
                 <Switch.Content className="gap-3 text-base font-body text-fg">
                   <Switch.Control>

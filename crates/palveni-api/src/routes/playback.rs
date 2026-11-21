@@ -43,8 +43,31 @@ pub struct Access {
     ticket: Option<String>,
 }
 
-fn signed_message(item: ItemId, session: SessionId, expiry: i64) -> String {
-    format!("palveni:music-stream:v1\n{item}\n{session}\n{expiry}")
+fn ticket_scope(item: ItemId) -> String {
+    format!("palveni:music-stream:v1\n{item}")
+}
+
+pub(super) fn issue_ticket(
+    identity: &NodeIdentity,
+    scope: &str,
+    session: SessionId,
+    now: DateTime<Utc>,
+) -> (DateTime<Utc>, String) {
+    let expires_at = now + TICKET_LIFETIME;
+    let expiry = expires_at.timestamp_millis();
+    let signature = identity.sign(format!("{scope}\n{session}\n{expiry}").as_bytes());
+    (
+        expires_at,
+        format!("{session}.{expiry}.{}", hex::encode(signature)),
+    )
+}
+
+pub(super) fn direct_playback(url: String, expires_at: DateTime<Utc>) -> PlaybackInfo {
+    PlaybackInfo {
+        mode: PlaybackMode::Direct,
+        url,
+        expires_at,
+    }
 }
 
 fn issue(
@@ -53,15 +76,11 @@ fn issue(
     session: SessionId,
     now: DateTime<Utc>,
 ) -> PlaybackInfo {
-    let expires_at = now + TICKET_LIFETIME;
-    let expiry = expires_at.timestamp_millis();
-    let signature = identity.sign(signed_message(item, session, expiry).as_bytes());
-    let ticket = format!("{session}.{expiry}.{}", hex::encode(signature));
-    PlaybackInfo {
-        mode: PlaybackMode::Direct,
-        url: format!("/api/v1/items/{item}/stream?ticket={ticket}"),
+    let (expires_at, ticket) = issue_ticket(identity, &ticket_scope(item), session, now);
+    direct_playback(
+        format!("/api/v1/items/{item}/stream?ticket={ticket}"),
         expires_at,
-    }
+    )
 }
 
 fn verify(
@@ -70,12 +89,21 @@ fn verify(
     ticket: &str,
     now: DateTime<Utc>,
 ) -> Option<SessionId> {
+    verify_ticket(identity, &ticket_scope(item), ticket, now)
+}
+
+pub(super) fn verify_ticket(
+    identity: &NodeIdentity,
+    scope: &str,
+    ticket: &str,
+    now: DateTime<Utc>,
+) -> Option<SessionId> {
     if ticket.len() > 192 {
         return None;
     }
     let (session, rest) = ticket.split_once('.')?;
     let (deadline, signature) = rest.split_once('.')?;
-    let session = session.parse().ok()?;
+    let session: SessionId = session.parse().ok()?;
     let expiry: i64 = deadline.parse().ok()?;
     if expiry <= now.timestamp_millis() {
         return None;
@@ -84,23 +112,22 @@ fn verify(
     hex::decode_to_slice(signature, &mut bytes).ok()?;
     identity
         .node_id()
-        .verify(signed_message(item, session, expiry).as_bytes(), &bytes)
+        .verify(format!("{scope}\n{session}\n{expiry}").as_bytes(), &bytes)
         .then_some(session)
 }
 
-async fn open_track(state: &AppState, id: ItemId) -> Result<TrackFile, ApiError> {
-    let location = state
-        .db
-        .music()
-        .track_location(id)
-        .await?
-        .ok_or_else(|| ApiError::not_found("Track not found"))?;
-    palveni_library::local::open_track(location)
-        .await
-        .map_err(|err| match err {
-            palveni_core::Error::Internal(_) => ApiError::internal(err),
-            _ => ApiError::not_found("Track file unavailable"),
-        })
+async fn open_media(state: &AppState, id: ItemId) -> Result<TrackFile, ApiError> {
+    let file = if let Some(location) = state.db.music().audio_location(id).await? {
+        palveni_library::local::open_track(location).await
+    } else if let Some(location) = state.db.video().location(id).await? {
+        palveni_library::local::open_video(location).await
+    } else {
+        return Err(ApiError::not_found("Media item not found"));
+    };
+    file.map_err(|err| match err {
+        palveni_core::Error::Internal(_) => ApiError::internal(err),
+        _ => ApiError::not_found("Media file unavailable"),
+    })
 }
 
 pub async fn prepare(
@@ -108,8 +135,8 @@ pub async fn prepare(
     State(state): State<AppState>,
     path: Result<Path<String>, PathRejection>,
 ) -> Result<Response, ApiError> {
-    let id = path_id(&path?.0, "Track")?;
-    open_track(&state, id).await?;
+    let id = path_id(&path?.0, "Media item")?;
+    open_media(&state, id).await?;
     let info = issue(&state.identity, id, current.session_id, clock::now());
     Ok(([(header::CACHE_CONTROL, PRIVATE_CACHE)], Json(info)).into_response())
 }
@@ -123,14 +150,14 @@ pub async fn stream(
 ) -> Result<Response, ApiError> {
     let id = if headers.contains_key(header::AUTHORIZATION) {
         CurrentUser::from_headers(&headers, &state).await?;
-        path_id(&path?.0, "Track")?
+        path_id(&path?.0, "Media item")?
     } else {
         let ticket = query
             .map_err(|_| ApiError::unauthorized())?
             .0
             .ticket
             .ok_or_else(ApiError::unauthorized)?;
-        let id = path_id(&path?.0, "Track")?;
+        let id = path_id(&path?.0, "Media item")?;
         let session = verify(&state.identity, id, &ticket, clock::now())
             .ok_or_else(ApiError::unauthorized)?;
         state
@@ -141,7 +168,7 @@ pub async fn stream(
             .ok_or_else(ApiError::unauthorized)?;
         id
     };
-    let track = open_track(&state, id).await?;
+    let track = open_media(&state, id).await?;
     let size = track.source.size();
     let mut response = Response::builder()
         .header(header::ACCEPT_RANGES, "bytes")

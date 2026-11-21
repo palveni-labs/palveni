@@ -1,5 +1,6 @@
 # Rust
 /target/
+/packaging/smb-helper/target/
 **/*.rs.bk
 
 # Web

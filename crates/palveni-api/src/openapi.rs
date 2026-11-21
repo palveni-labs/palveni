@@ -96,7 +96,8 @@ fn success(output: Output) -> Value {
         ]),
         Output::Preview => binary(&["image/png"]),
         Output::Tar => binary(&["application/x-tar"]),
-        Output::Audio => binary(&["audio/*", "application/octet-stream"]),
+        Output::Audio => binary(&["audio/*", "video/*", "application/octet-stream"]),
+        Output::Poster => binary(&["image/jpeg", "image/png", "image/webp"]),
         Output::Document => json_content(json!({"type":"object","additionalProperties":true})),
         Output::SkinManifest => json_content(reference("SkinManifest")),
         Output::Events => content(
@@ -144,10 +145,112 @@ fn parameters(cap: &Capability) -> Vec<Value> {
             params.push(parameter(name, "path", true, schema));
         }
     }
-    if matches!(cap.id, "streamTrack" | "headTrack") {
-        params.push(parameter("ticket", "query", false, json!({"type":"string","description":"Single-track credential from the playback URL, as an alternative to a bearer header."})));
+    if matches!(cap.id, "streamTrack" | "headTrack" | "streamConnection") {
+        params.push(parameter("ticket", "query", false, json!({"type":"string","description":"Single-entry credential from the playback URL, as an alternative to a bearer header."})));
     }
     match cap.id {
+        "browseSpoken" | "browseVideos" => {
+            let fields: &[&str] = if cap.id == "browseSpoken" {
+                &["collection", "cursor"]
+            } else {
+                &["series", "cursor"]
+            };
+            if cap.id == "browseVideos" {
+                params.push(parameter(
+                    "order",
+                    "query",
+                    false,
+                    json!({"type":"string","enum":["title","poster"],"description":"Works default to title order. Poster order puts works with a local poster first and is available only on the works list."}),
+                ));
+                params.push(parameter(
+                    "season",
+                    "query",
+                    false,
+                    json!({"type":"integer","minimum":0,"maximum":65535}),
+                ));
+            }
+            for field in fields {
+                params.push(parameter(field, "query", false, json!({"type":"string"})));
+            }
+            params.push(parameter(
+                "limit",
+                "query",
+                false,
+                json!({"type":"integer","minimum":1,"maximum":200}),
+            ));
+        }
+        "getVideoPoster" => params.push(parameter(
+            "level",
+            "query",
+            false,
+            json!({"enum":["work","season","episode"]}),
+        )),
+        "browseConnection" => {
+            params.push(parameter(
+                "parent",
+                "query",
+                false,
+                json!({"type":"string"}),
+            ));
+            params.push(parameter(
+                "offset",
+                "query",
+                false,
+                json!({"type":"integer","minimum":0}),
+            ));
+            params.push(parameter(
+                "limit",
+                "query",
+                false,
+                json!({"type":"integer","minimum":1,"maximum":200}),
+            ));
+        }
+        "streamConnection" => {
+            params.push(parameter("entry", "query", true, json!({"type":"string"})));
+            params.push(parameter(
+                "Range",
+                "header",
+                false,
+                json!({"type":"string"}),
+            ));
+        }
+        "listStorageFolders" => {
+            params.push(parameter("mount", "query", true, json!({"type":"string"})));
+            params.push(parameter(
+                "folder",
+                "query",
+                false,
+                json!({"type":"string"}),
+            ));
+        }
+        "listBroadcastSources" => params.push(parameter(
+            "kind",
+            "query",
+            false,
+            reference("BroadcastKind"),
+        )),
+        "removeBroadcastSource" | "listBroadcastEntries" => {
+            params.push(parameter(
+                "version",
+                "query",
+                true,
+                json!({"type":"integer","minimum":1}),
+            ));
+            if cap.id == "listBroadcastEntries" {
+                params.push(parameter(
+                    "offset",
+                    "query",
+                    false,
+                    json!({"type":"integer","minimum":0}),
+                ));
+                params.push(parameter(
+                    "limit",
+                    "query",
+                    false,
+                    json!({"type":"integer","minimum":1,"maximum":200}),
+                ));
+            }
+        }
         "listPersonalItems" | "listPlaylists" => {
             params.push(parameter(
                 "before",
@@ -266,7 +369,7 @@ fn operation(endpoint: &Endpoint) -> Value {
     if cap.permission != Permission::Public {
         op["security"] = json!([{"bearerAuth":[]}]);
     }
-    if matches!(cap.id, "streamTrack" | "headTrack") {
+    if matches!(cap.id, "streamTrack" | "headTrack" | "streamConnection") {
         op["security"] = json!([{"bearerAuth":[]},{"mediaTicket":[]}]);
         let headers = json!({
             "Accept-Ranges":{"schema":{"type":"string","const":"bytes"}},
@@ -276,7 +379,7 @@ fn operation(endpoint: &Endpoint) -> Value {
         });
         let responses = &mut op["responses"];
         responses["200"]["headers"] = headers;
-        if cap.id == "streamTrack" {
+        if matches!(cap.id, "streamTrack" | "streamConnection") {
             responses["206"] = responses["200"].clone();
             responses["206"]["description"] = json!("Partial content");
             let content_range = json!({"schema":{"type":"string"}});
@@ -290,7 +393,7 @@ fn operation(endpoint: &Endpoint) -> Value {
     }
     match endpoint.input {
         Input::None => (),
-        Input::Json(name) => {
+        Input::Json(name) | Input::LimitedJson(name, _) => {
             op["requestBody"] = json!({"required":true,"content":json_content(reference(name))})
         }
         Input::Tar { required } => {
@@ -306,6 +409,21 @@ mod tests {
     use super::*;
     use palveni_core::FeatureRegistry;
     use std::collections::BTreeSet;
+
+    #[test]
+    fn video_order_is_an_optional_works_query() {
+        let params =
+            &openapi_document()["paths"]["/api/v1/libraries/{id}/videos"]["get"]["parameters"];
+        let order = params
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|p| p["name"] == "order")
+            .unwrap();
+        assert_eq!(order["in"], "query");
+        assert_eq!(order["required"], false);
+        assert_eq!(order["schema"]["enum"], json!(["title", "poster"]));
+    }
 
     #[test]
     fn enabled_routes_share_operation_ids_and_role_visibility() {

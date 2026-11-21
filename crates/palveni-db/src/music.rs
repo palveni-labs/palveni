@@ -1,10 +1,12 @@
 //! Album-artist, album and track views of the live music index.
 
+mod spoken;
+
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use palveni_core::{
-    ItemId, ItemKind, LibraryId,
+    ItemId, LibraryId, LibraryKind,
     music::{MusicEntry, MusicPage, TrackTags},
 };
 use sea_orm::sea_query::OnConflict;
@@ -82,14 +84,24 @@ fn model(
     tags: &TrackTags,
 ) -> tracks::ActiveModel {
     let album_artist = tags.album_artist.as_ref().or(tags.artist.as_ref()).cloned();
-    let (artist_key, artist_sort) = group(album_artist.as_deref());
-    let (album_key, album_sort) = group(tags.album.as_deref());
     let title = tags.title.as_deref().unwrap_or(fallback);
+    let (mut album_key, album_sort) = group(tags.album.as_deref());
+    let (artist_key, artist_sort, title_sort) = if let Some(dir) = &tags.spoken_location {
+        album_key = sha256_hex(&format!("{dir}\0{album_key}"));
+        (
+            spoken::SHELF.to_owned(),
+            String::new(),
+            spoken::natural_sort(title),
+        )
+    } else {
+        let (key, sort) = group(album_artist.as_deref());
+        (key, sort, sort_prefix(&title.to_lowercase()))
+    };
     let track_sort = format!(
         "{:010}/{:010}/{}",
         tags.disc_number.unwrap_or(1),
         tags.track_number.unwrap_or(u32::MAX),
-        sort_prefix(&title.to_lowercase())
+        title_sort
     );
     tracks::ActiveModel {
         item_id: Set(item_id),
@@ -118,12 +130,7 @@ pub(crate) async fn update(
     let obsolete: Vec<_> = removed
         .iter()
         .copied()
-        .chain(
-            upserts
-                .iter()
-                .filter(|u| u.kind != ItemKind::Track)
-                .map(|u| u.id),
-        )
+        .chain(upserts.iter().filter(|u| !u.kind.is_audio()).map(|u| u.id))
         .map(|id| id.to_string())
         .collect();
     if !obsolete.is_empty() {
@@ -208,7 +215,34 @@ impl Music<'_> {
 
     /// Resolves one live track without counting or loading the rest of its library.
     pub async fn track_location(&self, id: ItemId) -> Result<Option<TrackLocation>, DbError> {
+        self.location_in(id, &[LibraryKind::Music]).await
+    }
+
+    pub async fn audio_location(&self, id: ItemId) -> Result<Option<TrackLocation>, DbError> {
+        self.location_in(
+            id,
+            &[
+                LibraryKind::Music,
+                LibraryKind::Audiobook,
+                LibraryKind::Podcast,
+            ],
+        )
+        .await
+    }
+
+    async fn location_in(
+        &self,
+        id: ItemId,
+        kinds: &[LibraryKind],
+    ) -> Result<Option<TrackLocation>, DbError> {
         use crate::entities::{libraries, library_paths};
+        let allowed = kinds.iter().fold(Condition::any(), |filter, kind| {
+            filter.add(
+                Condition::all()
+                    .add(items::Column::Kind.eq(kind.leaf_item_kind().as_str()))
+                    .add(libraries::Column::Kind.eq(kind.as_str())),
+            )
+        });
         let rows = items::Entity::find_by_id(id.to_string())
             .join(
                 JoinType::InnerJoin,
@@ -224,10 +258,9 @@ impl Music<'_> {
                     .to(libraries::Column::Id)
                     .into(),
             )
-            .filter(items::Column::Kind.eq(ItemKind::Track.as_str()))
+            .filter(allowed)
             .filter(items::Column::DeletedAt.is_null())
             .filter(items::Column::Path.is_not_null())
-            .filter(libraries::Column::Kind.eq("music"))
             .filter(libraries::Column::DeletedAt.is_null())
             .select_only()
             .column_as(items::Column::Path, "file_path")

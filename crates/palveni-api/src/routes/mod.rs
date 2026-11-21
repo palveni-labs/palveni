@@ -1,4 +1,6 @@
 pub mod auth;
+pub mod broadcast;
+pub mod connections;
 pub mod events;
 pub mod items;
 pub mod jobs;
@@ -9,7 +11,10 @@ pub mod playback;
 pub mod plugins;
 pub mod settings;
 pub mod skins;
+pub mod spoken;
+pub mod storage;
 pub mod system;
+pub mod video;
 
 use std::str::FromStr;
 

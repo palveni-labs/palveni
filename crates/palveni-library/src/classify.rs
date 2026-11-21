@@ -50,7 +50,7 @@ pub(crate) fn audio_content_type(name: &str) -> &'static str {
         Some("aif" | "aiff") => "audio/aiff",
         Some("dts") => "audio/vnd.dts",
         Some("flac") => "audio/flac",
-        Some("m4a") => "audio/mp4",
+        Some("m4a" | "m4b") => "audio/mp4",
         Some("mka") => "audio/x-matroska",
         Some("mp3") => "audio/mpeg",
         Some("oga" | "ogg" | "opus") => "audio/ogg",
@@ -69,7 +69,10 @@ pub fn classify(kind: LibraryKind, file_name: &str) -> Option<ItemKind> {
     let ext = extension_of(file_name)?;
     let known = match kind {
         LibraryKind::Video => VIDEO_EXTENSIONS,
-        LibraryKind::Music => AUDIO_EXTENSIONS,
+        LibraryKind::Audiobook | LibraryKind::Podcast if ext == "m4b" => {
+            return Some(kind.leaf_item_kind());
+        }
+        LibraryKind::Music | LibraryKind::Audiobook | LibraryKind::Podcast => AUDIO_EXTENSIONS,
         LibraryKind::Photo => PHOTO_EXTENSIONS,
         LibraryKind::Book => BOOK_EXTENSIONS,
         LibraryKind::Comic => COMIC_EXTENSIONS,
@@ -159,6 +162,21 @@ mod tests {
         assert!(is_ignored_name("@Recently-Snapshot"));
         assert!(!is_ignored_name("Albums"));
         assert!(!is_ignored_name("song.flac"));
+    }
+
+    #[test]
+    fn spoken_audio_remains_distinct_from_music_and_ebooks() {
+        assert_eq!(
+            classify(LibraryKind::Audiobook, "Book.M4B"),
+            Some(ItemKind::Chapter)
+        );
+        assert_eq!(
+            classify(LibraryKind::Podcast, "Episode.mp3"),
+            Some(ItemKind::Episode)
+        );
+        assert_eq!(audio_content_type("Chapter.M4B"), "audio/mp4");
+        assert_eq!(classify(LibraryKind::Book, "Book.m4b"), None);
+        assert_eq!(classify(LibraryKind::Music, "Book.m4b"), None);
     }
 
     #[test]

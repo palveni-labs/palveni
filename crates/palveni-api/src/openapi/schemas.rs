@@ -78,6 +78,8 @@ fn additional_schemas() -> Value {
     schemas
 }
 
+use crate::routes::connections::{ConnectionList, ConnectionPlayback};
+use crate::routes::storage::{MountList, MountProtocol, MountedDirectory, StorageFolders};
 use crate::routes::{
     auth::{LoginRequest, LoginResponse, SetupRequest, SetupResponse},
     items::ItemList,
@@ -88,11 +90,21 @@ use crate::routes::{
     plugins::PluginList,
     system::{Health, SystemInfo},
 };
+use palveni_core::broadcast::{
+    BroadcastEntry, BroadcastEntryPage, BroadcastFavorite, BroadcastImport, BroadcastKind,
+    BroadcastProgramme, BroadcastSource, BroadcastSourceList,
+};
+use palveni_core::connections::{
+    ConnectionEntry, ConnectionEntryKind, ConnectionKind, ConnectionPage, ConnectionSummary,
+    CreateConnection,
+};
 use palveni_core::music::{Lyrics, LyricsFormat, LyricsSource, MusicEntry, MusicPage, TrackLyrics};
 use palveni_core::personal::{
     MediaState, MediaView, PersonalItem, PersonalItemPage, PlaybackUpdate, Playlist, PlaylistPage,
     PlaylistSummary, PlaylistTrack, PlaylistTrackPage,
 };
+use palveni_core::spoken::{SpokenEntry, SpokenPage, SpokenRecording};
+use palveni_core::video::{VideoEntry, VideoKind, VideoPage};
 use palveni_core::{
     Item, ItemKind, Job, Library, User, features::Capability, settings::RuntimeSettings,
 };
@@ -103,6 +115,32 @@ use utoipa::OpenApi;
 #[derive(OpenApi)]
 #[openapi(components(schemas(
     SystemInfo,
+    ConnectionEntry,
+    ConnectionEntryKind,
+    ConnectionKind,
+    ConnectionList,
+    ConnectionPage,
+    ConnectionPlayback,
+    ConnectionSummary,
+    CreateConnection,
+    SpokenEntry,
+    SpokenPage,
+    SpokenRecording,
+    VideoEntry,
+    VideoKind,
+    VideoPage,
+    MountedDirectory,
+    MountList,
+    MountProtocol,
+    StorageFolders,
+    BroadcastEntry,
+    BroadcastEntryPage,
+    BroadcastFavorite,
+    BroadcastImport,
+    BroadcastKind,
+    BroadcastProgramme,
+    BroadcastSource,
+    BroadcastSourceList,
     Health,
     SetupRequest,
     SetupResponse,

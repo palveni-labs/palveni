@@ -17,6 +17,9 @@ mod m20261120_000001_main_init;
 mod m20261120_000001_ops_init;
 mod m20261121_000002_track_metadata;
 mod m20261121_000003_personal_media;
+mod m20261121_000004_video_metadata;
+mod m20261121_000005_broadcast;
+mod m20261121_000007_media_connections;
 
 pub struct MainMigrator;
 
@@ -27,6 +30,9 @@ impl MigratorTrait for MainMigrator {
             Box::new(m20261120_000001_main_init::Migration),
             Box::new(m20261121_000002_track_metadata::Migration),
             Box::new(m20261121_000003_personal_media::Migration),
+            Box::new(m20261121_000004_video_metadata::Migration),
+            Box::new(m20261121_000005_broadcast::Migration),
+            Box::new(m20261121_000007_media_connections::Migration),
         ]
     }
 

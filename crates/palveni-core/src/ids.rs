@@ -71,6 +71,10 @@ define_id!(
     LibraryPathId
 );
 define_id!(
+    /// An upstream file or media server connection.
+    ConnectionId
+);
+define_id!(
     /// A node in a library's item tree.
     ItemId
 );

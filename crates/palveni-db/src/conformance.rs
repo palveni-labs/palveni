@@ -42,7 +42,11 @@ pub const ENV_OPS_DATABASE_URL: &str = "PALVENI_TEST_OPS_DATABASE_URL";
 
 /// Every table the migrations create, children before parents so they can
 /// be dropped in this order on backends that enforce foreign keys.
-const PALVENI_TABLES: [&str; 17] = [
+mod broadcast;
+mod connections;
+mod video;
+
+const PALVENI_TABLES: [&str; 22] = [
     // ops store
     "plugin_kv",
     "audit_log",
@@ -54,6 +58,11 @@ const PALVENI_TABLES: [&str; 17] = [
     "playlist_entries",
     "playlists",
     "user_item_state",
+    "broadcast_favorites",
+    "broadcast_entries",
+    "broadcast_sources",
+    "video_metadata",
+    "media_connections",
     "track_metadata",
     "items",
     "library_paths",
@@ -1018,6 +1027,137 @@ async fn conformance_music_backfill_pagination_and_removal() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn conformance_spoken_libraries_group_order_play_and_resume() {
+    use palveni_core::music::TrackTags;
+    use palveni_core::personal::PlaybackUpdate;
+    use palveni_core::spoken::SpokenEntry;
+    let h = Harness::new().await;
+    let db = &h.db;
+    let owner = db
+        .users()
+        .create("listener", "x", Role::User)
+        .await
+        .unwrap();
+    let other = db.users().create("guest", "x", Role::User).await.unwrap();
+    for (kind, leaf) in [
+        (LibraryKind::Audiobook, ItemKind::Chapter),
+        (LibraryKind::Podcast, ItemKind::Episode),
+    ] {
+        let root = format!("/archive/{kind}");
+        let lib = db
+            .libraries()
+            .create(NewLibrary {
+                name: kind.to_string(),
+                kind,
+                paths: vec![root.clone()],
+            })
+            .await
+            .unwrap();
+        let recording = |number| {
+            let mut entry = track(
+                &format!("Chapter {number}"),
+                &format!("{root}/{number}.m4b"),
+                None,
+                120,
+            );
+            entry.kind = leaf;
+            entry.music = Some(TrackTags {
+                album: Some("Program".into()),
+                artist: Some(format!("Reader {number}")),
+                spoken_location: Some(root.clone()),
+                duration_ms: Some(60_000),
+                ..Default::default()
+            });
+            entry
+        };
+        let early = recording(2);
+        let late = recording(10);
+        db.items()
+            .apply_scan_batch(lib.id, &[early.clone(), late.clone()], &[])
+            .await
+            .unwrap();
+        let page = db
+            .music()
+            .browse_spoken(lib.id, None, 1, None)
+            .await
+            .unwrap()
+            .unwrap();
+        let key = match &page.entries[..] {
+            [SpokenEntry::Book { id, title }]
+                if kind == LibraryKind::Audiobook && title == "Program" =>
+            {
+                Some(id)
+            }
+            [SpokenEntry::Show { id, title }]
+                if kind == LibraryKind::Podcast && title == "Program" =>
+            {
+                Some(id)
+            }
+            _ => None,
+        }
+        .expect("a collection matching the library kind and title");
+        let page = db
+            .music()
+            .browse_spoken(lib.id, Some(key), 1, None)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(
+            matches!(&page.entries[..], [SpokenEntry::Chapter(a) | SpokenEntry::Episode(a)] if a.id == early.id && a.duration_ms == Some(60_000))
+        );
+        let cursor = page.next_cursor.unwrap();
+        assert!(crate::music::MusicCursor::decode_spoken(&cursor, lib.id, None).is_none());
+        let cursor = crate::music::MusicCursor::decode_spoken(&cursor, lib.id, Some(key)).unwrap();
+        let page = db
+            .music()
+            .browse_spoken(lib.id, Some(key), 1, Some(cursor))
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(
+            matches!(&page.entries[..], [SpokenEntry::Chapter(a) | SpokenEntry::Episode(a)] if a.id == late.id)
+        );
+        assert!(db.music().audio_location(early.id).await.unwrap().is_some());
+        assert!(db.music().track_location(early.id).await.unwrap().is_none());
+        assert!(!db.music().has_library(lib.id).await.unwrap());
+        db.personal()
+            .update(
+                owner.id,
+                early.id,
+                crate::personal::MediaChange::Progress(PlaybackUpdate {
+                    expected_version: 0,
+                    position_ms: 12_000,
+                    completed: false,
+                }),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            db.personal()
+                .get(owner.id, early.id)
+                .await
+                .unwrap()
+                .position_ms,
+            12_000
+        );
+        assert_eq!(
+            db.personal()
+                .get(other.id, early.id)
+                .await
+                .unwrap()
+                .position_ms,
+            0
+        );
+        db.items()
+            .apply_scan_batch(lib.id, &[], &[early.id])
+            .await
+            .unwrap();
+        assert!(db.music().audio_location(early.id).await.unwrap().is_none());
+    }
+    h.finish().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn conformance_personal_media_isolation_retries_and_paging() {
     use crate::personal::MediaChange::{Favorite, Progress, Rating};
     use palveni_core::personal::{MediaState, MediaView, PlaybackUpdate};
@@ -1284,5 +1424,133 @@ async fn conformance_playlists_order_atomic_edits_and_ownership() {
         repo.save(owner, id, 0, "late retry", vec![]).await,
         Err(DbError::NotFound(_))
     ));
+    h.finish().await;
+}
+
+#[tokio::test]
+async fn conformance_video_work_seasons_cursor_and_live_files() {
+    use crate::video::{PosterLevel, VideoCursor, VideoMetadata};
+    use palveni_core::video::VideoKind;
+    let h = Harness::new().await;
+    let db = &h.db;
+    let root = "/media/Video";
+    let lib = db
+        .libraries()
+        .create(NewLibrary {
+            name: "Video works".into(),
+            kind: LibraryKind::Video,
+            paths: vec![root.into()],
+        })
+        .await
+        .unwrap()
+        .id;
+    let mut rows = Vec::new();
+    let mut metadata = Vec::new();
+    for (name, work, season, episode) in [
+        ("A film", "A film", None, None),
+        ("E2", "B series", Some(1), Some(2)),
+        ("E1", "B series", Some(1), Some(1)),
+        ("E3", "B series", Some(2), Some(1)),
+    ] {
+        let path = format!("{root}/{name}.mp4");
+        let item = ItemUpsert {
+            kind: ItemKind::Video,
+            ..track(name, &path, None, 8)
+        };
+        metadata.push(VideoMetadata {
+            item_id: item.id,
+            stamp: "v1".into(),
+            work_group: work.into(),
+            work_title: work.into(),
+            year: Some(2020),
+            work_overview: None,
+            work_poster: matches!(name, "A film" | "E1").then(|| format!("{root}/poster.jpg")),
+            season,
+            season_poster: None,
+            episode,
+            title: name.into(),
+            overview: None,
+            episode_poster: None,
+        });
+        rows.push(item);
+    }
+    db.items().apply_scan_batch(lib, &rows, &[]).await.unwrap();
+    let repo = db.video();
+    assert!(
+        repo.scan_index(lib)
+            .await
+            .unwrap()
+            .values()
+            .all(|(_, v)| v.is_none())
+    );
+    repo.save_batch(lib, metadata).await.unwrap();
+    let p = repo.browse(lib, None, None, 1, None).await.unwrap();
+    assert_eq!(p.entries[0].kind, VideoKind::Movie);
+    let cursor = p.next_cursor.unwrap();
+    let key = VideoCursor::decode(&cursor, lib, None, None).unwrap();
+    let p = repo.browse(lib, None, None, 1, Some(key)).await.unwrap();
+    let show = &p.entries[0];
+    assert_eq!((show.kind, show.file_count), (VideoKind::Series, 3));
+    assert_eq!(show.poster_item_id, Some(rows[2].id));
+    assert!(VideoCursor::decode(&cursor, lib, Some(&show.id), None).is_none());
+    let p = repo
+        .browse(lib, Some(&show.id), None, 5, None)
+        .await
+        .unwrap();
+    assert_eq!(
+        p.entries
+            .iter()
+            .map(|e| (e.season_number, e.file_count))
+            .collect::<Vec<_>>(),
+        [(Some(1), 2), (Some(2), 1)]
+    );
+    let p = repo
+        .browse(lib, Some(&show.id), Some(1), 5, None)
+        .await
+        .unwrap();
+    assert_eq!(
+        p.entries
+            .iter()
+            .map(|e| e.title.as_str())
+            .collect::<Vec<_>>(),
+        ["E1", "E2"]
+    );
+    let movie = rows[0].id;
+    assert_eq!(
+        repo.location(movie)
+            .await
+            .unwrap()
+            .unwrap()
+            .relative_path
+            .to_str(),
+        Some("A film.mp4")
+    );
+    assert_eq!(
+        repo.poster_location(movie, PosterLevel::Work)
+            .await
+            .unwrap()
+            .unwrap()
+            .relative_path
+            .to_str(),
+        Some("poster.jpg")
+    );
+    db.items()
+        .apply_scan_batch(lib, &[], &[movie])
+        .await
+        .unwrap();
+    assert!(
+        repo.poster_location(movie, PosterLevel::Work)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(
+        repo.browse(lib, None, None, 5, None)
+            .await
+            .unwrap()
+            .entries
+            .len(),
+        1
+    );
     h.finish().await;
 }

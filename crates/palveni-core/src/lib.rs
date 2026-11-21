@@ -4,9 +4,11 @@
 //! This crate sits at the bottom of the dependency graph: it must not depend
 //! on any other workspace crate.
 
+pub mod broadcast;
 pub mod cache;
 pub mod clock;
 pub mod config;
+pub mod connections;
 pub mod error;
 pub mod events;
 pub mod features;
@@ -16,7 +18,9 @@ pub mod music;
 pub mod perf;
 pub mod personal;
 pub mod settings;
+pub mod spoken;
 pub mod storage;
+pub mod video;
 
 pub use config::Config;
 pub use error::{Error, Result};

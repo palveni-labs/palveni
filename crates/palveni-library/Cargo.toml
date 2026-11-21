@@ -12,6 +12,12 @@ palveni-core.workspace = true
 palveni-db.workspace = true
 lofty.workspace = true
 notify.workspace = true
+chrono.workspace = true
+quick-xml.workspace = true
+reqwest.workspace = true
+tokio-util = { workspace = true, features = ["io"] }
+futures-util.workspace = true
+serde_json.workspace = true
 async-trait.workspace = true
 serde.workspace = true
 thiserror.workspace = true
@@ -19,7 +25,6 @@ tokio.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
-serde_json.workspace = true
 # Gives `cargo test -p palveni-library` a database backend.
 palveni-db = { workspace = true, features = ["sqlite"] }
 tempfile.workspace = true

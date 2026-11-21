@@ -169,14 +169,25 @@ function comics(random: Random, scale: number): Node[] {
 const GENERATORS: Record<LibraryKind, (random: Random, scale: number) => Node[]> = {
   video: movies,
   music,
+  audiobook: (random, scale) => spokenFiles(random, scale, "Chapter"),
+  podcast: (random, scale) => spokenFiles(random, scale, "Episode"),
   photo: photos,
   book: books,
   comic: comics,
 };
 
+function spokenFiles(random: Random, scale: number, unit: string): Node[] {
+  return uniqueTitles(Math.max(1, Math.round(5 * scale)), () => enTitle(random)).map((title) => ({
+    title,
+    children: Array.from({ length: 3 }, (_, i) => ({ title: `${unit} ${i + 1}`, size: random.int(4, 12) * MB })),
+  }));
+}
+
 const LEAF_KIND: Record<LibraryKind, ItemKind> = {
   video: "video",
   music: "track",
+  audiobook: "chapter",
+  podcast: "episode",
   photo: "photo",
   book: "book",
   comic: "comic",
@@ -185,6 +196,8 @@ const LEAF_KIND: Record<LibraryKind, ItemKind> = {
 const EXTENSIONS: Record<LibraryKind, string[]> = {
   video: [".mkv", ".mp4"],
   music: [".flac", ".m4a", ".mp3"],
+  audiobook: [".m4b", ".mp3"],
+  podcast: [".m4a", ".mp3"],
   photo: [".jpg", ".heic"],
   book: [".epub", ".pdf"],
   comic: [".cbz"],

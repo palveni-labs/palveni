@@ -66,7 +66,9 @@
     "music": "Music",
     "photo": "Photos",
     "book": "Books",
-    "comic": "Comics"
+    "comic": "Comics",
+    "audiobook": "Audiobooks",
+    "podcast": "Podcasts"
   },
   "itemKinds": {
     "folder": "Folder",
@@ -74,7 +76,9 @@
     "track": "Track",
     "photo": "Photo",
     "book": "Book",
-    "comic": "Comic"
+    "comic": "Comic",
+    "chapter": "Chapter",
+    "episode": "Episode"
   },
   "counts": {
     "items_one": "{{formatted}} item",
@@ -263,7 +267,28 @@
     "loadMoreFailed": "Couldn't load more files: {{error}}",
     "selectHint": "Choose files",
     "selectionTools": "Actions for the selected files",
-    "cancelSelect": "Cancel selection"
+    "cancelSelect": "Cancel selection",
+    "works": "Titles"
+  },
+  "connections": {
+    "title": "Network sources",
+    "add": "Add source",
+    "protocol": "Protocol",
+    "name": "Name",
+    "address": "Server or share address",
+    "username": "Username",
+    "password": "Password",
+    "token": "Access token",
+    "connect": "Connect",
+    "cancel": "Cancel",
+    "close": "Close player",
+    "retry": "Retry playback",
+    "back": "Back",
+    "emptyFolder": "This folder is empty.",
+    "confirm": "Remove this connection?",
+    "remove": "Remove connection",
+    "empty": "No network sources yet",
+    "saved": "Saved sources"
   },
   "adminLibraries": {
     "create": "New library",
@@ -504,6 +529,9 @@
     },
     "system": {
       "title": "System"
+    },
+    "broadcast": {
+      "title": "Radio & subscriptions"
     }
   },
   "feature": {
@@ -672,7 +700,9 @@
     "music": "tracks",
     "photo": "photos",
     "book": "books",
-    "comic": "volumes"
+    "comic": "volumes",
+    "audiobook": "chapters",
+    "podcast": "episodes"
   },
   "server": {
     "cpu": "CPU",
@@ -795,5 +825,44 @@
     "gapWhy": "A scan never removes items from places it cannot read, so a disconnected drive or network share does not empty your library. Once the storage is connected again, scan this library again.",
     "gapTitle": "This scan was incomplete",
     "rescan": "Scan again"
+  },
+  "spoken": {
+    "shelf": "Bookshelf",
+    "shows": "Shows",
+    "chapters": "Chapters",
+    "episodes": "Episodes",
+    "play": "Play {{title}}",
+    "empty": "No audio yet",
+    "progressConflict": "Playback progress changed on another device. Reopen to resume.",
+    "playbackFailed": "Could not play this audio"
+  },
+  "video": {
+    "sort": "Sort titles",
+    "posterFirst": "Posters first",
+    "byTitle": "By title",
+    "works": "Titles",
+    "movie": "Film",
+    "series": "Series",
+    "season": "Season {{number}}",
+    "specials": "Specials",
+    "episode": "Episode {{number}}",
+    "entries": "{{count}} episodes",
+    "empty": "No video titles yet",
+    "scanHint": "Scan this library to index local metadata and posters",
+    "preview": "Preview original",
+    "unsupported": "This browser cannot play this video format",
+    "seasons": "Seasons",
+    "episodes": "Episodes"
+  },
+  "mounts": {
+    "choose": "Choose a mounted share",
+    "mount": "Mounted shares",
+    "directory": "Subdirectory",
+    "use": "Use this directory",
+    "root": "Root directory",
+    "limited": "Showing the first 200 directories. You can also enter a path.",
+    "loadError": "Could not read the shared directory",
+    "up": "Parent directory",
+    "chooseFolder": "Open a subdirectory"
   }
 }

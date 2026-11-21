@@ -491,6 +491,82 @@ case "$EVENTS" in *"event: ping"*) ok "event stream sends a ping on connect" ;; 
 
 # ---------------------------------------------------------------- cleanup and logout
 echo "Delete and logout"
+echo "Spoken libraries, films and subscriptions"
+req GET /storage/mounts
+check "mounts are available to the administrator" "$STATUS $(field '.mounts | type')" "200 array"
+req GET /connections
+check "a new server has no saved remote credentials" "$STATUS $(field '.connections | length')" "200 0"
+req POST /connections '{"name":"sample","kind":"webdav","address":"file:///tmp"}'
+check "network sources require a matching network protocol" "$STATUS" "400"
+
+# This second fixture tree lives in the same read-only bind as the initial music fixture.
+sample="$MEDIA/collection-fixtures"
+mkdir -p "$sample/film/Archive" "$sample/stories/Volume" "$sample/shows/Program"
+chmod -R a+rX "$sample"
+python3 - "$sample" <<'PYTHON'
+from pathlib import Path
+import struct,sys,wave
+root=Path(sys.argv[1])
+for directory in ["stories/Volume","shows/Program"]:
+    for number in [1,2]:
+        with wave.open(str(root/directory/f"{number:02}.wav"),"wb") as wav:
+            wav.setparams((1,2,8000,0,"NONE",""))
+            wav.writeframes(struct.pack("<h",0)*8000)
+(root/"film"/"film.mp4").write_bytes(b"smoke-video-range-fixture")
+(root/"film"/"film.nfo").write_text("<movie><title>Sample Film</title><year>2024</year></movie>")
+(root/"film"/"Archive"/"archive.mp4").write_bytes(b"other-video")
+(root/"film"/"Archive"/"archive.nfo").write_text("<movie><title>Archive</title></movie>")
+import base64
+(root/"film"/"poster.png").write_bytes(base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/Ij8AAAAASUVORK5CYII="))
+PYTHON
+for spec in 'audiobook stories book chapter' 'podcast shows show episode' 'video film movie movie'; do
+  read -r kind directory collection recording <<<"$spec"
+  req POST /libraries "$(jq -nc --arg k "$kind" --arg p "$sample/$directory" '{kind:$k,name:("Sample "+$k),paths:[$p]}')"
+  check "create $kind library" "$STATUS" "201"
+  sample_lib=$(field .id)
+  req POST "/libraries/$sample_lib/scan"
+  wait_for_job "$(field .jobId)"
+  check "index $kind fixture" "$JOB_STATE" "succeeded"
+  if [ "$kind" = video ]; then
+    req GET "/libraries/$sample_lib/videos"
+    check "default video order uses titles" "$STATUS $(field '.entries | map(.title) | join("|")')" "200 Archive|Sample Film"
+    req GET "/libraries/$sample_lib/videos?order=poster&limit=1"
+    check "film wall includes the NFO title and year" "$STATUS $(field '.entries[0] | [.kind,.title,.year] | join("|")')" "200 movie|Sample Film|2024"
+    poster_id=$(field '.entries[0].posterItemId')
+    wall_cursor=$(field .nextCursor)
+    req GET "/libraries/$sample_lib/videos?order=title&cursor=$wall_cursor"
+    check "film wall cursor rejects a different sort order" "$STATUS" "400"
+    req GET "/libraries/$sample_lib/videos?order=poster&limit=1&cursor=$wall_cursor"
+    check "film wall continues into works without artwork" "$STATUS $(field '.entries[0].title') $(field .nextCursor)" "200 Archive null"
+    check "film poster serves the original image" "$(read_media -H "Authorization: Bearer $TOKEN" "$API/items/$poster_id/poster") $(media_header content-type)" "200 image/png"
+    cmp -s "$sample/film/poster.png" "$PRIVATE_TMP/audio" && ok "poster bytes match" || bad "poster bytes match" "unexpected payload"
+  else
+    req GET "/libraries/$sample_lib/spoken"
+    check "browse $collection groups" "$STATUS $(field '.entries[0].kind')" "200 $collection"
+    group=$(field '.entries[0].id')
+    req GET "/libraries/$sample_lib/spoken?collection=$group"
+    check "$recording items include original playback duration" "$STATUS $(field '.entries | length') $(field '.entries[0].kind') $(field '.entries[0].durationMs')" "200 2 $recording 1000"
+  fi
+  req DELETE "/libraries/$sample_lib"
+done
+for kind in radio iptv podcast; do
+  subscription=$(python3 -c 'import uuid; print(uuid.uuid4())')
+  content=$'#EXTM3U\n#EXTINF:-1,Example channel\nhttps://media.example.org/channel'
+  if [ "$kind" = podcast ]; then
+    content='<rss version="2.0"><channel><item><title>First episode</title><guid>episode1</guid><enclosure type="audio/mpeg" url="https://media.example.org/episode.mp3"/></item></channel></rss>'
+  fi
+  req PUT "/broadcast/sources/$subscription" "$(jq -nc --arg k "$kind" --arg data "$content" '{name:"Sample",kind:$k,expectedVersion:0,content:$data}')"
+  check "$kind subscription imports its entries" "$STATUS $(field .entryCount)" "200 1"
+  ver=$(field .version)
+  req GET "/broadcast/sources/$subscription/entries?version=$ver"
+  check "$kind has a playable source" "$STATUS $(field '.entries[0].streams | length')" "200 1"
+  entry=$(field '.entries[0].id')
+  req PUT "/broadcast/sources/$subscription/favorites/$entry" '{"favorite":true}'
+  check "save a personal $kind favorite" "$STATUS" "204"
+  req DELETE "/broadcast/sources/$subscription?version=$ver"
+  check "remove sample $kind subscription" "$STATUS" "204"
+done
+
 req DELETE "/libraries/$LIB"
 check "library is deleted" "$STATUS" "204"
 [ -f "$MEDIA/Album A/track 1.flac" ] && ok "files on disk are untouched" || bad "files on disk are untouched" "a media file disappeared"

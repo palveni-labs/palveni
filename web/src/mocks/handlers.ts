@@ -1,11 +1,11 @@
 import { delay, http, HttpResponse } from "msw";
 import type {
-  ApiErrorDetails, ApiErrorCode, CreateLibraryRequest, Credentials, LibraryKind, LoginRequest, RuntimeSettings, User } from "@/api/types";
+  ApiErrorDetails, ApiErrorCode, CreateLibraryRequest, Credentials, LoginRequest, RuntimeSettings, User } from "@/api/types";
+import { ITEM_KIND_ICON, LIBRARY_KINDS } from "@/lib/kinds";
 import type { MockDb } from "./db";
 
 const BASE = "/api/v1";
-const KINDS: LibraryKind[] = ["video", "music", "photo", "book", "comic"];
-const ITEM_KINDS = ["folder", "video", "track", "photo", "book", "comic"];
+const ITEM_KINDS = Object.keys(ITEM_KIND_ICON);
 
 export interface HandlerOptions {
   /** Simulated network latency in ms (0 in tests). */
@@ -166,7 +166,7 @@ export function createHandlers(db: MockDb, options: HandlerOptions = {}) {
       const kind = body?.kind;
       const paths = Array.isArray(body?.paths) ? body.paths.filter((path): path is string => typeof path === "string") : [];
       if (!name) return fail(400, "validation_failed", "name is required", { field: "name" });
-      if (!kind || !KINDS.includes(kind)) return fail(400, "validation_failed", "kind must be one of video, music, photo, book, comic", { field: "kind" });
+      if (!kind || !LIBRARY_KINDS.includes(kind)) return fail(400, "validation_failed", "Unknown library kind", { field: "kind" });
       if (paths.length === 0) return fail(400, "validation_failed", "at least one path is required", { field: "paths" });
       const relative = paths.findIndex((path) => !isAbsolute(path));
       if (relative !== -1) return fail(400, "validation_failed", `path must be absolute: ${paths[relative]}`, { field: "paths", index: relative });

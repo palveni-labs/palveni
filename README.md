@@ -1,6 +1,6 @@
 # Palveni Server
 
-Palveni is a self-hosted media library server with a web dashboard. Add local media folders, scan and browse their contents, monitor background jobs, and check which hardware encoders work on your machine. SQLite is the default database. PostgreSQL and MySQL are also supported.
+Palveni is a self-hosted media server for music, films, TV, audiobooks and podcasts. Its web dashboard lets you browse your library, play original files, listen to radio and open live TV channels. SQLite is the default database. PostgreSQL and MySQL are also supported.
 
 ## Run with Docker
 
@@ -19,11 +19,12 @@ Open the [dashboard](http://localhost:7258) and create an administrator account.
 
 ## Build from source
 
-Install Node.js 24 and the [pinned Rust toolchain](rust-toolchain.toml). Install FFmpeg and FFprobe for media diagnostics. The Docker image includes both tools.
+Install Node.js 24 and the [pinned Rust toolchain](rust-toolchain.toml). Install FFmpeg and FFprobe for media diagnostics. The Docker image includes both tools. At startup, Palveni checks each encoder with a short test clip and limits the threads used by each probe.
 
 ```sh
 npm ci --prefix web
 npm run build --prefix web
+cargo build --locked --manifest-path packaging/smb-helper/Cargo.toml --target-dir target
 cargo run --locked -p palveni-server --features embed-web -- serve
 ```
 
@@ -45,6 +46,23 @@ Signed-in clients can favorite and rate tracks and videos, browse recently playe
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/music-library-dark.png">
   <img src="docs/images/music-library-light.png" alt="Six tracks from Harbor Sessions, with the album artist, disc number and duration shown in the music library.">
 </picture>
+
+## Films, TV and spoken audio
+
+Add a **Video** library and scan its folders to browse a poster wall. Films and series with artwork appear first. Choose **By title** to see the whole collection in title order. A film in its own folder can use `movie.nfo` for its title and year and `poster.jpg` for artwork. Series open into seasons and episodes. The file view is also available. Scan an existing video library once after upgrading to pick up its artwork.
+
+Choose **Audiobooks** or **Podcasts** for a folder of spoken audio. The dashboard groups the files into books or shows. Each file is a chapter or episode, and each listener can return to the position they last played.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/video-library-dark.png">
+  <img src="docs/images/video-library-light.png" alt="A poster wall with seven fictional films and a two-episode series in the video library.">
+</picture>
+
+## Network sources and subscriptions
+
+To index media on a NAS, mount its share on the host and expose it read-only to the container. Choose that directory when adding a library. For on-demand browsing, open **Network sources** and add an SMB3 or WebDAV directory, or connect a Jellyfin, Emby or Plex server using its access token. Members can browse and play from a connection. Palveni encrypts the saved credentials with the installation's node key. For a binary installation, place `palveni-smb-helper` beside `palveni`. The Docker image includes both.
+
+Open **Radio & subscriptions** to add a radio or live TV playlist (M3U or grouped text), an XMLTV guide, or an RSS or Atom podcast feed. Channels can have multiple streams. Listeners can switch streams, see what's on now and next, and keep their own favorites. Browser playback depends on the media format.
 
 ## Skins and plugins
 

@@ -16,15 +16,20 @@
 //!   instead of collations, which are backend-specific.
 
 // Main store: the catalog and everything that joins with it.
+pub mod broadcast_entries;
+pub mod broadcast_favorites;
+pub mod broadcast_sources;
 pub mod devices;
 pub mod items;
 pub mod libraries;
 pub mod library_paths;
+pub mod media_connections;
 pub mod sessions;
 pub mod settings;
 pub mod sync_state;
 pub mod track_metadata;
 pub mod users;
+pub mod video_metadata;
 
 // Ops store: high-churn operational data, never joined with the catalog.
 pub mod audit_log;

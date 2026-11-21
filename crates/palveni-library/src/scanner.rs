@@ -190,6 +190,7 @@ struct FoundFile {
 
 #[derive(Default)]
 struct WalkOutcome {
+    video: crate::video::Inventory,
     /// Keyed by absolute path; BTreeMap keeps parents before children when
     /// sorted by depth later.
     folders: BTreeMap<String, FoundFolder>,
@@ -306,21 +307,22 @@ impl Scanner {
                 found: count(walk.files.len()),
             },
         );
+        let video = std::mem::take(&mut walk.video);
         let existing = self.db.items().scan_index(library_id).await?;
         let plan = plan_changes(walk, existing);
 
         let total = plan.upserts.len() + plan.tombstones.len();
         let mut done = 0usize;
         report_writes(observer, done, total);
-        let music = library.kind == LibraryKind::Music;
-        let batch_size = if music { 64 } else { BATCH_SIZE };
+        let audio = library.kind.leaf_item_kind().is_audio();
+        let batch_size = if audio { 64 } else { BATCH_SIZE };
         let roots = std::sync::Arc::new(roots);
         for chunk in plan.upserts.chunks(batch_size) {
             if observer.is_cancelled() {
                 return Err(ScanError::Cancelled);
             }
             let tagged;
-            let rows = if music {
+            let rows = if audio {
                 let roots = roots.clone();
                 let batch = chunk.to_vec();
                 tagged =
@@ -350,6 +352,9 @@ impl Scanner {
             report_writes(observer, done, total);
         }
 
+        if library.kind == LibraryKind::Video {
+            video.index(&self.db, library_id, roots, observer).await?;
+        }
         if !self
             .db
             .libraries()
@@ -415,6 +420,9 @@ async fn walk_root(
                 continue;
             }
         };
+        if kind == LibraryKind::Video {
+            out.video.observe(storage, &dir, &entries);
+        }
         for entry in entries {
             if is_ignored_name(&entry.name) {
                 continue;
@@ -513,7 +521,7 @@ fn plan_changes(walk: WalkOutcome, existing: Vec<IndexedItem>) -> ChangePlan {
         let id = match existing {
             Some(e)
                 if !e.deleted
-                    && (file.kind != ItemKind::Track || e.music_indexed)
+                    && (!file.kind.is_audio() || e.music_indexed)
                     && e.kind == file.kind
                     && e.parent_id == parent_id
                     && e.size_bytes == file.size
