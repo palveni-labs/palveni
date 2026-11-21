@@ -20,6 +20,9 @@ mod m20261121_000003_personal_media;
 mod m20261121_000004_video_metadata;
 mod m20261121_000005_broadcast;
 mod m20261121_000007_media_connections;
+mod m20261121_000009_music_search;
+mod m20261121_000010_subsonic;
+mod m20261121_000011_library_mounts;
 
 pub struct MainMigrator;
 
@@ -33,6 +36,9 @@ impl MigratorTrait for MainMigrator {
             Box::new(m20261121_000004_video_metadata::Migration),
             Box::new(m20261121_000005_broadcast::Migration),
             Box::new(m20261121_000007_media_connections::Migration),
+            Box::new(m20261121_000009_music_search::Migration),
+            Box::new(m20261121_000010_subsonic::Migration),
+            Box::new(m20261121_000011_library_mounts::Migration),
         ]
     }
 

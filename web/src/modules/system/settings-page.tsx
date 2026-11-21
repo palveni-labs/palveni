@@ -13,6 +13,7 @@ import { localized } from "@/skins/schema";
 import { useSkin, type ModeSetting } from "@/skins/store";
 import { UserAvatar } from "@/shell/user-menu";
 import { PageFrame } from "@/ui/frame";
+import { MusicClientAccess } from "./music-client-access";
 import { PageHeader } from "@/ui/page";
 import { Section, SectionRows, useRowInset } from "@/ui/section";
 import { ErrorState, LoadingRows } from "@/ui/states";
@@ -123,6 +124,7 @@ function Account() {
             {t("user.logout")}
           </Button>
         </SettingRow>
+        <MusicClientAccess key={user.id} user={user} />
       </SectionRows>
     </Section>
   );

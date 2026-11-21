@@ -294,6 +294,22 @@ fn parameters(cap: &Capability) -> Vec<Value> {
             true,
             json!({"type":"integer","minimum":1}),
         )),
+        "searchMusic" => params.extend([
+            parameter(
+                "q",
+                "query",
+                true,
+                json!({"type":"string","minLength":1,"maxLength":128}),
+            ),
+            parameter("kind", "query", false, reference("MusicSearchKind")),
+            parameter("cursor", "query", false, json!({"type":"string"})),
+            parameter(
+                "limit",
+                "query",
+                false,
+                json!({"type":"integer","minimum":1,"maximum":200,"default":30}),
+            ),
+        ]),
         "browseMusic" => {
             for name in ["artist", "album"] {
                 params.push(parameter(

@@ -21,6 +21,7 @@ axum.workspace = true
 chrono.workspace = true
 futures-util.workspace = true
 hex.workspace = true
+md-5.workspace = true
 reqwest.workspace = true
 ring.workspace = true
 serde.workspace = true

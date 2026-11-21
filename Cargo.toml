@@ -32,9 +32,12 @@ ed25519-dalek = "3.0.0"
 futures-util = "0.3.34"
 getrandom = "0.4.3"
 hex = "0.4.3"
+md-5 = "0.11.0"
 lofty = { version = "0.24", default-features = false }
 mime_guess = "2.0.5"
 notify = "9.0.0"
+pinyin = { version = "0.11", default-features = false, features = ["plain"] }
+fast2s = "0.3"
 quick-xml = { version = "0.42", default-features = false }
 reqwest = { version = "0.12.28", default-features = false, features = ["rustls-tls-webpki-roots", "json", "stream"] }
 ring = "0.17.14"

@@ -11,6 +11,7 @@ pub struct Model {
     /// Lowercased username; carries the unique index.
     pub username_key: String,
     pub password_hash: String,
+    pub subsonic_generation: Option<String>,
     pub role: String,
     pub created_at: i64,
     pub updated_at: i64,

@@ -46,7 +46,13 @@ pub fn router(state: AppState) -> Router {
         // header to whatever this returns.
         .method_not_allowed_fallback(method_not_allowed)
         .fallback(not_found);
-    Router::new().nest("/api/v1", v1).with_state(state)
+    Router::new()
+        .nest("/api/v1", v1)
+        .route(
+            "/rest/{method}",
+            axum::routing::get(routes::subsonic::handle),
+        )
+        .with_state(state)
 }
 
 /// JSON 404 in the contract's error shape.

@@ -34,6 +34,8 @@ Run `palveni doctor` to check FFmpeg, hardware acceleration and database connect
 
 Choose **Music** when adding a library, then scan its folders. Open the library and choose **Album artists** to browse albums and tracks. Compilation albums stay together under their album artist. Tracks without tags appear under an unknown artist or album and use their filenames as titles. Run a scan after upgrading to index music that is already in your library.
 
+To use an OpenSubsonic player, open **System → Settings → Account → OpenSubsonic music clients** and create a password. Enter the server’s base address, your username and this password in the player. The music catalog supports browsing, searching and streaming original files with seeking. All players on your account share the password. You can replace or revoke it in Settings. Use HTTPS when connecting over the internet.
+
 Open an album to play its tracks. **Libraries** brings together your continue-playing list, history and favorites. Administrators can rename a library or add folders under **System → Libraries**. Existing items keep their identities and playback history.
 
 After the first scan, Palveni watches each library for file additions, edits, renames and deletions. It groups bursts of activity into one scan and updates open library views when the scan finishes. Libraries are also checked on startup and every 15 minutes, including network mounts that do not deliver filesystem notifications. Renaming a track gives it a new item ID. Favorites, playback progress and playlist entries stay associated with the old ID.

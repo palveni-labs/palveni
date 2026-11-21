@@ -83,6 +83,38 @@ impl Users<'_> {
         .transpose()
     }
 
+    pub async fn set_subsonic_generation(
+        &self,
+        id: UserId,
+        value: Option<String>,
+    ) -> Result<(), DbError> {
+        use sea_orm::sea_query::Expr;
+        users::Entity::update_many()
+            .col_expr(users::Column::SubsonicGeneration, Expr::value(value))
+            .filter(users::Column::Id.eq(id.to_string()))
+            .filter(users::Column::DisabledAt.is_null())
+            .exec(self.db.main())
+            .await?;
+        Ok(())
+    }
+
+    pub async fn subsonic_identity(
+        &self,
+        username: &str,
+    ) -> Result<Option<(String, String)>, DbError> {
+        use sea_orm::QuerySelect;
+        Ok(users::Entity::find()
+            .select_only()
+            .column(users::Column::Id)
+            .column(users::Column::SubsonicGeneration)
+            .filter(users::Column::UsernameKey.eq(username_key(username)))
+            .filter(users::Column::DisabledAt.is_null())
+            .filter(users::Column::SubsonicGeneration.is_not_null())
+            .into_tuple()
+            .one(self.db.main())
+            .await?)
+    }
+
     pub async fn get(&self, id: UserId) -> Result<Option<User>, DbError> {
         users::Entity::find_by_id(id.to_string())
             .one(self.db.main())
@@ -106,6 +138,7 @@ async fn insert_user<C: ConnectionTrait>(
         username: ActiveValue::Set(username.trim().to_owned()),
         username_key: ActiveValue::Set(username_key(username)),
         password_hash: ActiveValue::Set(password_hash.to_owned()),
+        subsonic_generation: ActiveValue::Set(None),
         role: ActiveValue::Set(role.as_str().to_owned()),
         created_at: ActiveValue::Set(now_ms),
         updated_at: ActiveValue::Set(now_ms),

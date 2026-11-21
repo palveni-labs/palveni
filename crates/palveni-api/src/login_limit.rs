@@ -36,8 +36,16 @@ pub struct LoginLimit {
 
 impl LoginLimit {
     pub fn new(parallel: usize) -> Self {
+        Self::with_slots(parallel.clamp(1, 4))
+    }
+
+    pub fn for_music_clients() -> Self {
+        Self::with_slots(64)
+    }
+
+    fn with_slots(parallel: usize) -> Self {
         Self {
-            slots: Arc::new(Semaphore::new(parallel.clamp(1, 4))),
+            slots: Arc::new(Semaphore::new(parallel)),
             clients: Mutex::default(),
         }
     }

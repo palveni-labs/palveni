@@ -12,6 +12,8 @@ import { formatDuration } from "@/lib/format";
 import { Section } from "@/ui/section";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 
+import { SearchableMusic } from "./music-search";
+
 export function MusicBrowse({ libraryId }: { libraryId: string }) {
   const { t } = useTranslation();
   const { artist, album, artistName, albumName } = useSearch({ from: "/_app/library/$libraryId" });
@@ -29,7 +31,7 @@ export function MusicBrowse({ libraryId }: { libraryId: string }) {
   const albumTitle = albumName || t("music.unknownAlbum");
   const rowClass = "flex min-w-0 items-center gap-3 rounded-control px-2 py-3 text-start text-fg hover:bg-hover focus-visible:outline-2 focus-visible:outline-(--pv-focus)";
 
-  return (
+  const browse = (
     <>
       {artist && <nav aria-label={t("a11y.breadcrumb")} className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
         <Link to="/library/$libraryId" params={{ libraryId }} search={{ view: "music" }}>{t("music.artists")}</Link>
@@ -78,4 +80,5 @@ export function MusicBrowse({ libraryId }: { libraryId: string }) {
       </Section>
     </>
   );
+  return artist ? browse : <SearchableMusic key={libraryId} libraryId={libraryId}>{browse}</SearchableMusic>;
 }

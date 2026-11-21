@@ -44,9 +44,10 @@ pub const ENV_OPS_DATABASE_URL: &str = "PALVENI_TEST_OPS_DATABASE_URL";
 /// be dropped in this order on backends that enforce foreign keys.
 mod broadcast;
 mod connections;
+mod music_search;
 mod video;
 
-const PALVENI_TABLES: [&str; 22] = [
+const PALVENI_TABLES: &[&str] = &[
     // ops store
     "plugin_kv",
     "audit_log",
@@ -63,8 +64,10 @@ const PALVENI_TABLES: [&str; 22] = [
     "broadcast_sources",
     "video_metadata",
     "media_connections",
+    "subsonic_folders",
     "track_metadata",
     "items",
+    "library_mounts",
     "library_paths",
     "libraries",
     "sessions",
@@ -201,7 +204,7 @@ async fn list_tables(conn: &DatabaseConnection) -> BTreeSet<String> {
 }
 
 async fn drop_palveni_tables(conn: &DatabaseConnection) {
-    for table in PALVENI_TABLES {
+    for &table in PALVENI_TABLES {
         let stmt = Table::drop()
             .table(Alias::new(table))
             .if_exists()
@@ -330,6 +333,17 @@ async fn conformance_users() {
     );
 
     let bob = users.create("bob", "hash-b", Role::User).await.unwrap();
+    users
+        .set_subsonic_generation(bob.id, Some("first-generation".into()))
+        .await
+        .unwrap();
+    assert!(users.subsonic_identity("Admin").await.unwrap().is_none());
+    assert_eq!(
+        users.subsonic_identity("BOB").await.unwrap(),
+        Some((bob.id.to_string(), "first-generation".into()))
+    );
+    users.set_subsonic_generation(bob.id, None).await.unwrap();
+    assert!(users.subsonic_identity("bob").await.unwrap().is_none());
     assert!(matches!(
         users.create("BOB", "x", Role::User).await,
         Err(DbError::Conflict(_))
@@ -458,6 +472,31 @@ async fn conformance_libraries_and_revisions() {
     ));
     let music = new_library(&h.db, "Music").await;
 
+    let mounts = std::collections::BTreeMap::from([("/media/a".into(), "//nas/one".into())]);
+    assert!(
+        libraries
+            .unavailable_mounts(movies.id, &mounts)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    let replacement = std::collections::BTreeMap::from([("/media/a".into(), "//nas/two".into())]);
+    for changed in [replacement, std::collections::BTreeMap::new()] {
+        assert_eq!(
+            libraries
+                .unavailable_mounts(movies.id, &changed)
+                .await
+                .unwrap(),
+            ["/media/a"]
+        );
+    }
+    assert!(
+        libraries
+            .unavailable_mounts(movies.id, &mounts)
+            .await
+            .unwrap()
+            .is_empty()
+    );
     let names: Vec<String> = libraries
         .list()
         .await
@@ -1024,6 +1063,63 @@ async fn conformance_music_backfill_pagination_and_removal() {
     let location = db.music().track_location(first.id).await.unwrap().unwrap();
     assert_eq!(location.root, std::path::Path::new("/media/Recordings"));
     assert_eq!(location.relative_path, std::path::Path::new("01.flac"));
+    let catalog = db.music();
+    let folders = catalog.catalog_folders().await.unwrap();
+    assert_eq!(folders.len(), 2);
+    let folder = folders
+        .iter()
+        .find(|(_, name)| name == "Recordings")
+        .unwrap()
+        .0;
+    let other_folder = folders
+        .iter()
+        .find(|(_, name)| name == "Other recordings")
+        .unwrap()
+        .0;
+    let page = crate::music::catalog::Page {
+        count: 20,
+        offset: 0,
+    };
+    let artists = catalog
+        .catalog_artists(&[folder], "ensem", page)
+        .await
+        .unwrap();
+    assert_eq!(artists[0].album_count.trim(), "1");
+    let records = catalog
+        .catalog_albums(&[folder], "", page, false)
+        .await
+        .unwrap();
+    assert_eq!(records[0].count.trim(), "2");
+    assert_eq!(
+        catalog
+            .catalog_songs(&[other_folder], "", page)
+            .await
+            .unwrap()
+            .len(),
+        0
+    );
+    assert!(
+        catalog
+            .catalog_songs(&[folder], "%", page)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        catalog
+            .catalog_songs(&[folder], "Overture", page)
+            .await
+            .unwrap()
+            .len(),
+        2
+    );
+    let record = crate::music::catalog::AlbumKey {
+        folder,
+        artist,
+        album,
+    };
+    let tracks = catalog.catalog_album_songs(&record).await.unwrap();
+    assert_eq!(tracks[0].id, first.id.to_string());
     let second_id = second.id;
     second.music.as_mut().unwrap().album = Some("Encore".into());
     db.items()
@@ -1061,6 +1157,22 @@ async fn conformance_music_backfill_pagination_and_removal() {
             .await
             .unwrap()
             .is_empty()
+    );
+    assert!(catalog.catalog_album(&record).await.unwrap().is_none());
+    assert!(
+        catalog
+            .catalog_song(&second_id.to_string())
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        !catalog
+            .catalog_folders()
+            .await
+            .unwrap()
+            .iter()
+            .any(|(id, _)| *id == folder)
     );
     h.finish().await;
 }

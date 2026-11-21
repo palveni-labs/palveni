@@ -44,7 +44,7 @@ pub fn extension_of(name: &str) -> Option<String> {
     Some(ext.to_ascii_lowercase())
 }
 
-pub(crate) fn audio_content_type(name: &str) -> &'static str {
+pub fn audio_content_type(name: &str) -> &'static str {
     match extension_of(name).as_deref() {
         Some("aac") => "audio/aac",
         Some("aif" | "aiff") => "audio/aiff",

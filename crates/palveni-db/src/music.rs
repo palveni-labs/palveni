@@ -1,5 +1,7 @@
 //! Album-artist, album and track views of the live music index.
 
+pub mod catalog;
+pub mod search;
 mod spoken;
 
 use std::collections::{HashMap, HashSet};

@@ -169,6 +169,14 @@ pub async fn stream(
         id
     };
     let track = open_media(&state, id).await?;
+    serve_track(track, method, &headers).await
+}
+
+pub(super) async fn serve_track(
+    track: TrackFile,
+    method: Method,
+    headers: &HeaderMap,
+) -> Result<Response, ApiError> {
     let size = track.source.size();
     let mut response = Response::builder()
         .header(header::ACCEPT_RANGES, "bytes")
@@ -177,7 +185,7 @@ pub async fn stream(
     let selection = if method == Method::HEAD {
         Selection::Full
     } else {
-        byte_range::select(&headers, size)
+        byte_range::select(headers, size)
     };
     let range = match selection {
         Selection::Full => 0..size,

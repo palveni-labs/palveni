@@ -231,6 +231,11 @@
     "notScannedHint": "Scan it to browse",
     "folders": "Folders"
   },
+  "musicSearch": {
+    "label": "Search this music library",
+    "category": "Search in",
+    "noResults": "No results for “{{q}}”"
+  },
   "music": {
     "browse": "Browse music",
     "artists": "Album artists",
@@ -681,6 +686,19 @@
       "openHardware": "Open hardware & transcoding",
       "openLibraries": "Open library settings"
     }
+  },
+  "musicClients": {
+    "title": "OpenSubsonic music clients",
+    "hint": "Connect a music player with your server address, username and a dedicated password.",
+    "create": "Create password",
+    "replace": "Replace password",
+    "revoke": "Revoke access",
+    "confirmReplace": "Replace the password for all connected music clients?",
+    "confirmRevoke": "Disconnect all music clients using this password?",
+    "shown": "Save this password in your music client. It is shown once.",
+    "address": "Server address",
+    "username": "Username",
+    "password": "Music client password"
   },
   "settings": {
     "editServer": "Edit server settings",

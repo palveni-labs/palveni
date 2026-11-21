@@ -190,6 +190,25 @@ pub trait StorageProvider: Send + Sync {
     }
 }
 
+#[derive(Clone, Copy, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum MountProtocol {
+    Smb,
+    Nfs,
+    Webdav,
+    Sshfs,
+    Rclone,
+    Network,
+}
+
+#[derive(Clone, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct MountedDirectory {
+    pub path: String,
+    pub protocol: MountProtocol,
+    pub read_only: bool,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

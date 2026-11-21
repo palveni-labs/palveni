@@ -4,6 +4,17 @@ version = 4
 
 [[package]]
 name = "ahash"
+version = "0.7.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "891477e0c6a8957309ee5c45a6368af3ae14bb510732d2684ffa19af310920f9"
+dependencies = [
+ "getrandom 0.2.17",
+ "once_cell",
+ "version_check",
+]
+
+[[package]]
+name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a15f179cd60c4584b8a8c596927aadc462e27f2ca70c04e0071964a73ba7a75"
@@ -158,7 +169,7 @@ version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f3d22a41d3df78b71df0b685af219ae3a94188ab98d6fb29c958eb55c3247f4"
 dependencies = [
- "ahash",
+ "ahash 0.8.12",
  "arrow-buffer",
  "arrow-data",
  "arrow-schema",
@@ -266,7 +277,7 @@ version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a5af3f6656c5f2c6944f93d9a357a7f204c93d5f349385a44cf46c4a26fbcf30"
 dependencies = [
- "ahash",
+ "ahash 0.8.12",
  "arrow-array",
  "arrow-buffer",
  "arrow-cmp",
@@ -436,6 +447,15 @@ dependencies = [
  "num-bigint 0.4.8",
  "num-integer",
  "num-traits",
+ "serde",
+]
+
+[[package]]
+name = "bincode"
+version = "1.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
+dependencies = [
  "serde",
 ]
 
@@ -906,6 +926,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "fast2s"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1316063b5422f1f7bf4cc784c959eaf04b843de7c9ecbd4190c60614aa23b27e"
+dependencies = [
+ "bincode",
+ "hashbrown 0.12.3",
+ "lazy_static",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1113,6 +1144,15 @@ dependencies = [
  "crunchy",
  "num-traits",
  "zerocopy",
+]
+
+[[package]]
+name = "hashbrown"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
+dependencies = [
+ "ahash 0.7.8",
 ]
 
 [[package]]
@@ -1952,6 +1992,7 @@ dependencies = [
  "chrono",
  "futures-util",
  "hex",
+ "md-5",
  "palveni-core",
  "palveni-db",
  "palveni-jobs",
@@ -2028,11 +2069,13 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "chrono",
+ "fast2s",
  "futures-util",
  "lofty",
  "notify",
  "palveni-core",
  "palveni-db",
+ "pinyin",
  "quick-xml",
  "reqwest",
  "serde",
@@ -2190,6 +2233,12 @@ name = "pin-project-lite"
 version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c938015719552d665fd0553b90d96cd7ff58e83e4c061ca99e6bb78865a72752"
+
+[[package]]
+name = "pinyin"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e225f595052d9c46045755be4b8d7950b6d9f3c33e0c0b74ba58f11bbfa8c64b"
 
 [[package]]
 name = "pkg-config"

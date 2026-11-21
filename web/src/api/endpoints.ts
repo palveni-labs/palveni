@@ -8,6 +8,8 @@ import type {
   Item,
   ItemListParams,
   MusicPage,
+  SubsonicPassword,
+  SubsonicPasswordStatus,
   ItemPage,
   JobList,
   Library,
@@ -27,6 +29,11 @@ import type {
 const enc = encodeURIComponent;
 
 export const api = {
+  subsonicPassword: {
+    status: (signal?: AbortSignal) => request<SubsonicPasswordStatus>("/me/subsonic-password", { signal }),
+    issue: () => request<SubsonicPassword>("/me/subsonic-password", { method: "POST" }),
+    revoke: () => request<void>("/me/subsonic-password", { method: "DELETE" }),
+  },
   system: {
     info: (signal?: AbortSignal) => request<SystemInfo>("/system/info", { signal, auth: false }),
     health: (signal?: AbortSignal) => request<HealthResponse>("/system/health", { signal, auth: false }),

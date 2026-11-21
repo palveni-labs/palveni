@@ -133,9 +133,13 @@ pub async fn run(cli: &Cli) -> anyhow::Result<()> {
     let skin_data = config.data_dir.clone();
     let skins = tokio::task::spawn_blocking(move || SkinStore::open(&skin_data)).await??;
     let state = AppState {
+        music_search: Arc::new(palveni_library::music_search::MusicSearch::new(
+            config.data_dir.join("search"),
+        )),
         db: db.clone(),
         identity: Arc::new(identity),
         login_limit: Arc::new(palveni_api::LoginLimit::new(tier.job_concurrency())),
+        subsonic_limit: Arc::new(palveni_api::LoginLimit::for_music_clients()),
         bus,
         jobs: jobs.clone(),
         hardware,

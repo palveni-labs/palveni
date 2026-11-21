@@ -396,6 +396,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/libraries/{id}/music/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Search tracks, albums or artists in this music library. */
+        get: operations["searchMusic"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/libraries/{id}/scan": {
         parameters: {
             query?: never;
@@ -580,6 +597,25 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/subsonic-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check whether your music client password is enabled. */
+        get: operations["getSubsonicPasswordStatus"];
+        put?: never;
+        /** @description Generate or replace your dedicated music client password. */
+        post: operations["issueSubsonicPassword"];
+        /** @description Disable access with your music client password. */
+        delete: operations["revokeSubsonicPassword"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1260,6 +1296,19 @@ export interface components {
             entries: components["schemas"]["MusicEntry"][];
             nextCursor: string | null;
         };
+        MusicSearchHit: {
+            album: string | null;
+            artist: string | null;
+            artistId: string | null;
+            id: string;
+            title: string;
+        };
+        /** @enum {string} */
+        MusicSearchKind: "artist" | "album" | "track";
+        MusicSearchPage: {
+            entries: components["schemas"]["MusicSearchHit"][];
+            nextCursor: string | null;
+        };
         /** @enum {string} */
         PerfTier: "tiny" | "lite" | "standard" | "performance";
         /**
@@ -1467,6 +1516,13 @@ export interface components {
         StorageFolders: {
             directories: string[];
             truncated: boolean;
+        };
+        SubsonicPassword: {
+            password: string;
+            username: string;
+        };
+        SubsonicPasswordStatus: {
+            enabled: boolean;
         };
         SystemInfo: {
             /** @description Capabilities registered at startup; clients hide missing modules. */
@@ -3612,6 +3668,89 @@ export interface operations {
             };
         };
     };
+    searchMusic: {
+        parameters: {
+            query: {
+                q: string;
+                kind?: components["schemas"]["MusicSearchKind"];
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MusicSearchPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
     scanLibrary: {
         parameters: {
             query?: never;
@@ -4527,6 +4666,151 @@ export interface operations {
             /** @description Conflict */
             409: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    getSubsonicPasswordStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubsonicPasswordStatus"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    issueSubsonicPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubsonicPassword"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    revokeSubsonicPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
                     [name: string]: unknown;
                 };
                 content: {

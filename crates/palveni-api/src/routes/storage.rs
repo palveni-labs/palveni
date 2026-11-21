@@ -9,24 +9,7 @@ use crate::{ApiError, auth::AdminUser};
 
 const DIRECTORY_LIMIT: usize = 200;
 
-#[derive(Clone, Copy, Serialize, ToSchema)]
-#[serde(rename_all = "lowercase")]
-pub enum MountProtocol {
-    Smb,
-    Nfs,
-    Webdav,
-    Sshfs,
-    Rclone,
-    Network,
-}
-
-#[derive(Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct MountedDirectory {
-    path: String,
-    protocol: MountProtocol,
-    read_only: bool,
-}
+pub use palveni_core::storage::{MountProtocol, MountedDirectory};
 
 #[derive(Serialize, ToSchema)]
 pub struct MountList {
@@ -46,89 +29,11 @@ pub struct StorageFolders {
     truncated: bool,
 }
 
-fn protocol(fs: &str) -> Option<MountProtocol> {
-    match fs {
-        "cifs" | "smb3" | "smbfs" => Some(MountProtocol::Smb),
-        "nfs" | "nfs4" => Some(MountProtocol::Nfs),
-        "davfs" | "davfs2" | "fuse.davfs" | "webdav" => Some(MountProtocol::Webdav),
-        "sshfs" | "fuse.sshfs" => Some(MountProtocol::Sshfs),
-        "rclone" | "fuse.rclone" => Some(MountProtocol::Rclone),
-        "ceph" | "glusterfs" | "fuse.glusterfs" | "fuse.s3fs" => Some(MountProtocol::Network),
-        _ => None,
-    }
-}
-
-fn unescape_mount_path(raw: &str) -> String {
-    raw.replace("\\040", " ")
-        .replace("\\011", "\t")
-        .replace("\\012", "\n")
-        .replace("\\134", "\\")
-}
-
-fn linux_mounts(info: &str) -> Vec<MountedDirectory> {
-    let mut found = std::collections::BTreeMap::new();
-    for line in info.lines() {
-        let Some((mount, superblock)) = line.split_once(" - ") else {
-            continue;
-        };
-        let mut fields = mount.split_whitespace().skip(4);
-        let (Some(path), Some(options)) = (fields.next(), fields.next()) else {
-            continue;
-        };
-        let Some(kind) = superblock.split_whitespace().next().and_then(protocol) else {
-            continue;
-        };
-        let path = unescape_mount_path(path);
-        if Path::new(&path).is_absolute() {
-            found.insert(
-                path.clone(),
-                MountedDirectory {
-                    path,
-                    protocol: kind,
-                    read_only: options.split(',').any(|x| x == "ro"),
-                },
-            );
-        }
-    }
-    found.into_values().collect()
-}
-
 async fn mounted() -> Result<Vec<MountedDirectory>, ApiError> {
-    if cfg!(target_os = "linux") {
-        let info = tokio::fs::read_to_string("/proc/self/mountinfo")
-            .await
-            .map_err(ApiError::internal)?;
-        return Ok(linux_mounts(&info));
-    }
-    #[cfg(target_os = "macos")]
-    {
-        let output = tokio::process::Command::new("/sbin/mount")
-            .output()
-            .await
-            .map_err(ApiError::internal)?;
-        let listing = String::from_utf8_lossy(&output.stdout);
-        let mut result = Vec::new();
-        for line in listing.lines() {
-            let Some((_, tail)) = line.split_once(" on ") else {
-                continue;
-            };
-            let Some((path, options)) = tail.rsplit_once(" (") else {
-                continue;
-            };
-            let mut opts = options.trim_end_matches(')').split(',').map(str::trim);
-            if let Some(kind) = opts.next().and_then(protocol) {
-                result.push(MountedDirectory {
-                    path: path.to_owned(),
-                    protocol: kind,
-                    read_only: opts.any(|v| v == "read-only"),
-                });
-            }
-        }
-        result.sort_by(|a, b| a.path.cmp(&b.path));
-        return Ok(result);
-    }
-    #[allow(unreachable_code)]
-    Ok(Vec::new())
+    Ok(palveni_library::mounts::snapshot()
+        .await
+        .map_err(ApiError::internal)?
+        .network_directories())
 }
 
 pub async fn mounts(_: AdminUser) -> Result<Json<MountList>, ApiError> {
@@ -228,15 +133,5 @@ mod tests {
         assert!(inspect_directory(&canonical, "link").await.is_err());
         assert!(inspect_directory(&canonical, "../elsewhere").await.is_err());
         tokio::fs::remove_dir_all(base).await.unwrap();
-    }
-
-    #[test]
-    fn mount_options_and_credentials_are_never_returned() {
-        let info = "12 1 0:32 / /media/a\\040b ro,nosuid - cifs //example/share ro,username=private\n13 1 8:0 / /data rw - ext4 /dev/sda1 rw";
-        let list = linux_mounts(info);
-        assert_eq!(list.len(), 1);
-        assert_eq!(list[0].path, "/media/a b");
-        assert!(list[0].read_only);
-        assert!(!serde_json::to_string(&list).unwrap().contains("private"));
     }
 }

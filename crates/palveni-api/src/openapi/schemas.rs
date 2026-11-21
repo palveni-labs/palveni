@@ -88,6 +88,7 @@ use crate::routes::{
     personal::{FavoriteUpdate, PlaylistUpdate, RatingUpdate},
     playback::{PlaybackInfo, PlaybackMode},
     plugins::PluginList,
+    subsonic::{SubsonicPassword, SubsonicPasswordStatus},
     system::{Health, SystemInfo},
 };
 use palveni_core::broadcast::{
@@ -98,7 +99,10 @@ use palveni_core::connections::{
     ConnectionEntry, ConnectionEntryKind, ConnectionKind, ConnectionPage, ConnectionSummary,
     CreateConnection,
 };
-use palveni_core::music::{Lyrics, LyricsFormat, LyricsSource, MusicEntry, MusicPage, TrackLyrics};
+use palveni_core::music::{
+    Lyrics, LyricsFormat, LyricsSource, MusicEntry, MusicPage, MusicSearchHit, MusicSearchKind,
+    MusicSearchPage, TrackLyrics,
+};
 use palveni_core::personal::{
     MediaState, MediaView, PersonalItem, PersonalItemPage, PlaybackUpdate, Playlist, PlaylistPage,
     PlaylistSummary, PlaylistTrack, PlaylistTrackPage,
@@ -146,6 +150,8 @@ use utoipa::OpenApi;
     SetupResponse,
     LoginRequest,
     LoginResponse,
+    SubsonicPassword,
+    SubsonicPasswordStatus,
     User,
     LibraryList,
     CreateLibraryRequest,
@@ -159,6 +165,9 @@ use utoipa::OpenApi;
     TrackLyrics,
     MusicEntry,
     MusicPage,
+    MusicSearchPage,
+    MusicSearchKind,
+    MusicSearchHit,
     MediaState,
     MediaView,
     PersonalItem,

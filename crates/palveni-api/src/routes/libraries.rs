@@ -166,6 +166,7 @@ pub async fn delete(
     if !state.db.libraries().delete(id).await? {
         return Err(ApiError::not_found("Library not found"));
     }
+    state.music_search.forget(id).await;
     state.bus.publish(ServerEvent::LibraryDeleted { id });
     audit(
         &state,

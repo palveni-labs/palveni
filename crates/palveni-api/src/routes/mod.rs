@@ -13,6 +13,7 @@ pub mod settings;
 pub mod skins;
 pub mod spoken;
 pub mod storage;
+pub mod subsonic;
 pub mod system;
 pub mod video;
 

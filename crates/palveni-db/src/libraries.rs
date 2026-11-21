@@ -1,5 +1,7 @@
 //! Libraries and their storage locations (main store).
 
+use std::collections::BTreeMap;
+
 use chrono::{DateTime, Utc};
 use palveni_core::{Library, LibraryId, LibraryKind, LibraryPathId, clock};
 use sea_orm::sea_query::Expr;
@@ -10,7 +12,7 @@ use sea_orm::{
 
 use crate::Db;
 use crate::convert::{count_to_i64, opt_ts, parse_id, truncate_chars, ts};
-use crate::entities::{items, libraries, library_paths};
+use crate::entities::{items, libraries, library_mounts, library_paths};
 use crate::error::DbError;
 use crate::items::SORT_GROUP_LEAF;
 use crate::revision;
@@ -60,6 +62,59 @@ impl Libraries<'_> {
         }
     }
 
+    /// Remember each network source on first observation. A replacement or missing
+    /// mount is protected until the registered source returns.
+    pub async fn unavailable_mounts(
+        &self,
+        id: LibraryId,
+        sources: &BTreeMap<String, String>,
+    ) -> Result<Vec<String>, DbError> {
+        use crate::convert::sha256_hex;
+        let known = library_mounts::Entity::find()
+            .filter(library_mounts::Column::LibraryId.eq(id.to_string()))
+            .all(self.db.main())
+            .await?;
+        let mut pinned: BTreeMap<_, _> = known
+            .into_iter()
+            .map(|row| (row.path, row.source_hash))
+            .collect();
+        let mut offline = Vec::new();
+        for (scope, source) in sources {
+            let digest = sha256_hex(source);
+            let expected = if let Some(saved) = pinned.remove(scope) {
+                saved
+            } else {
+                let key = sha256_hex(scope);
+                library_mounts::Entity::insert(library_mounts::ActiveModel {
+                    library_id: ActiveValue::Set(id.to_string()),
+                    path_hash: ActiveValue::Set(key.clone()),
+                    path: ActiveValue::Set(scope.clone()),
+                    source_hash: ActiveValue::Set(digest.clone()),
+                })
+                .on_conflict(
+                    sea_orm::sea_query::OnConflict::columns([
+                        library_mounts::Column::LibraryId,
+                        library_mounts::Column::PathHash,
+                    ])
+                    .update_column(library_mounts::Column::PathHash)
+                    .to_owned(),
+                )
+                .exec_without_returning(self.db.main())
+                .await?;
+                library_mounts::Entity::find_by_id((id.to_string(), key))
+                    .one(self.db.main())
+                    .await?
+                    .ok_or(DbError::NotFound("library"))?
+                    .source_hash
+            };
+            if digest != expected {
+                offline.push(scope.clone());
+            }
+        }
+        offline.extend(pinned.into_keys());
+        Ok(offline)
+    }
+
     /// Creates a library. Fails with `Conflict` if a live library already
     /// has the same name (case-insensitive).
     pub async fn create(&self, new: NewLibrary) -> Result<Library, DbError> {
@@ -95,6 +150,15 @@ impl Libraries<'_> {
         })
         .exec_without_returning(&txn)
         .await?;
+        if new.kind == palveni_core::LibraryKind::Music {
+            use crate::entities::subsonic_folders;
+            subsonic_folders::Entity::insert(subsonic_folders::ActiveModel {
+                library_id: ActiveValue::Set(id.to_string()),
+                ..Default::default()
+            })
+            .exec_without_returning(&txn)
+            .await?;
+        }
         if !new.paths.is_empty() {
             let path_rows =
                 new.paths
@@ -228,6 +292,10 @@ impl Libraries<'_> {
         }
         items::Entity::delete_many()
             .filter(items::Column::LibraryId.eq(id.to_string()))
+            .exec(&txn)
+            .await?;
+        library_mounts::Entity::delete_many()
+            .filter(library_mounts::Column::LibraryId.eq(id.to_string()))
             .exec(&txn)
             .await?;
         library_paths::Entity::delete_many()

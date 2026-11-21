@@ -222,6 +222,11 @@
     "notScannedHint": "扫描之后才能浏览",
     "folders": "文件夹"
   },
+  "musicSearch": {
+    "label": "搜索这个音乐库",
+    "category": "搜索范围",
+    "noResults": "没有找到“{{q}}”"
+  },
   "music": {
     "browse": "浏览音乐",
     "artists": "专辑艺人",
@@ -659,6 +664,19 @@
       "openHardware": "打开硬件与转码",
       "openLibraries": "打开媒体库设置"
     }
+  },
+  "musicClients": {
+    "title": "OpenSubsonic 音乐客户端",
+    "hint": "在播放器中填写此服务的地址、用户名和专用口令。",
+    "create": "创建口令",
+    "replace": "更换口令",
+    "revoke": "撤销访问",
+    "confirmReplace": "更换所有已连接音乐客户端使用的口令？",
+    "confirmRevoke": "断开使用此口令的所有音乐客户端？",
+    "shown": "请在音乐客户端中保存口令，此处仅显示一次。",
+    "address": "服务地址",
+    "username": "用户名",
+    "password": "音乐客户端口令"
   },
   "settings": {
     "editServer": "编辑服务器设置",

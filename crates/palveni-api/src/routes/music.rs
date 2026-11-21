@@ -100,3 +100,80 @@ pub async fn lyrics(
     );
     Ok((headers, Json(palveni_core::music::TrackLyrics { lyrics })))
 }
+
+#[derive(Deserialize)]
+pub struct Search {
+    q: String,
+    kind: Option<palveni_core::music::MusicSearchKind>,
+    cursor: Option<String>,
+    limit: Option<u32>,
+}
+
+#[derive(Deserialize, serde::Serialize)]
+struct SearchCursor {
+    revision: i64,
+    position: usize,
+    scope: String,
+}
+
+pub async fn search(
+    _: CurrentUser,
+    State(state): State<AppState>,
+    path: Result<Path<String>, PathRejection>,
+    query: Result<Query<Search>, QueryRejection>,
+) -> Result<Json<palveni_core::music::MusicSearchPage>, ApiError> {
+    use palveni_core::music::{MusicSearchKind, MusicSearchPage};
+    let id: LibraryId = path_id(&path?.0, "Library")?;
+    let Query(query) = query?;
+    let kind = query.kind.unwrap_or(MusicSearchKind::Track);
+    let terms = palveni_library::music_search::terms(&query.q)
+        .map_err(|_| ApiError::validation("Invalid music search query").field("q"))?;
+    let limit = query.limit.unwrap_or(30);
+    if !(1..=200).contains(&limit) {
+        return Err(ApiError::validation("Invalid limit").field("limit"));
+    }
+    let scope = hex::encode(ring::digest::digest(
+        &ring::digest::SHA256,
+        format!("{id}/{kind:?}/{}", terms.join("\0")).as_bytes(),
+    ));
+    let cursor = query
+        .cursor
+        .as_deref()
+        .map(|text| {
+            let cursor: Option<SearchCursor> = (text.len() <= 512)
+                .then(|| hex::decode(text).ok())
+                .flatten()
+                .and_then(|bytes| serde_json::from_slice(&bytes).ok());
+            cursor
+                .filter(|c| c.scope == scope)
+                .map(|c| (c.revision, c.position))
+                .ok_or_else(|| ApiError::validation("Invalid music search cursor").field("cursor"))
+        })
+        .transpose()?;
+    let matches = state
+        .music_search
+        .search(&state.db, id, kind, terms, limit as usize, cursor)
+        .await
+        .map_err(|error| match error {
+            palveni_core::Error::NotFound(_) => ApiError::not_found("Music library not found"),
+            palveni_core::Error::Invalid(message) => ApiError::validation(message),
+            palveni_core::Error::Conflict(message) => ApiError::conflict(message),
+            other => ApiError::internal(other),
+        })?;
+    let next_cursor = matches
+        .next
+        .map(|position| {
+            serde_json::to_vec(&SearchCursor {
+                revision: matches.revision,
+                position,
+                scope,
+            })
+            .map(hex::encode)
+            .map_err(|err| ApiError::internal(err.to_string()))
+        })
+        .transpose()?;
+    Ok(Json(MusicSearchPage {
+        entries: matches.entries,
+        next_cursor,
+    }))
+}

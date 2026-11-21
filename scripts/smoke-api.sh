@@ -263,6 +263,24 @@ check "music cursor belongs to its original group" "$STATUS $(field .error.detai
 req GET "/libraries/$LIB/music?album=$ALBUM"
 check "albums require their artist" "$STATUS $(field .error.details.field)" "400 artist"
 
+req GET "/libraries/$LIB/music/search?kind=artist&q=ensemble"
+check "search finds a scoped artist by part of the name" "$STATUS $(field '.entries[0].id')" "200 $ARTIST"
+req GET "/libraries/$LIB/music/search?kind=album&q=north%20sessions"
+check "album search returns its browse parent" "$STATUS $(field '.entries[0].id') $(field '.entries[0].artistId')" "200 $ALBUM $ARTIST"
+req GET "/libraries/$LIB/music/search?q=first%20quartet"
+check "search combines track title with compilation performer" "$STATUS $(field '.entries[0].id')" "200 $TRACK"
+req GET "/libraries/$LIB/music/search?q=sessions&limit=1"
+SEARCH_CURSOR=$(field .nextCursor)
+FIRST_SEARCH_ID=$(field '.entries[0].id')
+req GET "/libraries/$LIB/music/search?q=sessions&limit=1&cursor=$SEARCH_CURSOR"
+check "search pagination advances to another recording" "$STATUS $(field ".entries[0].id != \"$FIRST_SEARCH_ID\"")" "200 true"
+req GET "/libraries/$LIB/music/search?q=ensemble&cursor=$SEARCH_CURSOR"
+check "search cursor belongs to its original query" "$STATUS $(field .error.details.field)" "400 cursor"
+req GET "/libraries/$LIB/music/search?q=%25"
+check "search treats wildcard characters literally" "$STATUS $(field '.entries | length')" "200 0"
+req GET "/libraries/$LIB/music/search?q=%20"
+check "music search rejects empty input" "$STATUS $(field .error.details.field)" "400 q"
+
 echo "Track lyrics"
 req GET "/items/$TRACK/lyrics"
 check "embedded lyrics are available" "$STATUS $(field '.lyrics | [.source,.format,.text] | join("|")')" "200 embedded|plain|Embedded test line"
@@ -338,6 +356,11 @@ check "deleted playlist disappears" "$STATUS" "404"
 echo "Original music playback"
 ORIGINAL="$MEDIA/Album A/track 1.flac"
 SIZE=$(wc -c < "$ORIGINAL" | tr -d ' ')
+if PALVENI_SMOKE_BEARER="$TOKEN" python3 "$(dirname "$0")/smoke-subsonic.py" "$BASE" "$USERNAME" "$TRACK" "$FOLDER" "$ORIGINAL"; then
+  ok "music client authentication, catalog, playback ranges and revocation"
+else
+  bad "music client authentication, catalog, playback ranges and revocation" "protocol assertions failed"
+fi
 req POST "/items/$FOLDER/playback"
 check "folders cannot issue a playback URL" "$STATUS" "404"
 req POST "/items/$TRACK/playback"

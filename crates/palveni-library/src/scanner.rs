@@ -153,6 +153,8 @@ pub enum ScanError {
     LibraryNotFound,
     #[error("reading music metadata: {0}")]
     Metadata(String),
+    #[error("mount information is unavailable or changed during the scan")]
+    MountChanged,
     #[error("scan cancelled")]
     Cancelled,
     #[error("none of the library's paths could be read")]
@@ -269,6 +271,19 @@ impl Scanner {
         library_id: LibraryId,
         observer: &dyn ScanObserver,
     ) -> Result<ScanSummary, ScanError> {
+        self.scan_with_mounts(library_id, observer, crate::mounts::snapshot)
+            .await
+    }
+
+    async fn scan_with_mounts<F>(
+        &self,
+        library_id: LibraryId,
+        observer: &dyn ScanObserver,
+        read_mounts: impl Fn() -> F,
+    ) -> Result<ScanSummary, ScanError>
+    where
+        F: std::future::Future<Output = std::io::Result<crate::mounts::MountTable>>,
+    {
         let library = self
             .db
             .libraries()
@@ -278,11 +293,30 @@ impl Scanner {
         observer.progress(None, &ScanStep::Discovering { found: 0 });
 
         let mut walk = WalkOutcome::default();
+        let sources = read_mounts()
+            .await
+            .map_err(|_| ScanError::MountChanged)?
+            .sources(&library.paths);
+        walk.protected = self
+            .db
+            .libraries()
+            .unavailable_mounts(library_id, &sources)
+            .await?;
+        walk.unreadable_dirs = count(
+            walk.protected
+                .iter()
+                .filter(|p| !library.paths.contains(p))
+                .count(),
+        );
         let mut walked_any = false;
         let mut roots = Vec::new();
         for root in &library.paths {
             if observer.is_cancelled() {
                 return Err(ScanError::Cancelled);
+            }
+            if walk.is_protected(root) {
+                walk.skipped_roots += 1;
+                continue;
             }
             match LocalStorage::open_registered(Path::new(root)).await {
                 Ok(storage) => {
@@ -307,6 +341,14 @@ impl Scanner {
                 found: count(walk.files.len()),
             },
         );
+        if read_mounts()
+            .await
+            .map_err(|_| ScanError::MountChanged)?
+            .sources(&library.paths)
+            != sources
+        {
+            return Err(ScanError::MountChanged);
+        }
         let video = std::mem::take(&mut walk.video);
         let existing = self.db.items().scan_index(library_id).await?;
         let plan = plan_changes(walk, existing);
@@ -409,6 +451,9 @@ async fn walk_root(
     while let Some(dir) = stack.pop() {
         if observer.is_cancelled() {
             return Err(ScanError::Cancelled);
+        }
+        if out.is_protected(&storage.display_path(&dir)) {
+            continue;
         }
         let entries = match storage.list_dir(&dir).await {
             Ok(entries) => entries,
@@ -772,3 +817,6 @@ mod tests {
         assert!(folder_names.contains(&"Album"));
     }
 }
+
+#[cfg(test)]
+mod mount_tests;

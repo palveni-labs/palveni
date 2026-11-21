@@ -21,3 +21,25 @@ it("applies and clears server overrides through the administrator settings", asy
   await user.click(screen.getByRole("button", { name: "保存" }));
   await waitFor(() => expect(db.runtimeSettings).toEqual({ serverName: null, perfTier: null }));
 });
+
+it("shows a member's music password once and confirms rotation and revocation", async () => {
+  const db = installMockDb();
+  signIn(db, "family");
+  renderApp("/system/settings");
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: "创建口令" }));
+  const first = (await screen.findByRole<HTMLInputElement>("textbox", { name: "音乐客户端口令" })).value;
+  expect(first).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: "关闭" }));
+  expect(screen.queryByDisplayValue(first)).toBeNull();
+  await user.click(screen.getByRole("button", { name: "更换口令" }));
+  await user.click(screen.getByRole("button", { name: "取消" }));
+  await user.click(screen.getByRole("button", { name: "更换口令" }));
+  await user.click(screen.getByRole("button", { name: "更换口令" }));
+  const second = (await screen.findByRole<HTMLInputElement>("textbox", { name: "音乐客户端口令" })).value;
+  expect(second).not.toBe(first);
+  await user.click(screen.getByRole("button", { name: "关闭" }));
+  await user.click(screen.getByRole("button", { name: "撤销访问" }));
+  await user.click(screen.getByRole("button", { name: "撤销访问" }));
+  expect(await screen.findByRole("button", { name: "创建口令" })).toBeEnabled();
+});

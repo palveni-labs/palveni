@@ -85,3 +85,32 @@ pub struct TrackLyrics {
     #[schema(required = true)]
     pub lyrics: Option<Lyrics>,
 }
+
+#[derive(utoipa::ToSchema, Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MusicSearchKind {
+    Artist,
+    Album,
+    Track,
+}
+
+#[derive(utoipa::ToSchema, Clone, Debug, serde::Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MusicSearchHit {
+    pub id: String,
+    pub title: String,
+    #[schema(required = true)]
+    pub artist: Option<String>,
+    #[schema(required = true)]
+    pub album: Option<String>,
+    #[schema(required = true)]
+    pub artist_id: Option<String>,
+}
+
+#[derive(utoipa::ToSchema, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MusicSearchPage {
+    pub entries: Vec<MusicSearchHit>,
+    #[schema(required = true)]
+    pub next_cursor: Option<String>,
+}
