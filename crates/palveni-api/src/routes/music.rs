@@ -68,3 +68,35 @@ pub async fn list(
             .await?,
     ))
 }
+
+pub async fn lyrics(
+    _user: CurrentUser,
+    State(state): State<AppState>,
+    path: Result<Path<String>, PathRejection>,
+) -> Result<
+    (
+        axum::http::HeaderMap,
+        Json<palveni_core::music::TrackLyrics>,
+    ),
+    ApiError,
+> {
+    let id = path_id(&path?.0, "Track")?;
+    let location = state
+        .db
+        .music()
+        .track_location(id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Track not found"))?;
+    let lyrics = palveni_library::lyrics::read(location)
+        .await
+        .map_err(|error| match error {
+            palveni_core::Error::Internal(detail) => ApiError::internal(detail),
+            _ => ApiError::not_found("Track not available"),
+        })?;
+    let mut headers = axum::http::HeaderMap::new();
+    headers.insert(
+        axum::http::header::CACHE_CONTROL,
+        axum::http::HeaderValue::from_static("private, no-store"),
+    );
+    Ok((headers, Json(palveni_core::music::TrackLyrics { lyrics })))
+}

@@ -25,10 +25,18 @@ pub struct TrackFile {
 
 /// Reopen a scanned item only inside its registered, canonical music root.
 pub async fn open_track(location: palveni_db::music::TrackLocation) -> Result<TrackFile> {
-    let storage = LocalStorage::open(&location.root).await?;
-    if storage.root() != location.root {
-        return Err(Error::PathEscape);
-    }
+    let (storage, path) = track_path(location).await?;
+    let content_type = crate::classify::audio_content_type(path.file_name().unwrap_or_default());
+    Ok(TrackFile {
+        source: storage.open_file(&path).await?,
+        content_type,
+    })
+}
+
+pub(crate) async fn track_path(
+    location: palveni_db::music::TrackLocation,
+) -> Result<(LocalStorage, StoragePath)> {
+    let storage = LocalStorage::open_registered(&location.root).await?;
     let mut path = StoragePath::root();
     for name in &location.relative_path {
         path = path.join(
@@ -36,11 +44,7 @@ pub async fn open_track(location: palveni_db::music::TrackLocation) -> Result<Tr
                 .ok_or_else(|| Error::invalid("invalid track path"))?,
         )?;
     }
-    let content_type = crate::classify::audio_content_type(path.file_name().unwrap_or_default());
-    Ok(TrackFile {
-        source: storage.open_file(&path).await?,
-        content_type,
-    })
+    Ok((storage, path))
 }
 
 #[derive(Clone, Debug)]
@@ -56,6 +60,14 @@ impl LocalStorage {
     pub async fn open(root: &Path) -> Result<Self> {
         let root = root.to_path_buf();
         run_blocking(move || Self::open_blocking(&root)).await
+    }
+
+    pub(crate) async fn open_registered(root: &Path) -> Result<Self> {
+        let storage = Self::open(root).await?;
+        if storage.root() != root {
+            return Err(Error::PathEscape);
+        }
+        Ok(storage)
     }
 
     pub fn open_blocking(root: &Path) -> Result<Self> {

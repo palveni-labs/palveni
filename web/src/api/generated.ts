@@ -101,6 +101,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/items/{id}/lyrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read synchronized or plain lyrics from a track's sidecar or embedded tags. */
+        get: operations["getTrackLyrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/items/{id}/playback": {
         parameters: {
             query?: never;
@@ -856,6 +873,15 @@ export interface components {
             tokenType: "Bearer";
             user: components["schemas"]["User"];
         };
+        Lyrics: {
+            format: components["schemas"]["LyricsFormat"];
+            source: components["schemas"]["LyricsSource"];
+            text: string;
+        };
+        /** @enum {string} */
+        LyricsFormat: "lrc" | "plain";
+        /** @enum {string} */
+        LyricsSource: "sidecar" | "embedded";
         MediaState: {
             completed: boolean;
             favorite: boolean;
@@ -1087,6 +1113,9 @@ export interface components {
         };
         /** @enum {string} */
         ToolSource: "config" | "bundled" | "path";
+        TrackLyrics: {
+            lyrics: null | components["schemas"]["Lyrics"];
+        };
         User: {
             /** Format: date-time */
             createdAt: string;
@@ -1427,6 +1456,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Item"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    getTrackLyrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackLyrics"];
                 };
             };
             /** @description Unauthorized */

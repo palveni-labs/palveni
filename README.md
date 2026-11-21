@@ -35,6 +35,8 @@ Choose **Music** when adding a library, then scan its folders. Open the library 
 
 Clients can play a scanned track in its original format through the native API. Send an authenticated `GET /api/v1/items/{id}/stream` to read the file or seek with an HTTP byte range. For a player that opens URLs, send an authenticated `POST /api/v1/items/{id}/playback` and resolve the returned `url` against the server address. The link is valid for 15 minutes and can be renewed for later seeks.
 
+Clients can request lyrics with an authenticated `GET /api/v1/items/{id}/lyrics`. Place a matching `.lrc`, `.LRC` or `.lyrics.txt` beside a track to override its embedded lyrics. Edits are available on the next request, and timed lyrics keep their original timestamps.
+
 Signed-in clients can favorite and rate tracks and videos, browse recently played items, and continue from the position saved on another device. Each account has its own history and ordered music playlists. The native API exposes these features under `/api/v1/me/items` and `/api/v1/me/playlists`. Playback updates and playlist edits use a version so one device can detect changes made on another. To display a playlist, use `GET /api/v1/me/playlists/{id}/tracks?version=N` to load titles, artists, albums and durations in order.
 
 <picture>

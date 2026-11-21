@@ -56,3 +56,30 @@ pub struct MusicPage {
     #[schema(required = true)]
     pub next_cursor: Option<String>,
 }
+
+#[derive(utoipa::ToSchema, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LyricsSource {
+    Sidecar,
+    Embedded,
+}
+
+#[derive(utoipa::ToSchema, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LyricsFormat {
+    Lrc,
+    Plain,
+}
+
+#[derive(utoipa::ToSchema, Debug, Serialize)]
+pub struct Lyrics {
+    pub source: LyricsSource,
+    pub format: LyricsFormat,
+    pub text: String,
+}
+
+#[derive(utoipa::ToSchema, Debug, Serialize)]
+pub struct TrackLyrics {
+    #[schema(required = true)]
+    pub lyrics: Option<Lyrics>,
+}

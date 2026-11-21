@@ -62,15 +62,19 @@ fn read(file: File) -> io::Result<TrackTags> {
     Ok(result)
 }
 
-pub(crate) fn read_batch(
-    roots: &[LocalStorage],
-    mut rows: Vec<ItemUpsert>,
-) -> Result<Vec<ItemUpsert>, ScanError> {
+pub(crate) fn limit_allocations() {
     apply_global_options(
         GlobalOptions::new()
             .allocation_limit(8 * 1024 * 1024)
             .preserve_format_specific_items(false),
     );
+}
+
+pub(crate) fn read_batch(
+    roots: &[LocalStorage],
+    mut rows: Vec<ItemUpsert>,
+) -> Result<Vec<ItemUpsert>, ScanError> {
+    limit_allocations();
     for row in &mut rows {
         if row.kind != ItemKind::Track {
             continue;

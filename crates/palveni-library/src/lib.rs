@@ -2,6 +2,7 @@
 
 pub mod classify;
 pub mod local;
+pub mod lyrics;
 pub mod scanner;
 mod tags;
 

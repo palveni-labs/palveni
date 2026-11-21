@@ -96,6 +96,8 @@ pub(super) fn endpoints() -> Vec<Endpoint> {
             "Delete a library and its index while preserving the media files.", None, 204 Empty, [404]),
         endpoint!(scanLibrary, libraries, POST "/libraries/{id}/scan", routes::libraries::scan, Admin, Write, false,
             "Queue a file scan or return the library's active scan.", None, 202 Json("ScanAccepted"), [404]),
+        endpoint!(getTrackLyrics, music, GET "/items/{id}/lyrics", routes::music::lyrics, Authenticated, Read, false,
+            "Read synchronized or plain lyrics from a track's sidecar or embedded tags.", None, 200 Json("TrackLyrics"), [404]),
         endpoint!(browseMusic, music, GET "/libraries/{id}/music", routes::music::list, Authenticated, Read, false,
             "Browse the album artists, albums and tracks in a music library.", None, 200 Json("MusicPage"), [400,404]),
         endpoint!(preparePlayback, music, POST "/items/{id}/playback", routes::playback::prepare, Authenticated, Read, false,

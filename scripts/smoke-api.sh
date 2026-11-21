@@ -183,6 +183,8 @@ def field_bytes(data):
 for num, title in enumerate(("First Light", "Interlude", "Coda"), 1):
     fields = [f"TITLE={title}", "ARTIST=Guest Quartet", "ALBUMARTIST=North Ensemble",
               "ALBUM=Early Sessions", "DISCNUMBER=1", f"TRACKNUMBER={num}"]
+    if num == 1:
+        fields.append("LYRICS=Embedded test line")
     tags = field_bytes(b"Palveni") + struct.pack("<I", len(fields))
     tags += b"".join(field_bytes(value.encode()) for value in fields)
     (root / f"track {num}.flac").write_bytes(
@@ -254,6 +256,24 @@ req GET "/libraries/$LIB/music?cursor=$MUSIC_CURSOR"
 check "music cursor belongs to its original group" "$STATUS $(field .error.details.field)" "400 cursor"
 req GET "/libraries/$LIB/music?album=$ALBUM"
 check "albums require their artist" "$STATUS $(field .error.details.field)" "400 artist"
+
+echo "Track lyrics"
+req GET "/items/$TRACK/lyrics"
+check "embedded lyrics are available" "$STATUS $(field '.lyrics | [.source,.format,.text] | join("|")')" "200 embedded|plain|Embedded test line"
+req GET "/items/$OTHER_TRACK/lyrics"
+check "missing lyrics are an empty result" "$STATUS $(field .lyrics)" "200 null"
+printf '[00:01.20][00:02.30]同步测试\n' > "$MEDIA/Album A/track 1.lrc"
+req GET "/items/$TRACK/lyrics"
+check "a timed sidecar takes precedence and retains both timestamps" "$STATUS $(field '.lyrics | [.source,.format,(.text | rtrimstr("\n"))] | join("|")')" "200 sidecar|lrc|[00:01.20][00:02.30]同步测试"
+printf 'Revised test line' > "$MEDIA/Album A/track 1.lrc"
+req GET "/items/$TRACK/lyrics"
+check "editing lyrics is visible on the next request" "$(field '.lyrics | [.format,.text] | join("|")')" "plain|Revised test line"
+rm "$MEDIA/Album A/track 1.lrc"
+req GET "/items/$TRACK/lyrics"
+check "removing a sidecar reveals embedded lyrics immediately" "$(field .lyrics.source)" "embedded"
+req GET "/items/$FOLDER/lyrics"
+check "folders have no track lyrics endpoint" "$STATUS" "404"
+check "lyrics require a login" "$(curl -sS -o /dev/null -w '%{http_code}' "$API/items/$TRACK/lyrics")" "401"
 
 echo "Personal media and playlists"
 req GET "/me/items/$TRACK"

@@ -88,7 +88,7 @@ use crate::routes::{
     plugins::PluginList,
     system::{Health, SystemInfo},
 };
-use palveni_core::music::{MusicEntry, MusicPage};
+use palveni_core::music::{Lyrics, LyricsFormat, LyricsSource, MusicEntry, MusicPage, TrackLyrics};
 use palveni_core::personal::{
     MediaState, MediaView, PersonalItem, PersonalItemPage, PlaybackUpdate, Playlist, PlaylistPage,
     PlaylistSummary, PlaylistTrack, PlaylistTrackPage,
@@ -114,6 +114,10 @@ use utoipa::OpenApi;
     Library,
     ScanAccepted,
     ItemList,
+    Lyrics,
+    LyricsFormat,
+    LyricsSource,
+    TrackLyrics,
     MusicEntry,
     MusicPage,
     MediaState,
