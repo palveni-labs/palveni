@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import workcolor from "./builtin/workcolor";
 import { contrast, isPurple, parseColor } from "./color";
 import { skinVariables } from "./css";
-import { acceptSkin } from "./registry";
+import { acceptSkin, BUILTIN_SKIN, type SkinEntry } from "./registry";
 import { parseSkin, SkinError, type SkinManifest } from "./schema";
-import { failingSecurePairs, secureOverrides } from "./secure";
+import { secureSurfaceProps } from "./secure";
 import { checkSkin } from "./validate";
 
 /** A valid package manifest to break in one place at a time. */
@@ -101,14 +101,31 @@ describe("the skin grammar", () => {
 });
 
 describe("decision surfaces", () => {
-  it("keep the built-in skin's values when a skin's would be illegible", () => {
+  it("keeps package fonts and size tokens outside protected content, including on older servers", () => {
+    const manifest = parseSkin(mutate("type.ui", ["Sample Font", "serif"]));
+    const entry: SkinEntry = { manifest, source: "installed", loadFonts: () => Promise.resolve([]) };
+    for (const mode of ["light", "dark"] as const) {
+      for (const packageSource of [undefined, "upload"] as const) {
+        const surface = secureSurfaceProps({ ...entry, packageSource }, mode);
+        expect(surface["data-secure-surface"]).toBe("host");
+        expect(surface.style).toMatchObject({
+          "--pv-bg": BUILTIN_SKIN.manifest.colors[mode].bg,
+          "--pv-font-ui": "system-ui, sans-serif",
+          "--pv-text-base": skinVariables(BUILTIN_SKIN.manifest, mode)["--pv-text-base"],
+          "--field-placeholder": "var(--pv-fg-subtle)",
+        });
+      }
+    }
+  });
+
+  it("uses host colours if a verified theme has an unreadable decision state", () => {
     const skin: SkinManifest = parseSkin(base());
-    expect(failingSecurePairs(skin, "light")).toEqual([]);
-    expect(secureOverrides(skin, "light")).toBeUndefined();
-    // A skin that slipped past validation (e.g. checked by an older host) with unreadable buttons.
-    const broken: SkinManifest = { ...skin, colors: { ...skin.colors, light: { ...skin.colors.light, "confirm-fg": skin.colors.light.confirm } } };
-    expect(checkSkin(broken).length).toBeGreaterThan(0);
-    const overrides = secureOverrides(broken, "light") as Record<string, string>;
-    expect(overrides["--pv-confirm-fg"]).toBe(parseSkin(workcolor.manifest, "builtin").colors.light["confirm-fg"]);
+    const broken: SkinManifest = { ...skin, colors: { ...skin.colors, light: { ...skin.colors.light, "action-hover": skin.colors.light["action-fg"] } } };
+    expect(checkSkin(broken)).toEqual([]);
+    const entry: SkinEntry = { source: "installed", packageSource: "official", manifest: broken, loadFonts: () => Promise.resolve([]) };
+    expect(secureSurfaceProps(entry, "dark")["data-secure-surface"]).toBe("theme");
+    const surface = secureSurfaceProps(entry, "light");
+    expect(surface["data-secure-surface"]).toBe("host");
+    expect(surface.style).toMatchObject({ "--pv-action-hover": BUILTIN_SKIN.manifest.colors.light["action-hover"] });
   });
 });

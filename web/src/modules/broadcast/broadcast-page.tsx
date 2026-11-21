@@ -5,6 +5,7 @@ import { ExternalLink, Heart, Plus, Radio } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useIsAdmin } from "@/api/queries/auth";
+import { useSecureSurface } from "@/skins/secure";
 import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { Section } from "@/ui/section";
@@ -233,7 +234,8 @@ export function BroadcastPage({ kind = "radio" }: { kind?: BroadcastKind }) {
   const admin = useIsAdmin();
   const [selectedId, setSelected] = useState("");
   const [editing, setEditing] = useState<BroadcastSource | "new" | null>(null);
-  const [confirm, setConfirm] = useState(false);
+  const secure = useSecureSurface();
+  const [removing, setRemoving] = useState<BroadcastSource | null>(null);
   const sources = useQuery({
     queryKey: ["broadcast", "sources", kind],
     queryFn: ({ signal }) => broadcastApi.list(kind, signal),
@@ -255,14 +257,14 @@ export function BroadcastPage({ kind = "radio" }: { kind?: BroadcastKind }) {
   const remove = useMutation({
     mutationFn: broadcastApi.remove,
     onSuccess: () => {
-      setConfirm(false);
+      setRemoving(null);
       setSelected("");
       void reload();
     },
   });
   function select(id: string) {
     setSelected(id);
-    setConfirm(false);
+    setRemoving(null);
     refresh.reset();
     remove.reset();
     setEditing(null);
@@ -277,7 +279,7 @@ export function BroadcastPage({ kind = "radio" }: { kind?: BroadcastKind }) {
             <Button
               size="sm"
               onPress={() => {
-                setConfirm(false);
+                setRemoving(null);
                 setEditing("new");
               }}
             >
@@ -351,7 +353,7 @@ export function BroadcastPage({ kind = "radio" }: { kind?: BroadcastKind }) {
                   size="sm"
                   variant="ghost"
                   onPress={() => {
-                    setConfirm(false);
+                    setRemoving(null);
                     setEditing(selected);
                   }}
                 >
@@ -362,31 +364,33 @@ export function BroadcastPage({ kind = "radio" }: { kind?: BroadcastKind }) {
                   variant="ghost"
                   onPress={() => {
                     setEditing(null);
-                    setConfirm(true);
+                    remove.reset();
+                    setRemoving(selected);
                   }}
                 >
                   {t("broadcast.remove")}
                 </Button>
               </div>
             )}
-            {confirm && (
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span>{t("broadcast.removeConfirm")}</span>
+            {admin && removing?.id === selected.id && removing.version === selected.version && (
+              <div {...secure} className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="min-w-0 wrap-anywhere">{t("broadcast.removeConfirm", { name: removing.name })}</span>
                 <Button
                   size="sm"
                   variant="danger"
                   isDisabled={remove.isPending}
-                  onPress={() => remove.mutate(selected)}
+                  onPress={() => remove.mutate(removing)}
                 >
                   {t("broadcast.confirmRemove")}
                 </Button>
-                <Button size="sm" variant="ghost" onPress={() => setConfirm(false)}>
+                <Button size="sm" variant="ghost" isDisabled={remove.isPending} onPress={() => setRemoving(null)}>
                   {t("broadcast.cancel")}
                 </Button>
+                {remove.isError && <ErrorState compact error={remove.error} />}
               </div>
             )}
-            {(refresh.isError || remove.isError) && (
-              <ErrorState compact error={refresh.error ?? remove.error} />
+            {refresh.isError && (
+              <ErrorState compact error={refresh.error} />
             )}
           </Section>
           <EntryList

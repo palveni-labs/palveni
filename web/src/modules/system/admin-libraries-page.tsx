@@ -13,8 +13,7 @@ import { formatNumber, formatPercent } from "@/lib/format";
 import { LIBRARY_KIND_META, LIBRARY_KINDS } from "@/lib/kinds";
 import { useLibraryScan } from "@/modules/library/use-library-scan";
 import { useItemCountLabel } from "@/modules/library/use-item-count-label";
-import { secureOverrides, SecureSurface } from "@/skins/secure";
-import { useActiveSkin } from "@/skins/scope";
+import { useSecureSurface } from "@/skins/secure";
 import { PageFrame } from "@/ui/frame";
 import { Measure, StatusLabel } from "@/ui/marks";
 import { PageHeader } from "@/ui/page";
@@ -227,24 +226,28 @@ function LibraryTable({ libraries, onDelete, onEdit }: { libraries: Library[] } 
   );
 }
 
-/** A destructive confirmation: the surface keeps the host's safe colours if the skin's fail. */
 function DeleteLibraryDialog({ library, open, onClose }: { library: Library | null; open: boolean; onClose: () => void }) {
   const { t, i18n } = useTranslation();
-  const { skin, mode } = useActiveSkin();
+  const secure = useSecureSurface();
   const remove = useDeleteLibrary();
   const target = library;
+  function close() {
+    if (remove.isPending) return;
+    remove.reset();
+    onClose();
+  }
   return (
-    <AlertDialog.Backdrop isOpen={open} onOpenChange={(next) => (next ? undefined : onClose())} isDismissable={!remove.isPending}>
+    <AlertDialog.Backdrop isOpen={open} onOpenChange={(next) => { if (!next) close(); }} isDismissable={!remove.isPending} isKeyboardDismissDisabled={remove.isPending}>
       <AlertDialog.Container size="sm">
-        <AlertDialog.Dialog style={secureOverrides(skin, mode)}>
+        <AlertDialog.Dialog {...secure}>
           <AlertDialog.Header>
             <AlertDialog.Icon status="danger">
               <Trash2 className="size-5" aria-hidden />
             </AlertDialog.Icon>
-            <AlertDialog.Heading className="font-heading text-lg font-title text-heading">{t("adminLibraries.delete.title", { name: target?.name ?? "" })}</AlertDialog.Heading>
+            <AlertDialog.Heading className="min-w-0 font-heading text-lg font-title wrap-anywhere text-heading">{t("adminLibraries.delete.title", { name: target?.name ?? "" })}</AlertDialog.Heading>
           </AlertDialog.Header>
           <AlertDialog.Body>
-            <SecureSurface className="grid gap-3 text-base text-fg">
+            <div className="grid gap-3 text-base text-fg">
               <p>{t("adminLibraries.delete.description")}</p>
               {target ? (
                 <>
@@ -263,10 +266,11 @@ function DeleteLibraryDialog({ library, open, onClose }: { library: Library | nu
                   </div>
                 </>
               ) : null}
-            </SecureSurface>
+              {remove.isError && <p role="alert" className="text-sm text-failed">{errorText(t, remove.error)}</p>}
+            </div>
           </AlertDialog.Body>
           <AlertDialog.Footer>
-            <Button variant="secondary" onPress={onClose} isDisabled={remove.isPending}>
+            <Button variant="secondary" onPress={close} isDisabled={remove.isPending}>
               {t("common.cancel")}
             </Button>
             <Button
@@ -279,7 +283,6 @@ function DeleteLibraryDialog({ library, open, onClose }: { library: Library | nu
                     toast.success(t("adminLibraries.delete.done", { name: library.name }));
                     onClose();
                   },
-                  onError: (error) => toast.danger(errorText(t, error)),
                 });
               }}
             >

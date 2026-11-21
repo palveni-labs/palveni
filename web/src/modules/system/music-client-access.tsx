@@ -6,11 +6,13 @@ import { api } from "@/api/endpoints";
 import type { SubsonicPassword, User } from "@/api/types";
 import { cn } from "@/lib/cn";
 import { errorText } from "@/lib/errors";
+import { useSecureSurface } from "@/skins/secure";
 import { useRowInset } from "@/ui/section";
 import { ErrorState } from "@/ui/states";
 
 export function MusicClientAccess({ user }: { user: User }) {
   const { t } = useTranslation();
+  const secure = useSecureSurface();
   const inset = useRowInset();
   const queryClient = useQueryClient();
   const key = ["musicClientAccess", user.id] as const;
@@ -48,7 +50,7 @@ export function MusicClientAccess({ user }: { user: User }) {
     </label>
   );
   return (
-    <li className={cn("grid gap-2 py-3.5", inset)}>
+    <li {...secure} className={cn("grid gap-2 py-3.5", inset)}>
       <span className="text-base text-fg">{t("musicClients.title")}</span>
       <span className="text-sm text-fg-muted">{t("musicClients.hint")}</span>
       {status.isPending ? <Spinner size="sm" /> : status.isError ? (

@@ -51,7 +51,10 @@ export function AppShell() {
           <main
             ref={scrollRef}
             id="workspace-content"
-            className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain", navPhone === "bottom-bar" && "max-md:pb-[calc(4rem+env(safe-area-inset-bottom))]")}
+            className={cn(
+              "min-h-0 flex-1 overflow-y-auto overscroll-contain",
+              navPhone === "bottom-bar" && "max-md:scroll-pb-[calc(4rem+env(safe-area-inset-bottom))] max-md:pb-[calc(4rem+env(safe-area-inset-bottom))]",
+            )}
           >
             <div key={pathname} className="workspace-page flex min-h-full flex-col">
               <ModuleTabs />

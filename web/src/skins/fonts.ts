@@ -1,4 +1,29 @@
-import type { FontAsset } from "./schema";
+import type { FontAsset, SkinManifest } from "./schema";
+
+/** FontFaceSet is shared by the active skin, its previews, and host-owned surfaces. */
+export function scopePackageFonts(skin: SkinManifest): SkinManifest {
+  if (!skin.fonts.length) return skin;
+  const aliases = new Map<string, string>();
+  const fonts = skin.fonts.map((font) => {
+    const family = font.family.toLowerCase();
+    let alias = aliases.get(family);
+    if (!alias) {
+      // Package ids cannot contain underscores, so dotted ids stay distinct and the
+      // resulting family is a CSS identifier outside the manifest's family grammar.
+      alias = `PalveniSkin_${skin.id.replaceAll(".", "_")}_Face${aliases.size}`;
+      aliases.set(family, alias);
+    }
+    return { ...font, family: alias };
+  });
+  function withPackageFaces(stack: string[]): string[] {
+    return stack.flatMap((family) => {
+      const alias = aliases.get(family.toLowerCase());
+      return alias ? [alias, family] : [family];
+    });
+  }
+  const { heading, ui, mono } = skin.type;
+  return { ...skin, fonts, type: { ...skin.type, heading: withPackageFaces(heading), ui: withPackageFaces(ui), mono: withPackageFaces(mono) } };
+}
 
 interface Entry {
   users: number;

@@ -5,7 +5,7 @@ import { getToken, setSession } from "@/api/session";
 import { MOCK_ACCOUNTS } from "@/mocks/db";
 import { resetSkinStore } from "@/skins/store";
 import { installMockDb } from "@/test/msw-server";
-import { renderApp, signIn } from "@/test/render-app";
+import { renderApp, selectUploadedSkin, signIn } from "@/test/render-app";
 
 afterEach(() => {
   // The wizard's appearance step changes the light/dark setting.
@@ -88,16 +88,27 @@ describe("bootstrap and auth guard", () => {
     expect(await screen.findByRole("heading", { name: "媒体库" })).toBeInTheDocument();
   });
 
-  it("shows a translated error for wrong credentials", async () => {
+  it("keeps login errors, credentials and the preferences popover in host surfaces under an uploaded skin", async () => {
+    await selectUploadedSkin();
     installMockDb();
     const user = userEvent.setup();
     renderApp("/login");
     await user.type(await screen.findByLabelText("用户名"), "admin");
     await user.type(screen.getByLabelText("密码"), "wrong-password");
     await user.click(screen.getByRole("button", { name: "登录" }));
-    expect(await screen.findByText("用户名或密码错误")).toBeInTheDocument();
-    // Recovery: the password is cleared for another try.
+    const error = await screen.findByText("用户名或密码错误");
+    const scope = error.closest("[data-secure-surface=host]");
+    expect(scope).toContainElement(screen.getByLabelText("密码"));
+    expect(scope).toContainElement(screen.getByRole("button", { name: "登录" }));
     expect(screen.getByLabelText("密码")).toHaveValue("");
+    expect(screen.getByLabelText("密码")).toHaveFocus();
+
+    await user.click(screen.getByRole("button", { name: "外观" }));
+    const menu = await screen.findByRole("menu", { name: "外观" });
+    expect(scope).not.toContainElement(menu);
+    expect(menu.closest("[data-secure-surface=host]")).toBeInTheDocument();
+    await user.click(screen.getByRole("menuitem", { name: /深色/ }));
+    expect(document.documentElement.dataset.theme).toBe("dark");
   });
 
   it("asks for missing fields without calling the server", async () => {

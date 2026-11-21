@@ -1,10 +1,10 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
 import { M0_FEATURES, MOCK_ACCOUNTS } from "@/mocks/db";
 import { installMockDb, server } from "@/test/msw-server";
-import { renderApp, signIn } from "@/test/render-app";
+import { renderApp, renderLoadedApp, selectUploadedSkin, signIn } from "@/test/render-app";
 
 const source = {
   id: "019a3eed-0210-71c0-8af9-5f3ee36fbd79",
@@ -95,4 +95,36 @@ describe("broadcast subscriptions", () => {
     expect(await screen.findByText("还没有订阅")).toBeVisible();
     expect(screen.queryByText(station.title)).toBeNull();
   });
+});
+
+it("requires a fresh confirmation when a subscription changes during review", async () => {
+  await selectUploadedSkin();
+  const db = installMockDb({ features: [...M0_FEATURES, "broadcast"] });
+  signIn(db, MOCK_ACCOUNTS.admin.username);
+  let current = { ...source };
+  const removed: string[] = [];
+  server.use(
+    http.get("*/api/v1/broadcast/sources", () => HttpResponse.json({ sources: [current] })),
+    http.get("*/api/v1/broadcast/sources/:id/entries", () => HttpResponse.json({ entries: [], nextOffset: null })),
+    http.delete("*/api/v1/broadcast/sources/:id", ({ request }) => {
+      removed.push(new URL(request.url).searchParams.get("version") ?? "");
+      return new HttpResponse(null, { status: 204 });
+    }),
+  );
+  const user = userEvent.setup();
+  const { queryClient } = await renderLoadedApp("/broadcast?kind=radio");
+  await user.click(await screen.findByRole("button", { name: "移除" }));
+  const message = await screen.findByText("移除订阅「City FM」及其收藏记录？");
+  expect(message.closest("[data-secure-surface=host]")).toContainElement(screen.getByRole("button", { name: "移除订阅" }));
+
+  current = { ...source, name: "City Stories", version: 2 };
+  await act(() => queryClient.invalidateQueries({ queryKey: ["broadcast", "sources", "radio"] }));
+  await screen.findByRole("option", { name: "City Stories" });
+  expect(screen.queryByRole("button", { name: "移除订阅" })).toBeNull();
+  expect(removed).toEqual([]);
+
+  await user.click(screen.getByRole("button", { name: "移除" }));
+  expect(await screen.findByText("移除订阅「City Stories」及其收藏记录？")).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "移除订阅" }));
+  await waitFor(() => expect(removed).toEqual(["2"]));
 });

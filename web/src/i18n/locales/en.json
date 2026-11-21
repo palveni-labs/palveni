@@ -339,7 +339,7 @@
     "retry": "Retry playback",
     "back": "Back",
     "emptyFolder": "This folder is empty.",
-    "confirm": "Remove this connection?",
+    "confirm": "Remove the connection “{{name}}”?",
     "remove": "Remove connection",
     "empty": "No network sources yet",
     "saved": "Saved sources"

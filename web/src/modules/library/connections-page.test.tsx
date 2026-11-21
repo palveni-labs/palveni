@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw";
 import { expect, it } from "vitest";
 import { M0_FEATURES, MOCK_ACCOUNTS } from "@/mocks/db";
 import { installMockDb, server } from "@/test/msw-server";
-import { renderLoadedApp, signIn } from "@/test/render-app";
+import { renderLoadedApp, selectUploadedSkin, signIn } from "@/test/render-app";
 
 it("lets a member browse nested entries and plays through the server-scoped URL", async () => {
   const db = installMockDb({ features: [...M0_FEATURES, "connections"] });
@@ -47,4 +47,33 @@ it("lets a member browse nested entries and plays through the server-scoped URL"
   expect(requested).toEqual([{ entry: "recording" }]);
   expect(screen.queryByRole("button", { name: "移除连接" })).toBeNull();
   expect(screen.queryByRole("button", { name: "添加来源" })).toBeNull();
+});
+
+it("keeps connection credentials and the named removal prompt on host surfaces", async () => {
+  await selectUploadedSkin();
+  const db = installMockDb({ features: [...M0_FEATURES, "connections"] });
+  signIn(db, MOCK_ACCOUNTS.admin.username);
+  const source = { id: "019a3eed-0210-71c0-8af9-5f3ee36fbd79", name: "Studio", kind: "smb" };
+  const base = "*/api/v1/connections";
+  server.use(
+    http.get(base, () => HttpResponse.json({ connections: [source] })),
+    http.get(base + "/:id/entries", () => HttpResponse.json({ entries: [], nextOffset: null })),
+    http.delete(base + "/:id", () => HttpResponse.json({ error: { code: "conflict", message: "Connection busy" } }, { status: 409 })),
+  );
+  const user = userEvent.setup();
+  await renderLoadedApp("/library/connections");
+  await user.click(await screen.findByRole("button", { name: "添加来源" }));
+  const password = screen.getByLabelText("密码");
+  expect(password.closest("[data-secure-surface=host]")).toContainElement(screen.getByRole("button", { name: "连接" }));
+  await user.click(screen.getByRole("button", { name: "取消" }));
+
+  await user.click(await screen.findByRole("button", { name: /Studio/ }));
+  await user.click(screen.getByRole("button", { name: "移除连接" }));
+  const prompt = screen.getByText("移除连接「Studio」？");
+  expect(prompt.closest("[data-secure-surface=host]")).toContainElement(screen.getByRole("button", { name: "移除连接" }));
+  await user.click(screen.getByRole("button", { name: "移除连接" }));
+  expect(prompt.closest("[data-secure-surface=host]")).toContainElement(await screen.findByText("Connection busy"));
+  await user.click(screen.getByRole("button", { name: "取消" }));
+  expect(screen.queryByText("Connection busy")).toBeNull();
+  expect(screen.queryByText("移除连接「Studio」？")).toBeNull();
 });

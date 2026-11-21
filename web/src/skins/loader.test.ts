@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import workcolor from "./builtin/workcolor";
 import { fetchInstalledSkin, installedManifestUrl, MAX_MANIFEST_BYTES, SkinLoadError } from "./loader";
-import { DEFAULT_SKIN_ID } from "./registry";
+import { BUILTIN_SKIN, DEFAULT_SKIN_ID } from "./registry";
 import { getSkinState, initSkin, resetSkinStore, setSkin, setSkinLoader } from "./store";
 
 function packageManifest(id = "paper"): Record<string, unknown> & { colors: { light: Record<string, string> } } {
@@ -24,11 +24,48 @@ describe("fetchInstalledSkin", () => {
   it("fetches the public manifest without credentials and maps font files to the package's asset URLs", async () => {
     const fetchImpl = respond(packageManifest());
     const entry = await fetchInstalledSkin("paper", { fetchImpl });
-    expect(fetchImpl).toHaveBeenCalledWith(installedManifestUrl("paper"), expect.objectContaining({ credentials: "omit" }));
+    expect(fetchImpl).toHaveBeenCalledWith(installedManifestUrl("paper"), expect.objectContaining({ credentials: "omit", mode: "same-origin", redirect: "error" }));
     const init = fetchImpl.mock.calls[0]?.[1];
     expect(new Headers(init?.headers).has("Authorization")).toBe(false);
     expect(entry.source).toBe("installed");
     expect(await entry.loadFonts()).toEqual([expect.objectContaining({ src: "/api/v1/skins/installed/paper/assets/fonts/paper.woff2" })]);
+  });
+
+  it.each([
+    [undefined, "upload"],
+    ["upload", "upload"],
+    ["unrecognized", "upload"],
+    ["official", "official"],
+  ])("reads package provenance from the host response (%s)", async (source, expected) => {
+    const headers = new Headers();
+    if (source) headers.set("X-Palveni-Skin-Source", source);
+    const skin = { ...packageManifest("native"), author: "Palveni" };
+    const entry = await fetchInstalledSkin("native", { fetchImpl: respond(skin, { headers }) });
+    expect(entry.packageSource).toBe(expected);
+  });
+
+  it("keeps identically named faces private to each installed skin, including previewed skins", async () => {
+    const fromPackage = async (id: string) => {
+      const skin = {
+        ...packageManifest(id),
+        type: { ...BUILTIN_SKIN.manifest.type, heading: ["figtree", "serif"], ui: ["FIGTREE", "sans-serif"], mono: ["monospace"] },
+        fonts: [
+          { family: "Figtree", src: "fonts/regular.woff2", weight: "400", style: "normal" },
+          { family: "FIGTREE", src: "fonts/bold.woff2", weight: "700", style: "normal" },
+        ],
+      };
+      return fetchInstalledSkin(id, { fetchImpl: respond(skin) });
+    };
+    const first = await fromPackage("type.paper");
+    const second = await fromPackage("type-paper");
+    const family = (await first.loadFonts())[0]?.family;
+    expect(family).toBeTruthy();
+    expect(family?.toLowerCase()).not.toBe("figtree");
+    expect((await first.loadFonts())[1]?.family).toBe(family);
+    expect((await second.loadFonts())[0]?.family).not.toBe(family);
+    expect(first.manifest.type.heading).toEqual([family, "figtree", "serif"]);
+    expect(first.manifest.type.ui).toEqual([family, "FIGTREE", "sans-serif"]);
+    expect(first.manifest.type.mono).toEqual(["monospace"]);
   });
 
   it("says why a skin cannot be loaded", async () => {

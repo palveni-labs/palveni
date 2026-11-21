@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { RelativeTime } from "@/components/relative-time";
 import type { InboxAction, InboxItem } from "@/modules/types";
 import { useInboxItems } from "@/shell/inbox-store";
+import { useSecureSurface } from "@/skins/secure";
 import { useSlot } from "@/skins/scope";
 import { AttentionMark, Lamp, StatusLabel } from "@/ui/marks";
 import { useRowInset, useSectionVariant } from "@/ui/section";
@@ -53,9 +54,11 @@ function Row({ item }: { item: InboxItem }) {
   const inset = useRowInset();
   const variant = useSectionVariant();
   const tint = attention === "tint";
+  const secure = useSecureSurface();
   const alert = item.kind === "alert";
   return (
     <li
+      {...(item.kind === "approval" ? secure : {})}
       className={cn(
         "flex flex-wrap items-center gap-x-4 gap-y-3 py-3.5 sm:flex-nowrap",
         tint ? "rounded-tile border px-4" : inset,

@@ -3,10 +3,11 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import workcolor from "./builtin/workcolor";
-import { isPurple } from "./color";
+import { contrast, isPurple } from "./color";
 import { BUILTIN_SKIN, DEFAULT_SKIN_ID } from "./registry";
 import { COLOR_TOKENS, parseSkin, SLOT_NAMES, type SkinManifest } from "./schema";
 import { checkSkin, describeIssue } from "./validate";
+import { secureSurfaceProps } from "./secure";
 
 const PLUGINS = path.resolve(process.cwd(), "../plugins");
 const packages = readdirSync(PLUGINS)
@@ -58,6 +59,24 @@ describe("the official skin plugins", () => {
 
 describe("all four skins", () => {
   const all = [BUILTIN_SKIN.manifest, ...packages.map((entry) => parseSkin(entry.manifest))];
+
+  it.each(all)("keeps $id styled in both modes, including readable button states and focus rings", (skin) => {
+    for (const mode of ["light", "dark"] as const) {
+      const entry = { ...BUILTIN_SKIN, source: "installed" as const, packageSource: "official" as const, manifest: skin };
+      const props = secureSurfaceProps(entry, mode);
+      expect(props["data-secure-surface"]).toBe("theme");
+      const style = props.style as Record<string, string>;
+      const colors = skin.colors[mode];
+      for (const state of ["hover", "pressed"]) {
+        expect(contrast(colors["confirm-fg"], style[`--pv-secure-confirm-${state}`] ?? "")).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(colors["fg-inverse"], style[`--pv-secure-danger-${state}`] ?? "")).toBeGreaterThanOrEqual(4.5);
+      }
+      for (const ground of ["bg", "surface", "surface-raised", "surface-sunken", "attention-soft"] as const) {
+        expect(contrast(style["--pv-focus"] ?? colors.focus, colors[ground])).toBeGreaterThanOrEqual(3);
+        expect(contrast(style["--pv-line-control"] ?? colors["line-control"], colors[ground])).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
 
   it("use the expected layout slots", () => {
     for (const skin of all) {

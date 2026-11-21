@@ -200,9 +200,12 @@ pub async fn manifest(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Response, ApiError> {
-    on_disk(state.skins, move |store| store.manifest(&id))
-        .await
-        .map(resource)
+    let (manifest, source) = on_disk(state.skins, move |store| store.manifest(&id)).await?;
+    Ok((
+        [("x-palveni-skin-source", source.as_str())],
+        resource(manifest),
+    )
+        .into_response())
 }
 
 pub async fn asset(

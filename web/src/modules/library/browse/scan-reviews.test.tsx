@@ -6,7 +6,7 @@ import { expect, it } from "vitest";
 import { queryKeys } from "@/api/query-keys";
 import { M0_FEATURES, MOCK_ACCOUNTS } from "@/mocks/db";
 import { installMockDb, server } from "@/test/msw-server";
-import { renderApp, signIn } from "@/test/render-app";
+import { renderApp, selectUploadedSkin, signIn } from "@/test/render-app";
 import { ScanReviews } from "./scan-reviews";
 
 const scope = "/media/collection";
@@ -15,6 +15,7 @@ const snapshot = { scope, revision: "first", missingCount: 51, samplePaths: [sam
 const wait = { timeout: 5000 };
 
 it("reviews pages from the library and requires a fresh decision after a conflicting confirmation", async () => {
+  await selectUploadedSkin();
   const db = installMockDb({ features: [...M0_FEATURES, "scanReviews"] });
   const library = db.createLibrary("音乐示例", "music", [scope]);
   signIn(db, MOCK_ACCOUNTS.admin.username);
@@ -48,7 +49,9 @@ it("reviews pages from the library and requires a fresh decision after a conflic
   const { queryClient } = renderApp(`/library/${library.id}`);
   const open = () => screen.findByRole("button", { name: `复核 ${scope} 下的缺失文件` }, wait);
   await user.click(await open());
-  let dialog = within(await screen.findByRole("alertdialog"));
+  const review = await screen.findByRole("alertdialog");
+  expect(review).toHaveAttribute("data-secure-surface", "host");
+  let dialog = within(review);
   await dialog.findByText(scope + "/1.flac", {}, wait);
   await user.click(dialog.getByRole("button", { name: "下一页" }));
   await dialog.findByText(scope + "/51.flac", {}, wait);

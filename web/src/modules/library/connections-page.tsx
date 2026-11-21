@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { request } from "@/api/client";
 import type { components } from "@/api/generated";
 import { useIsAdmin } from "@/api/queries/auth";
+import { useSecureSurface } from "@/skins/secure";
 import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { Section, SectionRows } from "@/ui/section";
@@ -15,10 +16,11 @@ type Schema = components["schemas"];
 type Connection = Schema["ConnectionSummary"];
 type Entry = Schema["ConnectionEntry"];
 const protocols = { smb: "SMB", webdav: "WebDAV", jellyfin: "Jellyfin", emby: "Emby", plex: "Plex" } as const;
-const fields = "rounded-control border border-line bg-surface px-3 py-2 text-fg";
+const fields = "rounded-control border border-line-control bg-surface px-3 py-2 text-fg";
 
 function AddConnection({ done, close }: { done: (source: Connection) => void; close: () => void }) {
   const { t } = useTranslation();
+  const secure = useSecureSurface();
   const [kind, setKind] = useState<Connection["kind"]>("smb");
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
@@ -41,7 +43,7 @@ function AddConnection({ done, close }: { done: (source: Connection) => void; cl
     });
   }
   return (
-    <Section title={t("connections.add")}>
+    <Section {...secure} title={t("connections.add")}>
       <form className="grid max-w-xl gap-3" onSubmit={submit}>
         <label className="grid gap-1">
           <span>{t("connections.protocol")}</span>
@@ -168,6 +170,7 @@ function Browser({ source, close, removed }: { source: Connection; close: () => 
   const [path, setPath] = useState<Pick<Entry, "id" | "name">[]>([]);
   const [offset, setOffset] = useState(0);
   const [playing, setPlaying] = useState<Entry>();
+  const secure = useSecureSurface();
   const [confirm, setConfirm] = useState(false);
   const parent = path.at(-1);
   const base = `/connections/${encodeURIComponent(source.id)}`;
@@ -246,23 +249,23 @@ function Browser({ source, close, removed }: { source: Connection; close: () => 
       </Section>
       {playing && <RemotePlayer key={playing.id} id={source.id} entry={playing} close={() => setPlaying(undefined)} />}
       {admin && !parent && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div {...(confirm ? secure : {})} className="flex flex-wrap items-center gap-2 data-[secure-surface=host]:bg-page">
           {confirm ? (
             <>
-              <span>{t("connections.confirm")}</span>
+              <span className="min-w-0 wrap-anywhere">{t("connections.confirm", { name: source.name })}</span>
               <Button size="sm" variant="danger" isPending={remove.isPending} onPress={() => remove.mutate()}>
                 {t("connections.remove")}
               </Button>
-              <Button size="sm" variant="ghost" onPress={() => setConfirm(false)}>
+              <Button size="sm" variant="ghost" isDisabled={remove.isPending} onPress={() => setConfirm(false)}>
                 {t("connections.cancel")}
               </Button>
+              {remove.isError && <ErrorState compact error={remove.error} />}
             </>
           ) : (
-            <Button size="sm" variant="ghost" onPress={() => setConfirm(true)}>
+            <Button size="sm" variant="ghost" onPress={() => { remove.reset(); setConfirm(true); }}>
               {t("connections.remove")}
             </Button>
           )}
-          {remove.isError && <ErrorState compact error={remove.error} />}
         </div>
       )}
     </>

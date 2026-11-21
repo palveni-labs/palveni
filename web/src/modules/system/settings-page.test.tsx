@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { expect, it } from "vitest";
 
 import { installMockDb } from "@/test/msw-server";
-import { renderApp, signIn } from "@/test/render-app";
+import { renderApp, selectUploadedSkin, signIn } from "@/test/render-app";
 
 it("applies and clears server overrides through the administrator settings", async () => {
   const db = installMockDb();
@@ -23,14 +23,19 @@ it("applies and clears server overrides through the administrator settings", asy
 });
 
 it("shows a member's music password once and confirms rotation and revocation", async () => {
+  await selectUploadedSkin();
   const db = installMockDb();
   signIn(db, "family");
   renderApp("/system/settings");
   const user = userEvent.setup();
-  await user.click(await screen.findByRole("checkbox", { name: /允许播放器管理/ }));
+  const permission = await screen.findByRole("checkbox", { name: /允许播放器管理/ });
+  const scope = permission.closest("[data-secure-surface=host]");
+  expect(scope).toContainElement(screen.getByRole("button", { name: "创建口令" }));
+  await user.click(permission);
   await user.click(await screen.findByRole("button", { name: "创建口令" }));
   const first = (await screen.findByRole<HTMLInputElement>("textbox", { name: "音乐客户端口令" })).value;
   expect(first).toBeTruthy();
+  expect(scope).toContainElement(screen.getByDisplayValue(first));
   await user.click(screen.getByRole("button", { name: "关闭" }));
   expect(screen.queryByDisplayValue(first)).toBeNull();
   expect(screen.getByText("播放器可管理你的个人音乐数据。")).toBeInTheDocument();

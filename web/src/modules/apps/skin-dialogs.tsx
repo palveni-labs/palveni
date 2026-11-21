@@ -1,8 +1,3 @@
-/**
- * Install consent and uninstall confirmation for skin plugins (admin). Both are decision
- * surfaces, so their content sits in a SecureSurface: if the active skin's values fail the
- * contrast rules for these pairs, the built-in values apply here.
- */
 import { AlertDialog, Button, Spinner } from "@heroui/react";
 import { AlertCircle, Download, ShieldCheck, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -13,45 +8,53 @@ import { errorText } from "@/lib/errors";
 import type { SkinPackageInfo } from "@/api/types";
 import { BUILTIN_SKIN } from "@/skins/registry";
 import { localized } from "@/skins/schema";
-import { SecureSurface } from "@/skins/secure";
+import { useSecureSurface } from "@/skins/secure";
 import { Measure } from "@/ui/marks";
 import { splitMeasure } from "./measure";
 
 function DialogFrame({
-  isOpen,
+  skin,
   onClose,
   busy,
   icon,
-  heading,
+  action,
   children,
   footer,
 }: {
-  isOpen: boolean;
+  skin: SkinPackageInfo | null;
   onClose: () => void;
   busy: boolean;
   icon: ReactNode;
-  heading: string;
+  action: "install" | "uninstall";
   children: ReactNode;
   footer: ReactNode;
 }) {
+  const { t } = useTranslation();
+  const secure = useSecureSurface();
+  const displayName = localized(skin?.name, currentLanguage()).replace(/\p{Bidi_Control}/gu, "").trim() || skin?.pluginId || "";
+  // Isolate the package name from the surrounding sentence while keeping the accessible label in plain text.
+  const isolatedName = `\u2068${displayName}\u2069`;
+  const title = (value: string) => t(`appearance.${action}.title`, { name: value });
   return (
     <AlertDialog.Backdrop
-      isOpen={isOpen}
+      isOpen={skin !== null}
       onOpenChange={(open) => {
         if (!open && !busy) onClose();
       }}
       isKeyboardDismissDisabled={busy}
     >
       <AlertDialog.Container size="md">
-        <AlertDialog.Dialog className="p-0">
-          <SecureSurface className="flex min-h-0 flex-col bg-raised p-6 text-fg">
+        <AlertDialog.Dialog {...secure} className="p-0">
+          <div className="flex min-h-0 flex-col bg-raised p-6 text-fg">
             <AlertDialog.Header className="flex-row items-center gap-3">
               {icon}
-              <AlertDialog.Heading className="font-heading text-lg font-title text-heading">{heading}</AlertDialog.Heading>
+              <AlertDialog.Heading aria-label={title(displayName)} className="min-w-0 font-heading text-lg font-title wrap-anywhere text-heading">
+                {title(isolatedName)}
+              </AlertDialog.Heading>
             </AlertDialog.Header>
             <AlertDialog.Body className="text-base text-fg-muted">{children}</AlertDialog.Body>
             <AlertDialog.Footer className="flex-wrap">{footer}</AlertDialog.Footer>
-          </SecureSurface>
+          </div>
         </AlertDialog.Dialog>
       </AlertDialog.Container>
     </AlertDialog.Backdrop>
@@ -84,10 +87,9 @@ export function InstallSkinDialog({
 }) {
   const { t } = useTranslation();
   const language = currentLanguage();
-  const name = skin ? localized(skin.name, language) : "";
   return (
     <DialogFrame
-      isOpen={skin !== null}
+      skin={skin}
       onClose={onClose}
       busy={busy}
       icon={
@@ -95,7 +97,7 @@ export function InstallSkinDialog({
           <ShieldCheck className="size-5" strokeWidth={1.8} aria-hidden />
         </span>
       }
-      heading={t("appearance.install.title", { name })}
+      action="install"
       footer={
         <>
           <Button slot="close" variant="secondary" isDisabled={busy}>
@@ -148,11 +150,10 @@ export function UninstallSkinDialog({
 }) {
   const { t } = useTranslation();
   const language = currentLanguage();
-  const name = skin ? localized(skin.name, language) : "";
   const builtin = localized(BUILTIN_SKIN.manifest.name, language);
   return (
     <DialogFrame
-      isOpen={skin !== null}
+      skin={skin}
       onClose={onClose}
       busy={busy}
       icon={
@@ -160,7 +161,7 @@ export function UninstallSkinDialog({
           <Trash2 className="size-5" strokeWidth={1.8} aria-hidden />
         </span>
       }
-      heading={t("appearance.uninstall.title", { name })}
+      action="uninstall"
       footer={
         <>
           <Button slot="close" variant="secondary" isDisabled={busy}>

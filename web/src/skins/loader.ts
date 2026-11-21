@@ -11,6 +11,7 @@
  * A manifest that fails to parse or breaks a rule is refused as a whole; nothing of it applies.
  */
 import { API_BASE } from "@/api/client";
+import { scopePackageFonts } from "./fonts";
 import { acceptSkin, type SkinEntry } from "./registry";
 import { SkinError } from "./schema";
 
@@ -55,6 +56,8 @@ export async function fetchInstalledSkin(id: string, options: LoadOptions = {}):
     response = await fetchImpl(installedManifestUrl(id), {
       headers: { Accept: "application/json" },
       credentials: "omit",
+      mode: "same-origin",
+      redirect: "error",
       signal: options.signal,
     });
   } catch (error) {
@@ -74,11 +77,12 @@ export async function fetchInstalledSkin(id: string, options: LoadOptions = {}):
   }
   let manifest;
   try {
-    manifest = acceptSkin(json, "package");
+    manifest = scopePackageFonts(acceptSkin(json, "package"));
   } catch (error) {
     throw new SkinLoadError("invalid", error instanceof Error ? error.message : String(error));
   }
   if (manifest.id !== id) throw new SkinLoadError("invalid", `The package declares skin "${manifest.id}", not "${id}"`);
   const fonts = manifest.fonts.map((font) => ({ ...font, src: installedAssetUrl(id, font.src) }));
-  return { manifest, source: "installed", loadFonts: () => Promise.resolve(fonts) };
+  const packageSource = response.headers.get("X-Palveni-Skin-Source") === "official" ? "official" : "upload";
+  return { manifest, source: "installed", packageSource, loadFonts: () => Promise.resolve(fonts) };
 }

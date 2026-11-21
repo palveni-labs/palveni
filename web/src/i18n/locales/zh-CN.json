@@ -326,7 +326,7 @@
     "retry": "重试播放",
     "back": "返回",
     "emptyFolder": "这个目录为空。",
-    "confirm": "移除这个连接？",
+    "confirm": "移除连接「{{name}}」？",
     "remove": "移除连接",
     "empty": "还没有网络媒体源",
     "saved": "已保存的来源"

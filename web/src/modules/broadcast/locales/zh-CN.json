@@ -8,7 +8,7 @@
   "edit": "编辑订阅",
   "refresh": "刷新订阅",
   "remove": "移除",
-  "removeConfirm": "移除这份订阅及其收藏记录？",
+  "removeConfirm": "移除订阅「{{name}}」及其收藏记录？",
   "confirmRemove": "移除订阅",
   "cancel": "取消",
   "name": "名称",

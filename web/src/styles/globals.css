@@ -133,6 +133,18 @@
     line-height: var(--pv-leading);
     font-weight: var(--pv-weight-regular);
   }
+  :where([data-secure-surface="host"]) {
+    /* Paint the opaque decision area above shadows cast by neighbouring skin content. */
+    position: relative;
+    z-index: 1;
+    background-color: var(--pv-surface);
+    color: var(--pv-fg);
+    font-family: var(--pv-font-ui);
+    font-size: var(--pv-text-base);
+    font-weight: var(--pv-weight-regular);
+    line-height: var(--pv-leading);
+    letter-spacing: normal;
+  }
   ::selection {
     background: var(--pv-text-selection);
     color: inherit;
@@ -280,6 +292,26 @@
     --button-bg: var(--pv-secondary);
     --button-fg: var(--pv-fg-disabled);
     border-color: var(--pv-line);
+  }
+  [data-secure-surface] {
+    /* Rebind the component aliases here: inherited aliases resolve at their declaring element. */
+    --focus: var(--pv-focus);
+    --field-border: var(--pv-line-control);
+    --field-border-focus: var(--pv-focus);
+    --field-border-hover: color-mix(in oklab, var(--pv-line-control) 80%, var(--pv-fg) 20%);
+    --color-field: var(--field-background);
+    --color-field-hover: var(--field-hover);
+  }
+  [data-secure-surface] .button--danger {
+    --button-bg-hover: var(--pv-secure-danger-hover);
+    --button-bg-pressed: var(--pv-secure-danger-pressed);
+  }
+  [data-secure-surface] .button.button--confirm {
+    --button-bg-hover: var(--pv-secure-confirm-hover);
+    --button-bg-pressed: var(--pv-secure-confirm-pressed);
+  }
+  [data-secure-surface] .button:is(:disabled, [aria-disabled="true"]) {
+    --button-fg: var(--pv-fg-muted);
   }
   /* Buttons drawn on a work-colour field. */
   .button.button--on-field {

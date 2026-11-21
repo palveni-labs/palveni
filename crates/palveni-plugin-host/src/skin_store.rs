@@ -308,7 +308,7 @@ impl SkinStore {
         let now = Utc::now();
         let filename = format!(
             "{}-{}-{digest}.tar",
-            source.prefix(),
+            source.as_str(),
             now.timestamp_millis()
         );
         let mut temp = tempfile::NamedTempFile::new_in(&self.dir)?;
@@ -334,7 +334,7 @@ impl SkinStore {
         Ok(())
     }
 
-    pub fn manifest(&self, id: &str) -> Result<SkinAsset, SkinError> {
+    pub fn manifest(&self, id: &str) -> Result<(SkinAsset, SkinSource), SkinError> {
         self.read_asset(id, "skin.json")
     }
 
@@ -342,20 +342,24 @@ impl SkinStore {
         if path == "skin.json" {
             return Err(SkinError::NotFound);
         }
-        self.read_asset(id, path)
+        self.read_asset(id, path).map(|(asset, _)| asset)
     }
 
-    fn read_asset(&self, id: &str, key: &str) -> Result<SkinAsset, SkinError> {
-        let (file, range) = {
+    fn read_asset(&self, id: &str, key: &str) -> Result<(SkinAsset, SkinSource), SkinError> {
+        let (file, range, source) = {
             let entries = self
                 .installations
                 .read()
                 .unwrap_or_else(PoisonError::into_inner);
             let entry = entries.get(id).ok_or(SkinError::NotFound)?;
             let range = entry.assets.get(key).ok_or(SkinError::NotFound)?.clone();
-            (regular_file(&self.dir.join(&entry.filename))?, range)
+            (
+                regular_file(&self.dir.join(&entry.filename))?,
+                range,
+                entry.summary.source,
+            )
         };
-        range.pinned.read(file, range.mime)
+        Ok((range.pinned.read(file, range.mime)?, source))
     }
 
     fn reload(&self) -> Result<(), SkinError> {
@@ -417,7 +421,7 @@ impl SkinStore {
 }
 
 impl SkinSource {
-    fn prefix(self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             Self::Official => "official",
             Self::Upload => "upload",
@@ -544,10 +548,9 @@ mod tests {
             serde_json::to_value(restored.installed().expect("list")).expect("json"),
             summaries
         );
-        assert_eq!(
-            restored.manifest("ink").expect("manifest").mime,
-            "application/json"
-        );
+        let (manifest, source) = restored.manifest("ink").expect("manifest");
+        assert_eq!(source, SkinSource::Official);
+        assert_eq!(manifest.mime, "application/json");
     }
 
     #[test]
@@ -583,6 +586,8 @@ mod tests {
         drop(store);
         let store = SkinStore::open(tmp.path()).expect("reload");
         assert_eq!(store.installed().expect("list").len(), 1);
+        let (_, source) = store.manifest("custom").expect("manifest");
+        assert_eq!(source, SkinSource::Upload);
         store.remove("custom").expect("remove");
         drop(store);
         assert!(

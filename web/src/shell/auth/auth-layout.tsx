@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useSystemInfo } from "@/api/queries/system";
 import { currentLanguage, SUPPORTED_LANGUAGES } from "@/i18n";
+import { useSecureSurface } from "@/skins/secure";
 import { useSkin, type ModeSetting } from "@/skins/store";
 
 const MODES: Array<{ value: ModeSetting; icon: typeof Sun }> = [
@@ -15,6 +16,7 @@ const MODES: Array<{ value: ModeSetting; icon: typeof Sun }> = [
 /** Language and light/dark, available before signing in. */
 function Preferences() {
   const { t, i18n } = useTranslation();
+  const secure = useSecureSurface();
   const { mode, resolved, setMode } = useSkin();
   const language = currentLanguage();
   const ModeIcon = resolved === "dark" ? Moon : Sun;
@@ -24,7 +26,7 @@ function Preferences() {
         <Button isIconOnly variant="ghost" aria-label={t("language.label")}>
           <Languages aria-hidden />
         </Button>
-        <Dropdown.Popover placement="bottom end">
+        <Dropdown.Popover {...secure} placement="bottom end">
           <Dropdown.Menu aria-label={t("language.label")} onAction={(key) => void i18n.changeLanguage(String(key))}>
             {SUPPORTED_LANGUAGES.map((code) => (
               <Dropdown.Item key={code} id={code} textValue={t(`languages.${code}`)} lang={code}>
@@ -39,7 +41,7 @@ function Preferences() {
         <Button isIconOnly variant="ghost" aria-label={t("theme.label")}>
           <ModeIcon aria-hidden />
         </Button>
-        <Dropdown.Popover placement="bottom end">
+        <Dropdown.Popover {...secure} placement="bottom end">
           <Dropdown.Menu aria-label={t("theme.label")} onAction={(key) => setMode(String(key) as ModeSetting)}>
             {MODES.map(({ value, icon: Icon }) => (
               <Dropdown.Item key={value} id={value} textValue={t(`theme.${value}`)}>
@@ -58,9 +60,10 @@ function Preferences() {
 /** Full-screen frame for the setup wizard and the login page. */
 export function AuthLayout({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
   const { t } = useTranslation();
+  const secure = useSecureSurface();
   const { data: info } = useSystemInfo();
   return (
-    <div className="flex min-h-svh flex-col bg-page text-fg">
+    <div {...secure} className="flex min-h-svh flex-col bg-page text-fg">
       <header className="flex h-(--pv-shell-h) items-center justify-between px-4 sm:px-6">
         <span className="font-heading text-[1.1875rem] font-title text-heading">{t("app.name")}</span>
         <Preferences />

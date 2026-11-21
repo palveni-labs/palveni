@@ -14,6 +14,7 @@ import type { Mode, SkinManifest, SlotName, Slots } from "./schema";
 import { useSkin } from "./store";
 
 interface ScopeValue {
+  entry: SkinEntry;
   skin: SkinManifest;
   mode: Mode;
 }
@@ -24,7 +25,7 @@ const ScopeContext = createContext<ScopeValue | null>(null);
 export function useActiveSkin(): ScopeValue {
   const scope = use(ScopeContext);
   const { entry, resolved } = useSkin();
-  return scope ?? { skin: entry.manifest, mode: resolved };
+  return scope ?? { entry, skin: entry.manifest, mode: resolved };
 }
 
 export function useSlots(): Slots {
@@ -66,7 +67,7 @@ export function SkinScope({
   const { "color-scheme": _scheme, ...variables } = skinVariables(skin, mode);
   const style = { ...variables, colorScheme: mode } as CSSProperties;
   return (
-    <ScopeContext value={{ skin, mode }}>
+    <ScopeContext value={{ entry, skin, mode }}>
       <div data-skin-scope={skin.id} data-theme={mode} className={cn("skin-scope", mode, className)} style={style}>
         {children}
       </div>

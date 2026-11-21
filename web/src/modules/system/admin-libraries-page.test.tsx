@@ -1,9 +1,10 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 import { MOCK_ACCOUNTS } from "@/mocks/db";
-import { installMockDb } from "@/test/msw-server";
-import { renderApp, signIn } from "@/test/render-app";
+import { installMockDb, server } from "@/test/msw-server";
+import { renderApp, selectUploadedSkin, signIn } from "@/test/render-app";
 
 describe("library management", () => {
   it("points at the rejected path, then creates and scans the library with live updates", async () => {
@@ -59,6 +60,7 @@ describe("library management", () => {
   });
 
   it("deletes a library after confirmation", async () => {
+    await selectUploadedSkin();
     const db = installMockDb();
     signIn(db, MOCK_ACCOUNTS.admin.username);
     const user = userEvent.setup();
@@ -69,8 +71,19 @@ describe("library management", () => {
     await user.click(await screen.findByRole("menuitem", { name: "删除" }));
     // Toasts are alert dialogs too; the confirmation is the one named after the library.
     const confirm = await screen.findByRole("alertdialog", { name: "删除媒体库「电子书」？" });
+    expect(confirm).toHaveAttribute("data-secure-surface", "host");
     expect(within(confirm).getByText("只删除索引，磁盘上的文件不会被改动。")).toBeInTheDocument();
+    server.use(http.delete("*/api/v1/libraries/:id", () => HttpResponse.json({
+      error: { code: "conflict", message: "Review changed" },
+    }, { status: 409 }), { once: true }));
     await user.click(within(confirm).getByRole("button", { name: "删除" }));
+    expect(await within(confirm).findByRole("alert")).toHaveTextContent("Review changed");
+    await user.click(within(confirm).getByRole("button", { name: "取消" }));
+    await user.click(within(row).getByRole("button", { name: "更多" }));
+    await user.click(await screen.findByRole("menuitem", { name: "删除" }));
+    const reopened = await screen.findByRole("alertdialog", { name: "删除媒体库「电子书」？" });
+    expect(within(reopened).queryByRole("alert")).toBeNull();
+    await user.click(within(reopened).getByRole("button", { name: "删除" }));
 
     await waitFor(() => expect(screen.queryByText("/srv/books")).not.toBeInTheDocument());
     expect(db.libraries.some((library) => library.name === "电子书")).toBe(false);

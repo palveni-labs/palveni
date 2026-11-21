@@ -11,6 +11,8 @@ import { checkSkin, describeIssue } from "./validate";
 export interface SkinEntry {
   manifest: SkinManifest;
   source: "builtin" | "installed";
+  /** Installation provenance supplied by the host alongside the manifest. */
+  packageSource?: "official" | "upload";
   /** Version of the installed plugin package (undefined for the built-in skin). */
   version?: string;
   /** Resolves the font assets to register while the skin is in use (absolute URLs). */

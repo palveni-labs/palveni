@@ -10,8 +10,7 @@ import { queryKeys } from "@/api/query-keys";
 import type { Library, ScanReview } from "@/api/types";
 import { errorText } from "@/lib/errors";
 import { useFeature } from "@/modules/access";
-import { useActiveSkin } from "@/skins/scope";
-import { secureOverrides } from "@/skins/secure";
+import { useSecureSurface } from "@/skins/secure";
 import { Section } from "@/ui/section";
 import { ErrorState } from "@/ui/states";
 import { useLibraryScan } from "../use-library-scan";
@@ -66,7 +65,7 @@ function ReviewDialog({ libraryId, review, current, running, close }: {
   libraryId: string; review: ScanReview; current: boolean; running: boolean; close: () => void;
 }) {
   const { t } = useTranslation();
-  const { skin, mode } = useActiveSkin();
+  const secure = useSecureSurface();
   const client = useQueryClient();
   const [offset, setOffset] = useState(0);
   const page = useQuery({
@@ -97,7 +96,7 @@ function ReviewDialog({ libraryId, review, current, running, close }: {
   return (
     <AlertDialog.Backdrop isOpen onOpenChange={(open) => { if (!open && !confirm.isPending) close(); }} isDismissable={!confirm.isPending}>
       <AlertDialog.Container size="md">
-        <AlertDialog.Dialog style={secureOverrides(skin, mode)}>
+        <AlertDialog.Dialog {...secure}>
           <AlertDialog.Header>
             <AlertDialog.Icon status="danger"><TriangleAlert aria-hidden className="size-5" /></AlertDialog.Icon>
             <AlertDialog.Heading>{t("scanReviews.open")}</AlertDialog.Heading>

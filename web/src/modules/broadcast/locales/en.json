@@ -8,7 +8,7 @@
   "edit": "Edit subscription",
   "refresh": "Refresh",
   "remove": "Remove",
-  "removeConfirm": "Remove this subscription and its saved favorites?",
+  "removeConfirm": "Remove “{{name}}” and its saved favorites?",
   "confirmRemove": "Remove subscription",
   "cancel": "Cancel",
   "name": "Name",
