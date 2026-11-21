@@ -5,7 +5,7 @@
  * HeroUI component follows the skin. Values were checked against their grammar by parseSkin and
  * are applied one property at a time through CSSOM (store.ts, scope.tsx), never as CSS text.
  */
-import { COLOR_TOKENS, ELEVATION_TOKENS, SHAPE_TOKENS, TYPE_SIZE_TOKENS, type Mode, type SkinManifest } from "./schema";
+import { COLOR_TOKENS, ELEVATION_TOKENS, SHAPE_TOKENS, TYPE_SIZE_TOKENS, type Mode, type SkinManifest, type Slots } from "./schema";
 
 const rem = (px: number) => `${Number((px / 16).toFixed(4))}rem`;
 
@@ -131,10 +131,10 @@ export function skinVariables(skin: SkinManifest, mode: Mode): Record<string, st
   return { ...vars, ...HEROUI_MAPPING };
 }
 
-/** data-* attributes carrying the slot choices (for CSS that only needs a hint, not structure). */
-export function slotAttributes(skin: SkinManifest): Record<string, string> {
+/** data-* attributes carrying the effective slot choices (for CSS that only needs a hint, not structure). */
+export function slotAttributes(skin: SkinManifest, slots: Slots = skin.slots): Record<string, string> {
   const attributes: Record<string, string> = {};
-  for (const [name, value] of Object.entries(skin.slots)) {
+  for (const [name, value] of Object.entries(slots)) {
     attributes[`data-slot-${name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`] = value;
   }
   return attributes;

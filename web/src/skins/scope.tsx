@@ -11,7 +11,7 @@ import { skinVariables } from "./css";
 import { retainFonts } from "./fonts";
 import type { SkinEntry } from "./registry";
 import type { Mode, SkinManifest, SlotName, Slots } from "./schema";
-import { useSkin } from "./store";
+import { effectiveSlots, useSkin } from "./store";
 
 interface ScopeValue {
   entry: SkinEntry;
@@ -29,7 +29,9 @@ export function useActiveSkin(): ScopeValue {
 }
 
 export function useSlots(): Slots {
-  return useActiveSkin().skin.slots;
+  const scope = use(ScopeContext);
+  const { entry, nav } = useSkin();
+  return scope ? scope.skin.slots : effectiveSlots(entry.manifest, nav);
 }
 
 export function useSlot<K extends SlotName>(name: K): Slots[K] {

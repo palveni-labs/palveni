@@ -13,19 +13,38 @@ import { skinVariables, slotAttributes } from "./css";
 import { retainFonts } from "./fonts";
 import { fetchInstalledSkin, SkinLoadError, type LoadOptions, type SkinLoadFailure } from "./loader";
 import { BUILTIN_SKIN, DEFAULT_SKIN_ID, type SkinEntry } from "./registry";
-import type { Mode } from "./schema";
+import type { Mode, SkinManifest, Slots } from "./schema";
 
 export type ModeSetting = "system" | "light" | "dark";
+export type NavSetting = "skin" | "sidebar" | "topbar" | "sidebar-right";
+export type NavSide = "left" | "right";
 
 const MODE_KEY = "palveni.theme";
 const SKIN_KEY = "palveni.skin";
+const NAV_KEY = "palveni.nav";
 /** How long the first paint waits for an installed skin before showing the built-in one. */
 const BOOT_WAIT_MS = 2500;
+
+export function effectiveNavSide(nav: NavSetting): NavSide {
+  return nav === "sidebar-right" ? "right" : "left";
+}
+
+export function effectiveSlots(skin: SkinManifest, nav: NavSetting): Slots {
+  if (nav === "skin") return skin.slots;
+  const resolvedNav = nav === "topbar" ? "topbar" : "sidebar";
+  return {
+    ...skin.slots,
+    nav: resolvedNav,
+    pageTitle: resolvedNav === "sidebar" ? "toolbar" : "content",
+  };
+}
 
 export interface SkinState {
   /** The skin the user chose (persisted). */
   skinId: string;
   mode: ModeSetting;
+  /** Navigation layout override ("skin" follows the active skin's `nav` slot). */
+  nav: NavSetting;
   resolved: Mode;
   /** The skin actually applied. */
   active: SkinEntry;
@@ -45,6 +64,7 @@ let appliedAttributes: string[] = [];
 let state: SkinState = {
   skinId: DEFAULT_SKIN_ID,
   mode: "system",
+  nav: "skin",
   resolved: "light",
   active: BUILTIN_SKIN,
   status: "ready",
@@ -89,11 +109,12 @@ function apply() {
     appliedNames = Object.keys(variables);
     root.style.colorScheme = resolved;
     for (const name of appliedAttributes) root.removeAttribute(name);
-    const attributes = slotAttributes(skin);
+    const attributes = slotAttributes(skin, effectiveSlots(skin, state.nav));
     for (const [name, value] of Object.entries(attributes)) root.setAttribute(name, value);
     appliedAttributes = Object.keys(attributes);
     root.dataset.skin = skin.id;
     root.dataset.theme = resolved;
+    root.dataset.navSide = effectiveNavSide(state.nav);
     root.classList.toggle("dark", resolved === "dark");
     root.classList.toggle("light", resolved === "light");
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", skin.colors[resolved].shell);
@@ -153,9 +174,11 @@ export async function setSkin(id: string): Promise<SkinEntry> {
 export async function initSkin(): Promise<void> {
   const mode = readLocal(MODE_KEY);
   const stored = readLocal(SKIN_KEY);
+  const nav = readLocal(NAV_KEY);
   state = {
     ...state,
     mode: mode === "light" || mode === "dark" || mode === "system" ? mode : "system",
+    nav: nav === "sidebar" || nav === "topbar" || nav === "sidebar-right" || nav === "skin" ? nav : "skin",
     skinId: stored ?? DEFAULT_SKIN_ID,
     active: BUILTIN_SKIN,
   };
@@ -178,6 +201,13 @@ export function setMode(mode: ModeSetting) {
   apply();
 }
 
+export function setNav(nav: NavSetting) {
+  state = { ...state, nav };
+  if (nav === "skin") removeLocal(NAV_KEY);
+  else writeLocal(NAV_KEY, nav);
+  apply();
+}
+
 /** After an uninstall: drop the cached entry and leave the skin if it was active. */
 export function forgetSkin(id: string) {
   const { [id]: _removed, ...installed } = state.installed;
@@ -197,7 +227,7 @@ export function setSkinLoader(next: typeof fetchInstalledSkin) {
 }
 
 export function resetSkinStore() {
-  state = { skinId: DEFAULT_SKIN_ID, mode: "system", resolved: "light", active: BUILTIN_SKIN, status: "ready", failure: null, installed: {} };
+  state = { skinId: DEFAULT_SKIN_ID, mode: "system", nav: "skin", resolved: "light", active: BUILTIN_SKIN, status: "ready", failure: null, installed: {} };
   loader = fetchInstalledSkin;
   apply();
 }
@@ -219,5 +249,5 @@ export function useSkinState(): SkinState {
 
 export function useSkin() {
   const snapshot = useSkinState();
-  return { ...snapshot, entry: snapshot.active, setMode, setSkin, loadSkin, forgetSkin };
+  return { ...snapshot, entry: snapshot.active, navSide: effectiveNavSide(snapshot.nav), setMode, setNav, setSkin, loadSkin, forgetSkin };
 }

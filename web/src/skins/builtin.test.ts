@@ -15,7 +15,7 @@ const packages = readdirSync(PLUGINS)
   .map((name) => ({ name, manifest: JSON.parse(readFileSync(path.join(PLUGINS, name, "skin.json"), "utf8")) as unknown, dir: path.join(PLUGINS, name) }));
 
 const SLOT_TABLE: Record<string, Partial<SkinManifest["slots"]>> = {
-  workcolor: { nav: "topbar", navPhone: "top-scroll", status: "inline", progress: "row-fill", attention: "thumbs", section: "panel", itemColor: "on", measure: "sans", pageTitle: "content", summary: "inline" },
+  workcolor: { nav: "sidebar", navPhone: "bottom-bar", status: "inline", progress: "row-fill", attention: "thumbs", section: "panel", itemColor: "on", measure: "sans", pageTitle: "toolbar", summary: "inline" },
   native: { nav: "sidebar", navPhone: "bottom-bar", status: "activity-window", progress: "bar", attention: "tint", section: "plain", itemColor: "off", measure: "sans", pageTitle: "toolbar", summary: "cells" },
   ink: { nav: "topbar", navPhone: "bottom-bar", status: "inline", progress: "bar", attention: "seal", section: "rule", itemColor: "off", measure: "sans", pageTitle: "content", summary: "inline" },
   gear: { nav: "topbar", navPhone: "top-scroll", status: "inline", progress: "separator", attention: "lamp", section: "rule", itemColor: "off", measure: "mono", pageTitle: "content", summary: "cells" },

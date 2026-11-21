@@ -136,8 +136,13 @@ export function OverviewPage() {
   );
 
   return (
-    <div className="pv-enter grid min-h-full xl:grid-cols-[minmax(0,1fr)_var(--pv-aside-w)]">
-      <div className="flex min-w-0 flex-col gap-(--pv-gap-section) px-(--pv-gutter) pt-7 pb-14 max-md:px-4 max-md:pt-5 xl:pe-(--pv-gap-section)">
+    <div className={cn("pv-enter grid min-h-full w-full xl:grid-cols-[minmax(0,1fr)_var(--pv-aside-w)]", !pane && "mx-auto max-w-[77.5rem]")}>
+      <div
+        className={cn(
+          "flex min-w-0 flex-col gap-(--pv-gap-section) px-(--pv-gutter) pt-6 pb-12 max-md:px-4 max-md:pt-5 xl:pe-(--pv-gap-section)",
+          pane && "mx-auto w-full max-w-[60rem]",
+        )}
+      >
         <PageHeader title={t("modules.overview.title")} summary={summary} actions={actions} />
         <Region widgets={main} editing={editing} onMove={moveWithin(main)} onHide={hide} />
       </div>
@@ -145,8 +150,8 @@ export function OverviewPage() {
         <aside
           aria-label={t("overview.aside")}
           className={cn(
-            "grid content-start gap-(--pv-gap-section) px-(--pv-gutter) pb-14 max-md:px-4 md:grid-cols-2 xl:grid-cols-1 xl:ps-0",
-            pane ? "border-line bg-aside max-xl:border-t xl:border-s xl:px-5 xl:pt-7" : "xl:pt-7",
+            "grid content-start gap-(--pv-gap-section) px-(--pv-gutter) pb-12 max-md:px-4 md:grid-cols-2 xl:grid-cols-1 xl:ps-0",
+            pane ? "border-line bg-aside max-xl:border-t xl:border-s xl:px-5 xl:pt-6" : "xl:pt-6",
             !pane && pageTitle === "content" && "xl:mt-[calc(var(--pv-text-page)*1.2+var(--pv-gap-section))]",
           )}
         >

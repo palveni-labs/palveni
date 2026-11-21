@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { ParseKeys, TFunction } from "i18next";
 import type { LucideIcon } from "lucide-react";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type { User } from "@/api/types";
 import type { FileRouteTypes } from "@/routeTree.gen";
 
@@ -16,6 +16,12 @@ export interface Availability {
   /** Server feature flag from `GET /system/info` → `features`. */
   feature?: string;
   adminOnly?: boolean;
+}
+
+export interface NavMenuProps {
+  active: boolean;
+  className: string;
+  children: ReactNode;
 }
 
 export interface NavEntry extends Availability {
@@ -134,7 +140,7 @@ export interface ModuleDefinition extends Availability {
   /** Hook summarising the most important running work (shown by the shell's status display). */
   activity?: () => ActivitySummary | null;
   /** A titled list the module adds to a sidebar navigation (e.g. the libraries). */
-  sidebar?: { titleKey: MessageKey; component: ComponentType };
+  sidebar?: { titleKey: MessageKey; component: ComponentType; menu?: ComponentType<NavMenuProps> };
   events?: Record<string, EventHandler>;
 }
 

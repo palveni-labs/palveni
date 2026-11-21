@@ -1,6 +1,6 @@
 import { Button, buttonVariants, Chip, Input, Spinner, ToggleButton, ToggleButtonGroup } from "@heroui/react";
 import { Link } from "@tanstack/react-router";
-import { LogOut, Monitor, Moon, Palette, Sun } from "lucide-react";
+import { LogOut, Palette } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import type { PerfTier, RuntimeSettings } from "@/api/types";
 import { errorText } from "@/lib/errors";
@@ -10,8 +10,11 @@ import { useCurrentUser, useIsAdmin, useLogout } from "@/api/queries/auth";
 import { useRuntimeSettings, useSystemInfo, useUpdateRuntimeSettings } from "@/api/queries/system";
 import { currentLanguage, SUPPORTED_LANGUAGES } from "@/i18n";
 import { localized } from "@/skins/schema";
-import { useSkin, type ModeSetting } from "@/skins/store";
+import { useSkin } from "@/skins/store";
 import { UserAvatar } from "@/shell/user-menu";
+import { ModeSetting } from "@/ui/mode-setting";
+import { NavCustomizer } from "@/ui/nav-customizer";
+import { NavSetting } from "@/ui/nav-setting";
 import { PageFrame } from "@/ui/frame";
 import { LinkDevices } from "./link-devices";
 import { OpdsReaderAccess } from "./opds-reader-access";
@@ -19,12 +22,6 @@ import { MusicClientAccess } from "./music-client-access";
 import { PageHeader } from "@/ui/page";
 import { Section, SectionRows, useRowInset } from "@/ui/section";
 import { ErrorState, LoadingRows } from "@/ui/states";
-
-const MODES: Array<{ value: ModeSetting; icon: typeof Sun }> = [
-  { value: "system", icon: Monitor },
-  { value: "light", icon: Sun },
-  { value: "dark", icon: Moon },
-];
 
 /** One setting: what it is on the left, its control (or value) on the right; stacked on phones. */
 function SettingRow({ label, hint, children, className }: { label: ReactNode; hint?: ReactNode; children: ReactNode; className?: string }) {
@@ -42,39 +39,22 @@ function SettingRow({ label, hint, children, className }: { label: ReactNode; hi
 
 function Display() {
   const { t, i18n } = useTranslation();
-  const { mode, setMode, entry } = useSkin();
+  const { entry } = useSkin();
   const language = currentLanguage();
   return (
     <Section title={t("settings.display")}>
       <SectionRows>
-        <SettingRow label={t("settings.mode")} hint={t("settings.modeHint")}>
-          <ToggleButtonGroup
-            aria-label={t("settings.mode")}
-            selectionMode="single"
-            disallowEmptySelection
-            selectedKeys={[mode]}
-            onSelectionChange={(keys) => {
-              const next = [...keys][0];
-              if (next === "system" || next === "light" || next === "dark") setMode(next);
-            }}
-            className="pv-segmented max-w-full"
-          >
-            {MODES.map(({ value, icon: Icon }) => (
-              <ToggleButton key={value} id={value}>
-                <Icon aria-hidden />
-                {t(`theme.${value}`)}
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
+        <SettingRow label={t("settings.mode")}>
+          <ModeSetting className="max-w-full" />
         </SettingRow>
-        <SettingRow label={t("settings.skin")} hint={t("settings.skinHint")}>
+        <SettingRow label={t("settings.skin")}>
           <span className="text-base font-strong text-fg">{localized(entry.manifest.name, i18n.resolvedLanguage ?? "en")}</span>
           <Link to="/apps/themes" className={buttonVariants({ variant: "outline", size: "sm" })}>
             <Palette aria-hidden />
             {t("settings.changeSkin")}
           </Link>
         </SettingRow>
-        <SettingRow label={t("language.label")} hint={t("settings.languageHint")}>
+        <SettingRow label={t("language.label")}>
           <ToggleButtonGroup
             aria-label={t("language.label")}
             selectionMode="single"
@@ -222,16 +202,38 @@ function ServerInfo() {
   );
 }
 
+function NavigationSettings() {
+  const { t } = useTranslation();
+  const inset = useRowInset();
+  return (
+    <Section title={t("nav.customizeSection")}>
+      <SectionRows>
+        <SettingRow label={t("nav.layout")}>
+          <NavSetting className="max-w-full" />
+        </SettingRow>
+        <li className={cn("py-3.5", inset)}>
+          <NavCustomizer />
+        </li>
+      </SectionRows>
+    </Section>
+  );
+}
+
 /** 系统 › 设置: appearance, language, the signed-in account and the server's identity. */
 export function SettingsPage() {
   const { t } = useTranslation();
   return (
     <PageFrame>
       <PageHeader title={t("nav.settings")} />
-      <div className="grid w-full max-w-3xl gap-(--pv-gap-section)">
-        <Display />
-        <Account />
-        <ServerInfo />
+      <div className="grid items-start gap-(--pv-gap-section) lg:grid-cols-2">
+        <div className="grid min-w-0 gap-(--pv-gap-section)">
+          <Display />
+          <NavigationSettings />
+        </div>
+        <div className="grid min-w-0 gap-(--pv-gap-section)">
+          <ServerInfo />
+          <Account />
+        </div>
       </div>
     </PageFrame>
   );

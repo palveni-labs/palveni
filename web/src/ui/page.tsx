@@ -14,25 +14,26 @@ import { cn } from "@/lib/cn";
 import { useIsTabletUp } from "@/lib/use-media";
 import { useSlot } from "@/skins/scope";
 
-/* Where page actions go when the title lives in the toolbar: the shell registers the element. */
-let toolbarTarget: HTMLElement | null = null;
+type ToolbarSlot = "title" | "actions";
+const toolbarTargets: Record<ToolbarSlot, HTMLElement | null> = { title: null, actions: null };
 const toolbarListeners = new Set<() => void>();
 
-export function registerToolbarActions(element: HTMLElement | null) {
-  if (toolbarTarget === element) return;
-  toolbarTarget = element;
+function registerTarget(slot: ToolbarSlot, element: HTMLElement | null) {
+  if (toolbarTargets[slot] === element) return;
+  toolbarTargets[slot] = element;
   for (const listener of toolbarListeners) listener();
 }
 
-function ToolbarActions({ children }: { children: ReactNode }) {
-  const target = useSyncExternalStore(
-    (listener) => {
-      toolbarListeners.add(listener);
-      return () => toolbarListeners.delete(listener);
-    },
-    () => toolbarTarget,
-    () => null,
-  );
+export const registerToolbarActions = (element: HTMLElement | null) => registerTarget("actions", element);
+export const registerToolbarTitle = (element: HTMLElement | null) => registerTarget("title", element);
+
+function subscribeToolbar(listener: () => void) {
+  toolbarListeners.add(listener);
+  return () => { toolbarListeners.delete(listener); };
+}
+
+function ToolbarPortal({ slot, children }: { slot: ToolbarSlot; children: ReactNode }) {
+  const target = useSyncExternalStore(subscribeToolbar, () => toolbarTargets[slot], () => null);
   return target ? createPortal(children, target) : null;
 }
 
@@ -43,8 +44,9 @@ export function PageHeader({ title, summary, actions, className }: { title: stri
     return (
       <>
         <h1 className="sr-only">{title}</h1>
+        <ToolbarPortal slot="title">{title}</ToolbarPortal>
         {summary ? <p className={cn("min-w-0 text-base text-fg-muted", className)}>{summary}</p> : null}
-        {actions ? <ToolbarActions>{actions}</ToolbarActions> : null}
+        {actions ? <ToolbarPortal slot="actions">{actions}</ToolbarPortal> : null}
       </>
     );
   }

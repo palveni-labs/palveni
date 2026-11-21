@@ -5,7 +5,10 @@ import { useAccess } from "@/modules/access";
 import { isVisible } from "@/modules/registry";
 import { useActiveModule } from "./use-shell-modules";
 
-/** Sub-pages of the active module (from its `nav` entries), as a row of tabs above the page. */
+/**
+ * Sub-pages of the active module on small screens only. Desktop navigation exposes secondary pages
+ * directly through collapsible sidebar groups or topbar dropdown menus, avoiding double top bars.
+ */
 export function ModuleTabs() {
   const { t } = useTranslation();
   const access = useAccess();
@@ -13,7 +16,7 @@ export function ModuleTabs() {
   const entries = (module?.nav ?? []).filter((entry) => isVisible(entry, access));
   if (entries.length < 2) return null;
   return (
-    <nav aria-label={module ? t(module.titleKey) : undefined} className="mx-auto w-full max-w-[90rem] px-(--pv-gutter) pt-5 max-md:px-4">
+    <nav aria-label={module ? t(module.titleKey) : undefined} className="mx-auto w-full max-w-[76rem] px-4 pt-4 md:hidden">
       <ul className="no-scrollbar flex w-full gap-1 overflow-x-auto border-b border-line">
         {entries.map((entry) => {
           const Icon = entry.icon;

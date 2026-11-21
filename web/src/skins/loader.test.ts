@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import workcolor from "./builtin/workcolor";
 import { fetchInstalledSkin, installedManifestUrl, MAX_MANIFEST_BYTES, SkinLoadError } from "./loader";
 import { BUILTIN_SKIN, DEFAULT_SKIN_ID } from "./registry";
-import { getSkinState, initSkin, resetSkinStore, setSkin, setSkinLoader } from "./store";
+import { getSkinState, initSkin, resetSkinStore, setNav, setSkin, setSkinLoader } from "./store";
 
 function packageManifest(id = "paper"): Record<string, unknown> & { colors: { light: Record<string, string> } } {
   const base = structuredClone(workcolor.manifest) as { colors: { light: Record<string, string> } };
@@ -88,6 +88,25 @@ describe("fetchInstalledSkin", () => {
 });
 
 describe("the skin store", () => {
+  it("restores the navigation preference across restarts and preserves the skin's mobile navigation", async () => {
+    const skin = {
+      ...packageManifest(),
+      slots: { ...BUILTIN_SKIN.manifest.slots, nav: "topbar", navPhone: "top-scroll", pageTitle: "content" },
+    };
+    setNav("sidebar-right");
+    setSkinLoader((id) => fetchInstalledSkin(id, { fetchImpl: respond(skin) }));
+    await setSkin("paper");
+    const root = document.documentElement;
+    expect(root.dataset).toMatchObject({ navSide: "right", slotNav: "sidebar", slotNavPhone: "top-scroll", slotPageTitle: "toolbar" });
+    resetSkinStore();
+    setSkinLoader((id) => fetchInstalledSkin(id, { fetchImpl: respond(skin) }));
+    await initSkin();
+    expect(root.dataset).toMatchObject({ skin: "paper", navSide: "right", slotNav: "sidebar" });
+    setNav("skin");
+    expect(root.dataset).toMatchObject({ navSide: "left", slotNav: "topbar", slotNavPhone: "top-scroll", slotPageTitle: "content" });
+    expect(window.localStorage.getItem("palveni.nav")).toBeNull();
+  });
+
   it("applies an installed skin through CSSOM, with no stylesheet text", async () => {
     setSkinLoader((id) => fetchInstalledSkin(id, { fetchImpl: respond(packageManifest(id)) }));
     await setSkin("paper");

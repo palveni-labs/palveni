@@ -23,7 +23,11 @@ const library: ModuleDefinition = {
     icon: Search,
     run: ({ navigate }, query) => navigate("/library/music-search", { q: query || undefined }),
   }],
-  sidebar: { titleKey: "nav.libraries", component: lazy(() => import("./sidebar-libraries")) },
+  sidebar: {
+    titleKey: "nav.libraries",
+    component: lazy(() => import("./sidebar-libraries")),
+    menu: lazy(() => import("./sidebar-libraries").then((module) => ({ default: module.LibraryMenu }))),
+  },
   widgets: [
     {
       id: "library.libraries",

@@ -16,6 +16,7 @@
     "en": "English"
   },
   "common": {
+    "done": "完成",
     "back": "返回",
     "backHome": "回到概览",
     "cancel": "取消",
@@ -38,6 +39,22 @@
     "recover": "确认服务器正在运行、这台设备和它在同一个网络里，然后重试。"
   },
   "nav": {
+    "layout": "导航位置",
+    "layoutSkin": "跟随皮肤",
+    "layoutSidebar": "左侧",
+    "layoutTopbar": "顶部",
+    "layoutSidebarRight": "右侧",
+    "customizeSection": "自定义导航",
+    "customizeButton": "排序与显隐",
+    "customizerTitle": "拖动或按箭头调整菜单顺序与显示",
+    "resetOrder": "恢复默认",
+    "moveUp": "将「{{name}}」上移",
+    "moveDown": "将「{{name}}」下移",
+    "showItem": "在导航中显示「{{name}}」",
+    "hideItem": "在导航中隐藏「{{name}}」",
+    "lockedItem": "核心入口不可隐藏",
+    "toggleSubmenu": "展开或收起「{{name}}」子菜单",
+    "allLibraries": "全部媒体库",
     "overview": "概览",
     "libraries": "媒体库",
     "admin": "管理",
@@ -239,6 +256,10 @@
     "noResults": "没有找到“{{q}}”"
   },
   "music": {
+    "play": "播放",
+    "duration": "时长",
+    "trackNumber": "曲序",
+    "trackCount": "{{count}} 首",
     "loudness": "响度分析",
     "analyzeLoudness": "分析响度",
     "stopLoudness": "停止响度分析",

@@ -1,16 +1,15 @@
 /**
  * The bar across the top. With `nav: topbar` it carries the wordmark, server and status, the
- * tabs and the global tools; with `nav: sidebar` it is the content's toolbar (page title when
- * `pageTitle: toolbar`, the status display, the tools).
+ * single-line navigation with dropdown secondary menus, and the global tools; with `nav: sidebar`
+ * it is the content's toolbar (page breadcrumb, activity/status, page actions and global tools).
  */
 import { Button, Kbd } from "@heroui/react";
-import { Link, useParams } from "@tanstack/react-router";
-import { PanelLeftOpen, Search } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ChevronRight, PanelLeftOpen, PanelRightOpen, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
-import { useLibrary } from "@/api/queries/libraries";
 import { useSlot } from "@/skins/scope";
-import { registerToolbarActions } from "@/ui/page";
+import { registerToolbarActions, registerToolbarTitle } from "@/ui/page";
 import { Inbox } from "./inbox";
 import { ScrollTabs, TopNav, Wordmark } from "./nav";
 import { shell } from "./shell-store";
@@ -28,17 +27,18 @@ function SearchButton({ tone }: { tone: Tone }) {
         type="button"
         onClick={() => shell.setPalette(true)}
         className={cn(
-          "hidden h-9 w-[13.5rem] min-w-0 items-center gap-2 rounded-field ps-3 pe-1.5 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus xl:flex",
-          tone === "shell" ? "bg-shell-field text-shell-fg-muted hover:text-shell-fg" : "bg-sunken text-fg-muted hover:text-fg",
+          "hidden h-8 w-[12.5rem] min-w-0 items-center gap-2 rounded-field border border-line ps-2.5 pe-1.5 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus xl:flex",
+          tone === "shell" ? "border-shell-line bg-shell-field text-shell-fg-muted hover:text-shell-fg" : "bg-sunken text-fg-muted hover:text-fg",
         )}
       >
-        <Search className="size-4 shrink-0" aria-hidden />
-        <span className="min-w-0 flex-1 truncate text-start">{t("palette.placeholder")}</span>
+        <Search className="size-3.5 shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1 truncate text-start text-xs">{t("palette.placeholder")}</span>
         <Kbd className="shrink-0">⌘K</Kbd>
       </button>
       <Button
         variant="ghost"
         isIconOnly
+        size="sm"
         onPress={() => shell.setPalette(true)}
         aria-label={t("palette.title")}
         className={cn("xl:hidden", tone === "shell" && "text-shell-fg-muted data-[hovered=true]:bg-shell-field")}
@@ -49,63 +49,54 @@ function SearchButton({ tone }: { tone: Tone }) {
   );
 }
 
-function Tools({ tone }: { tone: Tone }) {
+function Tools({ tone, hideUserOnDesktop = false }: { tone: Tone; hideUserOnDesktop?: boolean }) {
   return (
     <div className="flex shrink-0 items-center justify-end gap-1.5">
       <SearchButton tone={tone} />
       <Inbox tone={tone} />
-      <UserMenu />
+      <div className={cn(hideUserOnDesktop && "md:hidden")}>
+        <UserMenu />
+      </div>
     </div>
   );
 }
 
-function LibraryName({ libraryId }: { libraryId: string }) {
-  const { data } = useLibrary(libraryId);
-  return <>{data?.name ?? "…"}</>;
-}
-
-/** Current page, for the toolbar title. */
 function ToolbarTitle() {
   const { t } = useTranslation();
-  const { module, entry } = useActiveModule();
-  const params = useParams({ strict: false });
+  const { module, entry, pathname } = useActiveModule();
   if (!module) return null;
-  const sub = entry ? t(entry.titleKey) : params.libraryId ? <LibraryName libraryId={params.libraryId} /> : null;
   return (
-    <div className="flex min-w-0 items-baseline gap-2 text-[1.0625rem]">
-      {sub ? (
+    <div className="flex min-w-0 items-center gap-1.5 text-[0.9375rem]">
+      {pathname !== module.home && (
         <>
-          <Link to={module.home} className="truncate text-fg-muted hover:text-fg">
-            {t(module.titleKey)}
-          </Link>
-          <span className="text-fg-subtle" aria-hidden>
-            /
-          </span>
-          <span className="truncate font-strong text-heading">{sub}</span>
+          <Link to={module.home} className="truncate text-fg-muted hover:text-fg">{t(module.titleKey)}</Link>
+          <ChevronRight className="size-3.5 shrink-0 text-fg-subtle" aria-hidden />
         </>
-      ) : (
-        <span className="truncate font-strong text-heading">{t(module.titleKey)}</span>
       )}
+      <span ref={registerToolbarTitle} className="peer truncate font-strong text-heading empty:hidden" />
+      <span className="hidden truncate font-strong text-heading peer-empty:block">{t(entry?.titleKey ?? module.titleKey)}</span>
     </div>
   );
 }
 
-/** Top bar for `nav: topbar`. */
+/** Top bar for `nav: topbar`. Aligned to the centered desktop stage on wide screens. */
 export function TopBar() {
   const status = useSlot("status");
   const navPhone = useSlot("navPhone");
   return (
     <div className="shrink-0">
-      <header className="relative z-20 flex h-(--pv-shell-h) items-center gap-4 border-b border-shell-line bg-shell px-4 text-shell-fg md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:px-5 lg:px-6">
-        <div className="flex min-w-0 flex-1 items-center gap-1">
-          <Wordmark className="me-2 text-shell-fg" />
-          <ServerSwitch className="max-md:hidden" />
-          {status === "inline" ? <InlineStatus className="ms-1 max-sm:hidden" /> : null}
-        </div>
-        <TopNav className="max-md:hidden" />
-        <div className="flex min-w-0 items-center justify-end gap-3">
-          {status === "activity-window" ? <ActivityWindow className="max-w-[26rem] max-lg:hidden" /> : null}
-          <Tools tone="shell" />
+      <header className="relative z-20 flex h-(--pv-shell-h) items-center border-b border-shell-line bg-shell text-shell-fg">
+        <div className="mx-auto flex w-full max-w-[77.5rem] items-center gap-3 px-4 md:px-6">
+          <div className="flex min-w-0 grow items-center gap-1 md:grow-0">
+            <Wordmark className="me-2 text-shell-fg" />
+            <ServerSwitch className="max-lg:hidden" />
+            {status === "inline" ? <InlineStatus className="ms-1 max-xl:hidden" /> : null}
+          </div>
+          <TopNav className="flex-1 max-md:hidden" />
+          <div className="flex min-w-0 items-center justify-end gap-2">
+            {status === "activity-window" ? <ActivityWindow className="max-w-[24rem] max-lg:hidden" /> : null}
+            <Tools tone="shell" />
+          </div>
         </div>
       </header>
       {navPhone === "top-scroll" ? <ScrollTabs /> : null}
@@ -114,35 +105,49 @@ export function TopBar() {
   );
 }
 
-/** Toolbar for `nav: sidebar` (the sidebar carries the wordmark and navigation). */
-export function Toolbar({ sidebarOpen, onOpenSidebar }: { sidebarOpen: boolean; onOpenSidebar: () => void }) {
+/** Toolbar for `nav: sidebar` (the sidebar carries the wordmark, primary nav and account). */
+export function Toolbar({
+  sidebarOpen,
+  sidebarSide = "left",
+  onOpenSidebar,
+}: {
+  sidebarOpen: boolean;
+  sidebarSide?: "left" | "right";
+  onOpenSidebar: () => void;
+}) {
   const { t } = useTranslation();
   const status = useSlot("status");
   const pageTitle = useSlot("pageTitle");
   const navPhone = useSlot("navPhone");
+  const openButton = !sidebarOpen ? (
+    <button
+      type="button"
+      onClick={onOpenSidebar}
+      aria-label={t("a11y.toggleSidebar")}
+      className="grid size-8 place-items-center rounded-tile text-fg-muted outline-none hover:bg-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-focus max-md:hidden"
+    >
+      {sidebarSide === "right" ? <PanelRightOpen className="size-4" aria-hidden /> : <PanelLeftOpen className="size-4" aria-hidden />}
+    </button>
+  ) : null;
   return (
     <div className="shrink-0">
       <header className="relative z-20 flex h-(--pv-shell-h) items-center gap-3 border-b border-line bg-page px-4 md:px-6">
         <Wordmark className="text-heading md:hidden" />
-        {!sidebarOpen ? (
-          <button type="button" onClick={onOpenSidebar} aria-label={t("a11y.toggleSidebar")} className="grid size-8 place-items-center rounded-tile text-fg-muted hover:bg-hover max-md:hidden">
-            <PanelLeftOpen className="size-4" aria-hidden />
-          </button>
-        ) : null}
-        {/* The title keeps its width (up to a limit); the activity window gives way first. */}
+        {sidebarSide === "left" ? openButton : null}
         <div className="flex max-w-[22rem] min-w-0 shrink-0 items-center max-md:hidden">{pageTitle === "toolbar" ? <ToolbarTitle /> : null}</div>
         <div className="flex-1 max-md:hidden" />
         {status === "activity-window" ? (
-          <ActivityWindow className="w-[min(37rem,40vw)] min-w-[14rem] shrink max-lg:hidden" />
+          <ActivityWindow className="w-[min(34rem,38vw)] min-w-[14rem] shrink max-lg:hidden" />
         ) : (
-          <>
-            <ServerSwitch tone="plain" className="max-md:hidden" />
-            <InlineStatus />
-          </>
+          <div className="flex shrink-0 items-center gap-1 max-md:hidden">
+            <ServerSwitch tone="plain" />
+            <InlineStatus tone="plain" />
+          </div>
         )}
         <div ref={registerToolbarActions} className="flex shrink-0 items-center gap-1.5 max-md:hidden empty:hidden" />
-        <div className="flex shrink-0 justify-end max-md:flex-1">
-          <Tools tone="plain" />
+        <div className="flex shrink-0 items-center justify-end gap-1.5 max-md:flex-1">
+          <Tools tone="plain" hideUserOnDesktop={sidebarOpen} />
+          {sidebarSide === "right" ? openButton : null}
         </div>
       </header>
       {status === "activity-window" ? <ActivityWindow className="mx-3 mt-2 lg:hidden" /> : null}

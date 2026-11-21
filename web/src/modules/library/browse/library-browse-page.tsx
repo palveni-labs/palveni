@@ -358,7 +358,7 @@ export function LibraryBrowsePage() {
   const musicEnabled = useFeature("music");
   const videoEnabled = useFeature("video");
   const spokenEnabled = useFeature("spoken");
-  const { parent, view, artist, album } = useSearch({ from: "/_app/library/$libraryId" });
+  const { parent, view } = useSearch({ from: "/_app/library/$libraryId" });
   const libraryQuery = useLibrary(libraryId);
   const library = libraryQuery.data;
 
@@ -394,16 +394,30 @@ export function LibraryBrowsePage() {
       <BrowseHeader library={library} />
       <ScanReviews key={library.id} library={library} />
       {collectionView && (
-        <nav aria-label={t("browse.view")} className="flex flex-wrap gap-2">
-          <Link to="/library/$libraryId" params={{ libraryId }} search={{ view: collectionView }} aria-current={organized ? "page" : undefined} className={buttonVariants({ variant: organized ? "secondary" : "ghost", size: "sm" })}>
-            {collectionTitle}
-          </Link>
-          <Link to="/library/$libraryId" params={{ libraryId }} search={{ view: "files" }} aria-current={!organized ? "page" : undefined} className={buttonVariants({ variant: !organized ? "secondary" : "ghost", size: "sm" })}>{t("browse.files")}</Link>
+        <nav aria-label={t("browse.view")} className="pv-segmented w-fit max-w-full">
+          {([
+            [collectionView, collectionTitle, organized],
+            ["files", t("browse.files"), !organized],
+          ] as const).map(([mode, label, current]) => (
+            <Link
+              key={mode}
+              to="/library/$libraryId"
+              params={{ libraryId }}
+              search={{ view: mode }}
+              aria-current={current ? "page" : undefined}
+              className={cn(
+                "flex min-h-[calc(var(--pv-control-h)-4px)] items-center rounded-control px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-(--pv-focus)",
+                current ? "bg-raised font-strong text-fg shadow-raised" : "font-mid text-fg-muted hover:text-fg",
+              )}
+            >
+              {label}
+            </Link>
+          ))}
         </nav>
       )}
       {organized && isVideo ? <VideoBrowse libraryId={libraryId} />
         : organized && spokenKind ? <SpokenBrowse libraryId={libraryId} kind={spokenKind} />
-        : organized && isMusic ? <MusicBrowse key={`${libraryId}/${artist ?? ""}/${album ?? ""}`} libraryId={libraryId} />
+        : organized && isMusic ? <MusicBrowse key={`music:${libraryId}`} libraryId={libraryId} />
         : <BrowseBody key={`${library.id}:${parent ?? ""}`} library={library} parentId={parent ?? null} keepFileView={!!collectionView} />}
     </PageFrame>
   );

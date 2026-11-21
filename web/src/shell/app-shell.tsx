@@ -4,6 +4,7 @@ import { cn } from "@/lib/cn";
 import { ScrollContainerContext } from "@/lib/scroll-container";
 import { readLocal, writeLocal } from "@/lib/storage";
 import { useSlot } from "@/skins/scope";
+import { useSkin } from "@/skins/store";
 import { CommandPalette } from "./command-palette";
 import { FeatureGate } from "./feature-gate";
 import { InboxCollectors } from "./inbox-store";
@@ -22,6 +23,7 @@ export function AppShell() {
   useShellEvents();
   const nav = useSlot("nav");
   const navPhone = useSlot("navPhone");
+  const { navSide } = useSkin();
   const scrollRef = useRef<HTMLDivElement>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const searchStr = useRouterState({ select: (state) => state.location.searchStr });
@@ -37,17 +39,24 @@ export function AppShell() {
     writeLocal(SIDEBAR_KEY, open ? "open" : "closed");
   };
 
+  const sidebarNode =
+    nav === "sidebar" && sidebarOpen ? (
+      <div className="max-md:hidden">
+        <Sidebar side={navSide} onCollapse={() => toggleSidebar(false)} />
+      </div>
+    ) : null;
+
   return (
     <ScrollContainerContext value={scrollRef}>
       <InboxCollectors />
       <div className="flex h-svh overflow-hidden bg-page text-fg">
-        {nav === "sidebar" && sidebarOpen ? (
-          <div className="max-md:hidden">
-            <Sidebar onCollapse={() => toggleSidebar(false)} />
-          </div>
-        ) : null}
+        {navSide === "left" ? sidebarNode : null}
         <div className="flex min-w-0 flex-1 flex-col">
-          {nav === "sidebar" ? <Toolbar sidebarOpen={sidebarOpen} onOpenSidebar={() => toggleSidebar(true)} /> : <TopBar />}
+          {nav === "sidebar" ? (
+            <Toolbar sidebarOpen={sidebarOpen} sidebarSide={navSide} onOpenSidebar={() => toggleSidebar(true)} />
+          ) : (
+            <TopBar />
+          )}
           <main
             ref={scrollRef}
             id="workspace-content"
@@ -64,6 +73,7 @@ export function AppShell() {
             </div>
           </main>
         </div>
+        {navSide === "right" ? sidebarNode : null}
         {navPhone === "bottom-bar" ? <BottomTabBar /> : null}
         <CommandPalette />
       </div>

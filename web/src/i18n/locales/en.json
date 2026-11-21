@@ -16,6 +16,7 @@
     "en": "English"
   },
   "common": {
+    "done": "Done",
     "back": "Back",
     "backHome": "Back to overview",
     "cancel": "Cancel",
@@ -38,6 +39,22 @@
     "recover": "Check that the server is running and that this device is on the same network, then try again."
   },
   "nav": {
+    "layout": "Navigation position",
+    "layoutSkin": "Follow skin",
+    "layoutSidebar": "Left",
+    "layoutTopbar": "Top",
+    "layoutSidebarRight": "Right",
+    "customizeSection": "Customize navigation",
+    "customizeButton": "Order & visibility",
+    "customizerTitle": "Drag or use arrows to reorder and toggle items",
+    "resetOrder": "Reset",
+    "moveUp": "Move {{name}} up",
+    "moveDown": "Move {{name}} down",
+    "showItem": "Show {{name}} in navigation",
+    "hideItem": "Hide {{name}} from navigation",
+    "lockedItem": "Core item cannot be hidden",
+    "toggleSubmenu": "Toggle {{name}} submenu",
+    "allLibraries": "All libraries",
     "overview": "Overview",
     "libraries": "Libraries",
     "admin": "Administration",
@@ -248,6 +265,11 @@
     "noResults": "No results for “{{q}}”"
   },
   "music": {
+    "play": "Play",
+    "duration": "Duration",
+    "trackNumber": "Track number",
+    "trackCount_one": "{{count}} track",
+    "trackCount_other": "{{count}} tracks",
     "loudness": "Loudness analysis",
     "analyzeLoudness": "Analyze loudness",
     "stopLoudness": "Stop loudness analysis",

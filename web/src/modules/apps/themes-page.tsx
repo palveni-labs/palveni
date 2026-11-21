@@ -6,9 +6,9 @@
  * skin's identity. Installed skins are previewed live (their manifest is loaded and checked
  * first); skins not installed yet show the package's preview image or a calm stand-in.
  */
-import { Button, Spinner, toast } from "@heroui/react";
+import { Button, Modal, Spinner, toast } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, AlertTriangle, Download, FileWarning, Lock, PackageCheck, RotateCw, Trash2 } from "lucide-react";
+import { AlertCircle, AlertTriangle, Download, FileWarning, Lock, PackageCheck, RotateCw, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
@@ -27,9 +27,11 @@ import { useSkin } from "@/skins/store";
 import { PageFrame } from "@/ui/frame";
 import { Measure, StatusLabel } from "@/ui/marks";
 import { PageHeader } from "@/ui/page";
-import { Section, SectionRows, useRowInset } from "@/ui/section";
+import { Section, useRowInset, useSectionVariant } from "@/ui/section";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import { splitMeasure } from "./measure";
+import { NavCustomizer } from "@/ui/nav-customizer";
+import { NavSetting } from "@/ui/nav-setting";
 import { ModeSetting } from "@/ui/mode-setting";
 import { useModeSummary } from "@/ui/use-mode-summary";
 import { InstallSkinDialog, UninstallSkinDialog } from "./skin-dialogs";
@@ -91,6 +93,11 @@ function Problem({ title, reason, findings, action }: { title: string; reason: s
   );
 }
 
+function SkinGrid({ children }: { children: ReactNode }) {
+  const variant = useSectionVariant();
+  return <ul className={cn("grid gap-4 lg:grid-cols-2", variant === "panel" && "border-t border-line p-(--pv-pad-panel)", variant === "rule" && "pt-2")}>{children}</ul>;
+}
+
 function SkinRow({
   name,
   description,
@@ -108,17 +115,24 @@ function SkinRow({
   notice?: ReactNode;
   current?: boolean;
 }) {
-  const inset = useRowInset();
   return (
-    <li aria-current={current ? "true" : undefined} className={cn("grid gap-x-8 gap-y-4 py-5 lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)]", inset)}>
+    <li
+      aria-current={current ? "true" : undefined}
+      className={cn(
+        "flex min-w-0 flex-col gap-3.5 rounded-panel border bg-surface p-4 transition-colors",
+        current ? "border-focus shadow-raised" : "border-line",
+      )}
+    >
       <div className="min-w-0">{preview}</div>
-      <div className="grid min-w-0 content-start gap-3">
-        <div className="grid gap-1">
-          <h3 className="font-heading text-lg font-title text-heading">{name}</h3>
-          {description ? <p className="max-w-[36rem] text-base text-fg-muted">{description}</p> : null}
-          <p className="text-sm text-fg-muted">{meta}</p>
+      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+          <div className="grid min-w-0 flex-1 gap-0.5">
+            <h3 className="font-heading text-md font-title text-heading">{name}</h3>
+            {description ? <p className="text-sm text-fg-muted">{description}</p> : null}
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5">{actions}</div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">{actions}</div>
+        <p className="mt-auto text-xs text-fg-subtle">{meta}</p>
         {notice}
       </div>
     </li>
@@ -408,7 +422,7 @@ export function OfficialSkinCatalog({ enabled, search = "", store = false }: { e
   };
   return (
     <>
-      <Section title={t(store ? "plugins.available" : "appearance.catalog.title")} count={enabled && registry.data ? available.length : undefined}>
+      <Section title={t(store ? "plugins.available" : "appearance.catalog.title")} count={enabled && registry.data ? available.length : undefined} unframed={available.length > 0}>
         {!enabled ? (
           <FeatureUnavailable titleKey="appearance.catalog.feature" compact />
         ) : registry.isPending ? (
@@ -422,11 +436,11 @@ export function OfficialSkinCatalog({ enabled, search = "", store = false }: { e
         ) : available.length === 0 ? (
           <EmptyState compact icon={PackageCheck} title={t("appearance.catalog.allInstalled")} detail={t("appearance.catalog.allInstalledDetail")} />
         ) : (
-          <SectionRows>
+          <SkinGrid>
             {available.map((info) => (
               <CatalogRow key={info.id} info={info} onInstall={openInstall} />
             ))}
-          </SectionRows>
+          </SkinGrid>
         )}
       </Section>
 
@@ -446,6 +460,7 @@ export function AppearancePage() {
   const uninstall = useUninstallSkin();
   const applyState = useApply();
   const [removing, setRemoving] = useState<InstalledSkin | null>(null);
+  const [navEditorOpen, setNavEditorOpen] = useState(false);
 
   const builtinName = localized(BUILTIN_SKIN.manifest.name, language);
   const activeName = localized(active.manifest.name, language);
@@ -474,28 +489,40 @@ export function AppearancePage() {
         {applyState.applied ? t("appearance.applied", { name: applyState.applied }) : ""}
       </p>
 
-      <Section title={t("appearance.mode.title")}>
-        <Inset className="flex flex-wrap items-center gap-x-6 gap-y-3 pb-4">
-          <ModeSetting />
-          <div className="grid min-w-0 flex-1 basis-64 gap-0.5">
-            {mode === "system" ? <p className="text-base text-fg">{modeSummary}</p> : null}
-            <p className="text-sm text-fg-muted">{t("appearance.mode.detail")}</p>
-          </div>
-        </Inset>
-      </Section>
+      <div className="grid gap-(--pv-gap-section) lg:grid-cols-2">
+        <Section title={t("appearance.mode.title")}>
+          <Inset className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pb-4">
+            <ModeSetting />
+            {mode === "system" ? <span className="text-sm text-fg-muted">{modeSummary}</span> : null}
+          </Inset>
+        </Section>
+        <Section
+          title={t("nav.layout")}
+          actions={
+            <Button size="sm" variant="ghost" onPress={() => setNavEditorOpen(true)}>
+              <SlidersHorizontal className="size-3.5" aria-hidden />
+              {t("nav.customizeButton")}
+            </Button>
+          }
+        >
+          <Inset className="flex flex-wrap items-center gap-x-4 gap-y-2 pb-4">
+            <NavSetting />
+          </Inset>
+        </Section>
+      </div>
 
-      <Section title={t("appearance.skins.title")} count={1 + installedSkins.length} aria-busy={installed.isFetching || undefined}>
+      <Section title={t("appearance.skins.title")} count={1 + installedSkins.length} unframed aria-busy={installed.isFetching || undefined}>
         {status === "fallback" && !applyState.failed ? (
           <Inset className="pb-2">
             <FallbackNotice builtinName={builtinName} skinsEnabled={skinsEnabled} />
           </Inset>
         ) : null}
-        <SectionRows>
+        <SkinGrid>
           <BuiltinRow applyState={applyState} />
           {installedSkins.map((info) => (
             <InstalledRow key={info.id} info={info} applyState={applyState} onUninstall={isAdmin ? openUninstall : undefined} />
           ))}
-        </SectionRows>
+        </SkinGrid>
         {skinsEnabled && installed.isPending ? (
           <Inset>
             <LoadingRows rows={2} label={t("appearance.skins.loading")} />
@@ -514,6 +541,27 @@ export function AppearancePage() {
         busy={uninstall.isPending}
         error={uninstall.error}
       />
+      <Modal.Backdrop isOpen={navEditorOpen} onOpenChange={setNavEditorOpen}>
+        <Modal.Container size="md">
+          <Modal.Dialog aria-label={t("nav.customizeSection")}>
+            <Modal.Header>
+              <Modal.Heading>{t("nav.customizeSection")}</Modal.Heading>
+            </Modal.Header>
+            <Modal.Body className="grid gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-mid text-fg">{t("nav.layout")}</span>
+                <NavSetting />
+              </div>
+              <NavCustomizer />
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="primary" size="sm" onPress={() => setNavEditorOpen(false)}>
+                {t("common.done")}
+              </Button>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
     </PageFrame>
   );
 }

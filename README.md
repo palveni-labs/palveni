@@ -90,6 +90,8 @@ Open **Radio & subscriptions** to add a radio or live TV playlist (M3U or groupe
 
 ## Skins and plugins
 
+The default Work Colour skin uses a sidebar on desktop and bottom navigation on phones. In **System → Settings**, you can move the desktop navigation to the top or either side, reorder its entries, and choose which ones to show.
+
 Open **Apps → Plugin store** to search available and installed plugins. Install an official skin or upload a community skin as a tar archive, then select it in **Appearance**. Palveni validates the archive before applying it. Find official packages and contribution guidelines in the [plugins repository](https://github.com/palveni-labs/plugins).
 
 ## License

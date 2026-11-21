@@ -60,10 +60,17 @@ export function ServerSwitch({ className, tone = "shell" }: { className?: string
 }
 
 /** "● 已连接" next to the server name. */
-export function InlineStatus({ className }: { className?: string }) {
+export function InlineStatus({ className, tone = "shell" }: { className?: string; tone?: "shell" | "plain" }) {
   const { live, label } = useConnectionLabel();
   return (
-    <span role="status" className={cn("inline-flex items-center gap-1.5 text-sm whitespace-nowrap text-shell-fg-muted", className)}>
+    <span
+      role="status"
+      className={cn(
+        "inline-flex items-center gap-1.5 text-xs whitespace-nowrap",
+        tone === "shell" ? "text-shell-fg-muted" : "text-fg-muted",
+        className,
+      )}
+    >
       <Lamp tone={live ? "ok" : "degraded"} />
       {label}
     </span>
