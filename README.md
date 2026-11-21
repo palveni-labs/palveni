@@ -29,6 +29,15 @@ cargo run --locked -p palveni-server --features embed-web -- serve
 
 Run `palveni doctor` to check FFmpeg, hardware acceleration and database connectivity. The running server publishes its OpenAPI specification at `/api/v1/openapi.json`. Use `palveni openapi` to export it offline.
 
+## Browse a music library
+
+Choose **Music** when adding a library, then scan its folders. Open the library and choose **Album artists** to browse albums and tracks. Compilation albums stay together under their album artist. Tracks without tags appear under an unknown artist or album and use their filenames as titles. Run a scan after upgrading to index music that is already in your library.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/music-library-dark.png">
+  <img src="docs/images/music-library-light.png" alt="Six tracks from Harbor Sessions, with the album artist, disc number and duration shown in the music library.">
+</picture>
+
 ## Skins and plugins
 
 Install an official skin under **Apps → Appearance**, or upload a community skin as a tar archive. Palveni validates the archive before applying it. Find official packages and contribution guidelines in the [plugins repository](https://github.com/palveni-labs/plugins).

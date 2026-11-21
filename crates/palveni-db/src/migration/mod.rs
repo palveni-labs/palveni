@@ -15,13 +15,17 @@ use sea_orm_migration::prelude::*;
 
 mod m20261120_000001_main_init;
 mod m20261120_000001_ops_init;
+mod m20261121_000002_track_metadata;
 
 pub struct MainMigrator;
 
 #[async_trait::async_trait]
 impl MigratorTrait for MainMigrator {
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
-        vec![Box::new(m20261120_000001_main_init::Migration)]
+        vec![
+            Box::new(m20261120_000001_main_init::Migration),
+            Box::new(m20261121_000002_track_metadata::Migration),
+        ]
     }
 
     fn migration_table_name() -> DynIden {

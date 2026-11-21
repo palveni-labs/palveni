@@ -154,6 +154,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/libraries/{id}/music": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Browse the album artists, albums and tracks in a music library. */
+        get: operations["browseMusic"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/libraries/{id}/scan": {
         parameters: {
             query?: never;
@@ -662,6 +679,33 @@ export interface components {
             /** @constant */
             tokenType: "Bearer";
             user: components["schemas"]["User"];
+        };
+        MusicEntry: {
+            id: string;
+            /** @enum {string} */
+            kind: "artist";
+            name: string | null;
+        } | {
+            id: string;
+            /** @enum {string} */
+            kind: "album";
+            name: string | null;
+        } | {
+            artist: string | null;
+            /** Format: int32 */
+            discNumber: number | null;
+            /** Format: int64 */
+            durationMs: number | null;
+            id: components["schemas"]["ItemId"];
+            /** @enum {string} */
+            kind: "track";
+            title: string;
+            /** Format: int32 */
+            trackNumber: number | null;
+        };
+        MusicPage: {
+            entries: components["schemas"]["MusicEntry"][];
+            nextCursor: string | null;
         };
         /** @enum {string} */
         PerfTier: "tiny" | "lite" | "standard" | "performance";
@@ -1450,6 +1494,80 @@ export interface operations {
             /** @description Forbidden */
             403: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    browseMusic: {
+        parameters: {
+            query?: {
+                artist?: string;
+                album?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MusicPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
                     [name: string]: unknown;
                 };
                 content: {

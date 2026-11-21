@@ -7,6 +7,7 @@ export type ItemKind = Schemas["ItemKind"];
 export type Role = Schemas["Role"];
 export type User = Schemas["User"];
 export type Library = Schemas["Library"];
+export type MusicPage = Schemas["MusicPage"];
 export type Item = Schemas["Item"];
 export type JobState = Schemas["JobState"];
 export type JobSubject = Schemas["JobSubject"];

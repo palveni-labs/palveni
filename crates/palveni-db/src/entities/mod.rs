@@ -23,6 +23,7 @@ pub mod library_paths;
 pub mod sessions;
 pub mod settings;
 pub mod sync_state;
+pub mod track_metadata;
 pub mod users;
 
 // Ops store: high-churn operational data, never joined with the catalog.

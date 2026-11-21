@@ -163,6 +163,22 @@ check "runtime overrides can be cleared" "$STATUS $(field '.serverName == null a
 echo "Libraries"
 mkdir -p "$MEDIA/Album A" "$MEDIA/Album B/Disc 1" "$MEDIA/空文件夹"
 for i in 1 2 3; do : > "$MEDIA/Album A/track $i.flac"; : > "$MEDIA/Album B/Disc 1/歌曲 $i.mp3"; done
+# A 50 ms mono silent FLAC with Vorbis comments; no media tools are needed on the test runner.
+python3 - "$MEDIA/Album A" <<'PY'
+import pathlib, struct, sys
+root = pathlib.Path(sys.argv[1])
+info = bytes.fromhex("0240024000000d00000d01f400f0000001906b431bf2da7c9312b3e5c21e67f6591b")
+frame = bytes.fromhex("fff8740800018f240000007d5f")
+def field_bytes(data):
+    return struct.pack("<I", len(data)) + data
+for num, title in enumerate(("First Light", "Interlude", "Coda"), 1):
+    fields = [f"TITLE={title}", "ARTIST=Guest Quartet", "ALBUMARTIST=North Ensemble",
+              "ALBUM=Early Sessions", "DISCNUMBER=1", f"TRACKNUMBER={num}"]
+    tags = field_bytes(b"Palveni") + struct.pack("<I", len(fields))
+    tags += b"".join(field_bytes(value.encode()) for value in fields)
+    (root / f"track {num}.flac").write_bytes(
+        b"fLaC\0\0\0\x22" + info + b"\x84" + len(tags).to_bytes(3, "big") + tags + frame)
+PY
 : > "$MEDIA/notes.txt"
 
 req POST /libraries '{"name":"相对路径","kind":"music","paths":["relative/path"]}'
@@ -212,6 +228,22 @@ check "unknown parent is 404" "$STATUS $(field .error.code)" "404 not_found"
 req GET "/items?libraryId=$LIB&limit=0"
 check "limit 0 is rejected" "$STATUS $(field .error.code)" "400 validation_failed"
 
+req GET "/libraries/$LIB/music"
+check "tagged album artist and untagged group are browsable" "$STATUS $(field '[.entries[].name] | index("North Ensemble") != null and index(null) != null')" "200 true"
+ARTIST=$(field '.entries[] | select(.name=="North Ensemble") | .id')
+req GET "/libraries/$LIB/music?artist=$ARTIST"
+check "album groups use the album artist" "$STATUS $(field '.entries[0].name')" "200 Early Sessions"
+ALBUM=$(field '.entries[0].id')
+req GET "/libraries/$LIB/music?artist=$ARTIST&album=$ALBUM&limit=2"
+check "tracks expose performer, disc, track and audio duration" "$(field '.entries[0] | [.kind,.title,.artist,.discNumber,.trackNumber,.durationMs] | join("|")')" "track|First Light|Guest Quartet|1|1|50"
+MUSIC_CURSOR=$(field .nextCursor)
+req GET "/libraries/$LIB/music?artist=$ARTIST&album=$ALBUM&limit=2&cursor=$MUSIC_CURSOR"
+check "music pagination preserves track order" "$STATUS $(field '.entries[0].title') $(field .nextCursor)" "200 Coda null"
+req GET "/libraries/$LIB/music?cursor=$MUSIC_CURSOR"
+check "music cursor belongs to its original group" "$STATUS $(field .error.details.field)" "400 cursor"
+req GET "/libraries/$LIB/music?album=$ALBUM"
+check "albums require their artist" "$STATUS $(field .error.details.field)" "400 artist"
+
 # ---------------------------------------------------------------- change detection
 echo "Change detection"
 req POST "/libraries/$LIB/scan"; wait_for_job "$(field .jobId)"
@@ -221,6 +253,9 @@ check "rescan finds nothing to do" \
 rm "$MEDIA/Album A/track 3.flac"
 req POST "/libraries/$LIB/scan"; wait_for_job "$(field .jobId)"
 check "deleted file is removed from the index" "$(printf '%s' "$JOB" | jq -r '.step.params.removed')" "1"
+
+req GET "/libraries/$LIB/music?artist=$ARTIST&album=$ALBUM"
+check "removed track disappears from its album" "$(field '[.entries[].title] | join(",")')" "First Light,Interlude"
 
 # ---------------------------------------------------------------- offline protection
 echo "Unavailable library root"

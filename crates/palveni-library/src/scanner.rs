@@ -158,6 +158,8 @@ impl ScanSummary {
 pub enum ScanError {
     #[error("library not found")]
     LibraryNotFound,
+    #[error("reading music metadata: {0}")]
+    Metadata(String),
     #[error("scan cancelled")]
     Cancelled,
     #[error("none of the library's paths could be read")]
@@ -283,6 +285,7 @@ impl Scanner {
 
         let mut walk = WalkOutcome::default();
         let mut walked_any = false;
+        let mut roots = Vec::new();
         for root in &library.paths {
             if observer.is_cancelled() {
                 return Err(ScanError::Cancelled);
@@ -290,6 +293,7 @@ impl Scanner {
             match LocalStorage::open(Path::new(root)).await {
                 Ok(storage) => {
                     walk_root(&storage, library.kind, observer, &mut walk).await?;
+                    roots.push(storage);
                     walked_any = true;
                 }
                 Err(err) => {
@@ -315,13 +319,28 @@ impl Scanner {
         let total = plan.upserts.len() + plan.tombstones.len();
         let mut done = 0usize;
         report_writes(observer, done, total);
-        for chunk in plan.upserts.chunks(BATCH_SIZE) {
+        let music = library.kind == LibraryKind::Music;
+        let batch_size = if music { 64 } else { BATCH_SIZE };
+        let roots = std::sync::Arc::new(roots);
+        for chunk in plan.upserts.chunks(batch_size) {
             if observer.is_cancelled() {
                 return Err(ScanError::Cancelled);
             }
+            let tagged;
+            let rows = if music {
+                let roots = roots.clone();
+                let batch = chunk.to_vec();
+                tagged =
+                    tokio::task::spawn_blocking(move || crate::tags::read_batch(&roots, batch))
+                        .await
+                        .map_err(|e| ScanError::Metadata(e.to_string()))??;
+                tagged.as_slice()
+            } else {
+                chunk
+            };
             self.db
                 .items()
-                .apply_scan_batch(library_id, chunk, &[])
+                .apply_scan_batch(library_id, rows, &[])
                 .await?;
             done += chunk.len();
             report_writes(observer, done, total);
@@ -478,6 +497,7 @@ fn plan_changes(walk: WalkOutcome, existing: Vec<IndexedItem>) -> ChangePlan {
             .is_some_and(|e| !e.deleted && e.kind == ItemKind::Folder && e.parent_id == parent_id);
         if !unchanged {
             upserts.push(ItemUpsert {
+                music: None,
                 id,
                 parent_id,
                 kind: ItemKind::Folder,
@@ -492,12 +512,15 @@ fn plan_changes(walk: WalkOutcome, existing: Vec<IndexedItem>) -> ChangePlan {
     }
 
     for file in &walk.files {
-        seen.insert(file.path.as_str());
+        if !seen.insert(file.path.as_str()) {
+            continue;
+        }
         let parent_id = parent_id_of(&file.parent);
         let existing = by_path.get(file.path.as_str()).copied();
         let id = match existing {
             Some(e)
                 if !e.deleted
+                    && (file.kind != ItemKind::Track || e.music_indexed)
                     && e.kind == file.kind
                     && e.parent_id == parent_id
                     && e.size_bytes == file.size
@@ -521,6 +544,7 @@ fn plan_changes(walk: WalkOutcome, existing: Vec<IndexedItem>) -> ChangePlan {
         };
         let title = title_for_file(&file.name);
         upserts.push(ItemUpsert {
+            music: None,
             id,
             parent_id,
             kind: file.kind,
@@ -569,6 +593,7 @@ mod tests {
             size_bytes: size,
             modified_at: modified,
             deleted: false,
+            music_indexed: true,
         }
     }
 

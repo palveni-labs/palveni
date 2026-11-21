@@ -1,11 +1,9 @@
-//! Storage providers and library scanning.
-//!
-//! Each recognised local media file becomes a leaf item. Its containing
-//! directories are indexed as folders.
+//! Storage providers, media discovery and incremental audio tag indexing.
 
 pub mod classify;
 pub mod local;
 pub mod scanner;
+mod tags;
 
 pub use local::LocalStorage;
 pub use scanner::{

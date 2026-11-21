@@ -3,6 +3,7 @@ pub mod events;
 pub mod items;
 pub mod jobs;
 pub mod libraries;
+pub mod music;
 pub mod plugins;
 pub mod settings;
 pub mod skins;

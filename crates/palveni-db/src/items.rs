@@ -79,11 +79,13 @@ pub struct IndexedItem {
     pub size_bytes: Option<i64>,
     pub modified_at: Option<i64>,
     pub deleted: bool,
+    pub music_indexed: bool,
 }
 
 /// An item to insert or update during a scan, keyed by `(library, path)`.
 #[derive(Clone, Debug)]
 pub struct ItemUpsert {
+    pub music: Option<palveni_core::music::TrackTags>,
     pub id: ItemId,
     pub parent_id: Option<ItemId>,
     pub kind: ItemKind,
@@ -180,6 +182,7 @@ impl Items<'_> {
             .filter(items::Column::Path.is_not_null())
             .all(self.db.main())
             .await?;
+        let indexed = self.db.music().indexed_item_ids(library_id).await?;
         let mut out = Vec::with_capacity(rows.len());
         for row in rows {
             let Some(path) = row.path else { continue };
@@ -191,6 +194,7 @@ impl Items<'_> {
                 size_bytes: row.size_bytes,
                 modified_at: row.modified_at,
                 deleted: row.deleted_at.is_some(),
+                music_indexed: indexed.contains(&row.id),
             });
         }
         Ok(out)
@@ -240,6 +244,7 @@ impl Items<'_> {
                 .await?;
         }
 
+        crate::music::update(&txn, library_id, upserts, tombstones).await?;
         txn.commit().await?;
         Ok(())
     }
@@ -339,6 +344,7 @@ mod tests {
         use sea_orm::{DbBackend, QueryTrait};
 
         let rows = [ItemUpsert {
+            music: None,
             id: ItemId::generate(),
             parent_id: None,
             kind: ItemKind::Track,

@@ -62,6 +62,17 @@ impl LocalStorage {
         &self.root
     }
 
+    pub(crate) fn open_file_blocking(&self, path: &StoragePath) -> Result<std::fs::File> {
+        let resolved = self.resolve(path)?;
+        if !std::fs::metadata(&resolved)
+            .map_err(|e| map_io(e, &resolved))?
+            .is_file()
+        {
+            return Err(Error::invalid("expected a regular audio file"));
+        }
+        std::fs::File::open(&resolved).map_err(|e| map_io(e, &resolved))
+    }
+
     /// Resolves a storage path to a canonical host path inside the root.
     fn resolve(&self, path: &StoragePath) -> Result<PathBuf> {
         let mut joined = self.root.clone();

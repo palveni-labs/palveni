@@ -13,6 +13,7 @@ import { errorText } from "@/lib/errors";
 import { formatPercent } from "@/lib/format";
 import { readLocal, writeLocal } from "@/lib/storage";
 import { useSlot } from "@/skins/scope";
+import { useFeature } from "@/modules/access";
 import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { Section } from "@/ui/section";
@@ -20,6 +21,7 @@ import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import { LibraryMeta } from "../library-meta";
 import { useLibraryScan } from "../use-library-scan";
 import { ItemDetailsSheet } from "./item-details-sheet";
+import { MusicBrowse } from "./music-browse";
 import { ItemGrid, ItemList } from "./item-views";
 
 type ViewMode = "grid" | "list";
@@ -349,7 +351,8 @@ function BrowseBody({ library, parentId }: { library: Library; parentId: string 
 export function LibraryBrowsePage() {
   const { t } = useTranslation();
   const { libraryId } = useParams({ from: "/_app/library/$libraryId" });
-  const { parent } = useSearch({ from: "/_app/library/$libraryId" });
+  const musicEnabled = useFeature("music");
+  const { parent, view } = useSearch({ from: "/_app/library/$libraryId" });
   const libraryQuery = useLibrary(libraryId);
   const library = libraryQuery.data;
 
@@ -377,8 +380,15 @@ export function LibraryBrowsePage() {
   return (
     <PageFrame>
       <BrowseHeader library={library} />
-      {/* A folder is its own view: leaving it ends the selection, which only covers files on screen. */}
-      <BrowseBody key={`${library.id}:${parent ?? ""}`} library={library} parentId={parent ?? null} />
+      {musicEnabled && library.kind === "music" && (
+        <nav aria-label={t("music.browse")} className="flex flex-wrap gap-2">
+          <Link to="/library/$libraryId" params={{ libraryId }} search={{}} aria-current={view !== "music" ? "page" : undefined} className={buttonVariants({ variant: view !== "music" ? "secondary" : "ghost", size: "sm" })}>{t("browse.files")}</Link>
+          <Link to="/library/$libraryId" params={{ libraryId }} search={{ view: "music" }} aria-current={view === "music" ? "page" : undefined} className={buttonVariants({ variant: view === "music" ? "secondary" : "ghost", size: "sm" })}>{t("music.artists")}</Link>
+        </nav>
+      )}
+      {view === "music" && musicEnabled && library.kind === "music"
+        ? <MusicBrowse libraryId={libraryId} />
+        : <BrowseBody key={`${library.id}:${parent ?? ""}`} library={library} parentId={parent ?? null} />}
     </PageFrame>
   );
 }

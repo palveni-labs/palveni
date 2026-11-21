@@ -30,6 +30,7 @@ pub mod health;
 pub mod items;
 pub mod jobs;
 pub mod libraries;
+pub mod music;
 pub mod plugin_kv;
 pub mod sessions;
 pub mod settings;
@@ -180,6 +181,10 @@ impl Db {
 
     pub fn libraries(&self) -> libraries::Libraries<'_> {
         libraries::Libraries { db: self }
+    }
+
+    pub fn music(&self) -> music::Music<'_> {
+        music::Music { db: self }
     }
 
     pub fn items(&self) -> items::Items<'_> {

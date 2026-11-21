@@ -209,6 +209,18 @@
     "notScannedHint": "Scan it to browse",
     "folders": "Folders"
   },
+  "music": {
+    "browse": "Browse music",
+    "artists": "Album artists",
+    "albums": "Albums",
+    "tracks": "Tracks",
+    "unknownArtist": "Unknown artist",
+    "unknownAlbum": "Unknown album",
+    "empty": "No music here yet",
+    "scanHint": "Scan the library to read the audio tags.",
+    "more": "Load more",
+    "disc": "Disc {{number}}"
+  },
   "browse": {
     "root": "All files",
     "view": "View",

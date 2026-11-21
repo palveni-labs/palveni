@@ -141,6 +141,22 @@ fn parameters(cap: &Capability) -> Vec<Value> {
         }
     }
     match cap.id {
+        "browseMusic" => {
+            for name in ["artist", "album"] {
+                params.push(parameter(
+                    name,
+                    "query",
+                    false,
+                    json!({"type":"string","pattern":"^[0-9a-f]{64}$"}),
+                ));
+            }
+            params.push(parameter(
+                "cursor",
+                "query",
+                false,
+                json!({"type":"string"}),
+            ));
+        }
         "listItems" => {
             params.extend([
                 parameter(
@@ -173,7 +189,7 @@ fn parameters(cap: &Capability) -> Vec<Value> {
         )),
         _ => (),
     }
-    if matches!(cap.id, "listItems" | "listJobs") {
+    if matches!(cap.id, "listItems" | "listJobs" | "browseMusic") {
         params.push(parameter("limit","query",false,json!({"type":"integer","minimum":1,"default":50,"description":"Values above 200 are clamped to 200."})));
     }
     params

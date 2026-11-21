@@ -12,6 +12,7 @@ pub mod events;
 pub mod features;
 pub mod ids;
 pub mod model;
+pub mod music;
 pub mod perf;
 pub mod settings;
 pub mod storage;

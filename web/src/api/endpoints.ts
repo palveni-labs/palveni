@@ -6,6 +6,7 @@ import type {
   HealthResponse,
   Item,
   ItemListParams,
+  MusicPage,
   ItemPage,
   JobList,
   Library,
@@ -59,6 +60,10 @@ export const api = {
         },
       }),
     get: (id: string, signal?: AbortSignal) => request<Item>(`/items/${enc(id)}`, { signal }),
+  },
+  music: {
+    browse: (libraryId: string, artist: string | undefined, album: string | undefined, cursor: string | null, signal?: AbortSignal) =>
+      request<MusicPage>(`/libraries/${enc(libraryId)}/music`, { signal, query: { artist, album, cursor } }),
   },
   jobs: {
     list: (limit?: number, signal?: AbortSignal) => request<JobList>("/jobs", { signal, query: { limit } }),

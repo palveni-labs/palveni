@@ -10,6 +10,7 @@ license.workspace = true
 [dependencies]
 palveni-core.workspace = true
 palveni-db.workspace = true
+lofty.workspace = true
 async-trait.workspace = true
 serde.workspace = true
 thiserror.workspace = true

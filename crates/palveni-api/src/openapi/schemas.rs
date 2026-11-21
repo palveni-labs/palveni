@@ -86,6 +86,7 @@ use crate::routes::{
     plugins::PluginList,
     system::{Health, SystemInfo},
 };
+use palveni_core::music::{MusicEntry, MusicPage};
 use palveni_core::{
     Item, ItemKind, Job, Library, User, features::Capability, settings::RuntimeSettings,
 };
@@ -107,6 +108,8 @@ use utoipa::OpenApi;
     Library,
     ScanAccepted,
     ItemList,
+    MusicEntry,
+    MusicPage,
     Item,
     ItemKind,
     JobList,

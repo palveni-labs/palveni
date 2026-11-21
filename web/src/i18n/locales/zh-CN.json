@@ -200,6 +200,18 @@
     "notScannedHint": "扫描之后才能浏览",
     "folders": "文件夹"
   },
+  "music": {
+    "browse": "浏览音乐",
+    "artists": "专辑艺人",
+    "albums": "专辑",
+    "tracks": "曲目",
+    "unknownArtist": "未知艺人",
+    "unknownAlbum": "未知专辑",
+    "empty": "这里还没有音乐",
+    "scanHint": "扫描媒体库以读取音频标签。",
+    "more": "加载更多",
+    "disc": "第 {{number}} 碟"
+  },
   "browse": {
     "root": "全部文件",
     "view": "显示方式",

@@ -42,7 +42,7 @@ pub const ENV_OPS_DATABASE_URL: &str = "PALVENI_TEST_OPS_DATABASE_URL";
 
 /// Every table the migrations create, children before parents so they can
 /// be dropped in this order on backends that enforce foreign keys.
-const PALVENI_TABLES: [&str; 13] = [
+const PALVENI_TABLES: [&str; 14] = [
     // ops store
     "plugin_kv",
     "audit_log",
@@ -51,6 +51,7 @@ const PALVENI_TABLES: [&str; 13] = [
     // main store
     "sync_state",
     "settings",
+    "track_metadata",
     "items",
     "library_paths",
     "libraries",
@@ -199,6 +200,7 @@ async fn drop_palveni_tables(conn: &DatabaseConnection) {
 
 fn track(name: &str, path: &str, parent: Option<ItemId>, size: i64) -> ItemUpsert {
     ItemUpsert {
+        music: None,
         id: ItemId::generate(),
         parent_id: parent,
         kind: ItemKind::Track,
@@ -213,6 +215,7 @@ fn track(name: &str, path: &str, parent: Option<ItemId>, size: i64) -> ItemUpser
 
 fn folder(name: &str, path: &str, parent: Option<ItemId>) -> ItemUpsert {
     ItemUpsert {
+        music: None,
         id: ItemId::generate(),
         parent_id: parent,
         kind: ItemKind::Folder,
@@ -859,5 +862,118 @@ async fn conformance_setup_and_dedupe_races() {
         ids.insert(task.await.unwrap().unwrap().record.job.id);
     }
     assert_eq!(ids.len(), 1);
+    h.finish().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn conformance_music_backfill_pagination_and_removal() {
+    use crate::music::MusicCursor;
+    use palveni_core::music::{MusicEntry, TrackTags};
+
+    let h = Harness::new().await;
+    let db = &h.db;
+    let library = new_library(db, "Recordings").await.id;
+    let other = new_library(db, "Other recordings").await.id;
+    let mut second = track("second", "/media/02.flac", None, 16);
+    db.items()
+        .apply_scan_batch(library, &[second.clone()], &[])
+        .await
+        .unwrap();
+    assert!(!db.items().scan_index(library).await.unwrap()[0].music_indexed);
+    let mut first = track("first", "/media/01.flac", None, 20);
+    first.music = Some(TrackTags {
+        artist: Some("Guest".into()),
+        album_artist: Some("Ensemble".into()),
+        album: Some("Sessions".into()),
+        title: Some("Overture".into()),
+        track_number: Some(1),
+        disc_number: Some(1),
+        ..Default::default()
+    });
+    second.music = Some(TrackTags {
+        track_number: Some(2),
+        ..first.music.clone().unwrap()
+    });
+    db.items()
+        .apply_scan_batch(library, &[second.clone(), first.clone()], &[])
+        .await
+        .unwrap();
+    assert!(
+        db.items()
+            .scan_index(library)
+            .await
+            .unwrap()
+            .iter()
+            .all(|i| i.music_indexed)
+    );
+    let artists = db
+        .music()
+        .browse(library, None, None, 10, None)
+        .await
+        .unwrap();
+    let artists = serde_json::to_value(artists).unwrap();
+    let groups = artists["entries"].as_array().unwrap();
+    assert_eq!(groups.len(), 1);
+    assert_eq!(groups[0]["kind"], "artist");
+    assert_eq!(groups[0]["name"], "Ensemble");
+    let artist = groups[0]["id"].as_str().unwrap();
+    let albums = db
+        .music()
+        .browse(library, Some(artist), None, 10, None)
+        .await
+        .unwrap();
+    let albums = serde_json::to_value(albums).unwrap();
+    let groups = albums["entries"].as_array().unwrap();
+    assert_eq!(groups.len(), 1);
+    assert_eq!(groups[0]["kind"], "album");
+    assert_eq!(groups[0]["name"], "Sessions");
+    let album = groups[0]["id"].as_str().unwrap();
+    let page = db
+        .music()
+        .browse(library, Some(artist), Some(album), 1, None)
+        .await
+        .unwrap();
+    assert!(
+        matches!(&page.entries[..], [MusicEntry::Track{id,artist:Some(artist),..}] if *id == first.id && artist == "Guest")
+    );
+    let raw = page.next_cursor.unwrap();
+    assert!(MusicCursor::decode(&raw, other, Some(artist), Some(album)).is_none());
+    let cursor = MusicCursor::decode(&raw, library, Some(artist), Some(album)).unwrap();
+    let page = db
+        .music()
+        .browse(library, Some(artist), Some(album), 1, Some(cursor))
+        .await
+        .unwrap();
+    assert!(matches!(page.entries[..], [MusicEntry::Track{id,..}] if id == second.id));
+    assert!(page.next_cursor.is_none());
+    second.music.as_mut().unwrap().album = Some("Encore".into());
+    db.items()
+        .apply_scan_batch(library, &[second], &[first.id])
+        .await
+        .unwrap();
+    assert!(
+        db.music()
+            .browse(library, Some(artist), Some(album), 10, None)
+            .await
+            .unwrap()
+            .entries
+            .is_empty()
+    );
+    assert!(
+        db.music()
+            .browse(other, None, None, 10, None)
+            .await
+            .unwrap()
+            .entries
+            .is_empty()
+    );
+    db.libraries().delete(library).await.unwrap();
+    assert!(
+        db.music()
+            .indexed_item_ids(library)
+            .await
+            .unwrap()
+            .is_empty()
+    );
     h.finish().await;
 }
