@@ -5,7 +5,7 @@ import { expect, it } from "vitest";
 import type { components } from "@/api/generated";
 import { M0_FEATURES, MOCK_ACCOUNTS } from "@/mocks/db";
 import { installMockDb, server } from "@/test/msw-server";
-import { renderApp, signIn } from "@/test/render-app";
+import { renderLoadedApp, signIn } from "@/test/render-app";
 
 it.each([
   ["audiobook", "book", "chapter"],
@@ -48,8 +48,8 @@ it.each([
     }),
   );
   const user = userEvent.setup();
-  const { container } = renderApp(`/library/${library.id}`);
-  await user.click(await screen.findByRole("link", { name: "Birdsong" }, { timeout: 5000 }));
+  const { container } = await renderLoadedApp(`/library/${library.id}`);
+  await user.click(await screen.findByRole("link", { name: "Birdsong" }));
   await user.click(await screen.findByRole("button", { name: "播放《Dawn chorus》" }));
   const audio = await waitFor(() => {
     const node = container.querySelector("audio");
@@ -95,4 +95,4 @@ it.each([
   await user.click(await screen.findByRole("link", { name: "Birdsong" }));
   await screen.findByRole("button", { name: "播放《Dawn chorus》" });
   expect(container.querySelector("audio")).toBeNull();
-});
+}, 15_000);

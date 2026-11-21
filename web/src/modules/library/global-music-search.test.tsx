@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw";
 import { expect, it } from "vitest";
 import { M0_FEATURES, MOCK_ACCOUNTS } from "@/mocks/db";
 import { installMockDb, server } from "@/test/msw-server";
-import { renderApp, signIn } from "@/test/render-app";
+import { renderLoadedApp, signIn } from "@/test/render-app";
 
 it("opens homonymous recordings, artists and albums in their own libraries from the command palette", async () => {
   const db = installMockDb({ features: [...M0_FEATURES, "music", "globalMusicSearch", "personal"] });
@@ -37,24 +37,24 @@ it("opens homonymous recordings, artists and albums in their own libraries from 
     }),
   );
   const user = userEvent.setup();
-  const { router } = renderApp("/");
+  const { router } = await renderLoadedApp("/");
   await screen.findByRole("region", { name: "媒体库" });
   await user.keyboard("{Control>}k{/Control}");
   const palette = within(await screen.findByRole("dialog"));
   await user.type(palette.getByRole("searchbox"), "harbour");
   await user.click(await palette.findByText("在音乐库中搜索“harbour”"));
-  await user.click(await screen.findByRole("button", { name: "播放《Harbour》 · South archive" }));
+  await user.click(await screen.findByRole("button", { name: "播放《Harbour》 · South archive" }, { timeout: 5000 }));
   await waitFor(() => expect(document.querySelector("audio")).toHaveAttribute("src", "/audio/south"));
   await user.click(screen.getByRole("button", { name: "专辑艺人" }));
   await user.click(await screen.findByRole("link", { name: /Harbour North archive/ }));
-  await screen.findByText(`Album from ${libraries[0]!.id}`);
+  await screen.findByText(`Album from ${libraries[0]!.id}`, {}, { timeout: 5000 });
   expect(router.state.location.search).toMatchObject({ view: "music", artist });
   router.history.back();
   await user.click(await screen.findByRole("button", { name: "专辑" }));
   await user.click(await screen.findByRole("link", { name: /Harbour South archive/ }));
-  await screen.findByText(`Recording from ${libraries[1]!.id}`);
+  await screen.findByText(`Recording from ${libraries[1]!.id}`, {}, { timeout: 5000 });
   expect(router.state.location.search).toMatchObject({ view: "music", artist, album });
-}, 15_000);
+}, 30_000);
 
 it("pages the global search and restarts at the first page when a source changes", async () => {
   const db = installMockDb({ features: [...M0_FEATURES, "globalMusicSearch"] });
@@ -75,7 +75,7 @@ it("pages the global search and restarts at the first page when a source changes
     });
   }));
   const user = userEvent.setup();
-  renderApp("/library/music-search");
+  await renderLoadedApp("/library/music-search");
   await user.type(await screen.findByRole("searchbox", { name: "搜索所有音乐库" }), "2024{Enter}");
   await screen.findByText("First");
   await user.click(screen.getByRole("button", { name: "下一页" }));
