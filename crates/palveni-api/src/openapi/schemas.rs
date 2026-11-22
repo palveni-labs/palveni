@@ -119,7 +119,8 @@ use palveni_core::spoken::{
     SpokenChapter, SpokenChapterList, SpokenEntry, SpokenPage, SpokenRecording,
 };
 use palveni_core::video::{
-    SubtitleFormat, SubtitleList, SubtitleTrack, VideoEntry, VideoKind, VideoPage,
+    SubtitleFormat, SubtitleList, SubtitleTrack, VideoEntry, VideoFile, VideoGenre, VideoGenreList,
+    VideoHome, VideoKind, VideoPage, VideoPerson, VideoPersonKind, VideoUserState, VideoWorkDetail,
 };
 use palveni_core::{
     Item, ItemKind, Job, Library, User, features::Capability, settings::RuntimeSettings,
@@ -146,8 +147,16 @@ use utoipa::OpenApi;
     SpokenPage,
     SpokenRecording,
     VideoEntry,
+    VideoFile,
+    VideoGenre,
+    VideoGenreList,
+    VideoHome,
     VideoKind,
     VideoPage,
+    VideoPerson,
+    VideoPersonKind,
+    VideoUserState,
+    VideoWorkDetail,
     SubtitleList,
     SubtitleTrack,
     SubtitleFormat,

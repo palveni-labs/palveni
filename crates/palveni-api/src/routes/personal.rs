@@ -152,6 +152,32 @@ pub async fn progress(
     ))
 }
 
+pub async fn mark_played(
+    user: CurrentUser,
+    State(state): State<AppState>,
+    path: IdPath,
+) -> Result<StatusCode, ApiError> {
+    state
+        .db
+        .personal()
+        .update(user.user.id, media_id(path)?, MediaChange::Played(true))
+        .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn mark_unplayed(
+    user: CurrentUser,
+    State(state): State<AppState>,
+    path: IdPath,
+) -> Result<StatusCode, ApiError> {
+    state
+        .db
+        .personal()
+        .update(user.user.id, media_id(path)?, MediaChange::Played(false))
+        .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub async fn list(
     user: CurrentUser,
     State(state): State<AppState>,

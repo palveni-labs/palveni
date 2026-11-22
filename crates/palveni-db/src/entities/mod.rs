@@ -39,7 +39,10 @@ pub mod track_genres;
 pub mod track_loudness;
 pub mod track_metadata;
 pub mod users;
+pub mod video_favorites;
+pub mod video_genres;
 pub mod video_metadata;
+pub mod video_people;
 
 // Ops store: high-churn operational data, never joined with the catalog.
 pub mod audit_log;

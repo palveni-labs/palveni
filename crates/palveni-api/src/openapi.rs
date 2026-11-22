@@ -226,10 +226,58 @@ fn parameters(cap: &Capability) -> Vec<Value> {
                     json!({"type":"string","enum":["movie","series"],"description":"Restrict the works list to films or series."}),
                 ));
                 params.push(parameter(
+                    "genre",
+                    "query",
+                    false,
+                    json!({"type":"string","maxLength":128,"description":"Filter works by genre name (case-insensitive)."}),
+                ));
+                params.push(parameter(
+                    "yearFrom",
+                    "query",
+                    false,
+                    json!({"type":"integer","minimum":1000,"maximum":9999}),
+                ));
+                params.push(parameter(
+                    "yearTo",
+                    "query",
+                    false,
+                    json!({"type":"integer","minimum":1000,"maximum":9999}),
+                ));
+                params.push(parameter(
+                    "played",
+                    "query",
+                    false,
+                    json!({"type":"boolean","description":"Filter works by watched state for the current user."}),
+                ));
+                params.push(parameter(
+                    "favorite",
+                    "query",
+                    false,
+                    json!({"type":"boolean","description":"Filter works by favorite state for the current user."}),
+                ));
+                params.push(parameter(
+                    "startsWith",
+                    "query",
+                    false,
+                    json!({"type":"string","pattern":"^([A-Za-z]|#)$","description":"Single Latin letter A-Z (case-insensitive) or # for titles not starting with a Latin letter."}),
+                ));
+                params.push(parameter(
                     "order",
                     "query",
                     false,
-                    json!({"type":"string","enum":["title","poster"],"description":"Works default to title order. Poster order puts works with a local poster first and is available only on the works list."}),
+                    json!({"type":"string","enum":["title","poster","year","added","rating","runtime","random"],"description":"Works default to title order. Non-title orders apply only to the works list."}),
+                ));
+                params.push(parameter(
+                    "dir",
+                    "query",
+                    false,
+                    json!({"type":"string","enum":["asc","desc"]}),
+                ));
+                params.push(parameter(
+                    "seed",
+                    "query",
+                    false,
+                    json!({"type":"string","maxLength":64,"description":"Deterministic seed for order=random pagination."}),
                 ));
                 params.push(parameter(
                     "season",
@@ -248,11 +296,31 @@ fn parameters(cap: &Capability) -> Vec<Value> {
                 json!({"type":"integer","minimum":1,"maximum":200}),
             ));
         }
-        "getVideoPoster" => params.push(parameter(
-            "level",
+        "getVideoHome" => params.push(parameter(
+            "libraryId",
             "query",
             false,
-            json!({"enum":["work","season","episode"]}),
+            json!({"type":"string","format":"uuid"}),
+        )),
+        "getVideoPoster" => {
+            params.push(parameter(
+                "level",
+                "query",
+                false,
+                json!({"enum":["work","season","episode"]}),
+            ));
+            params.push(parameter(
+                "size",
+                "query",
+                false,
+                json!({"type":"integer","minimum":1,"maximum":3840}),
+            ));
+        }
+        "getVideoBackdrop" | "getVideoThumb" | "getVideoPersonImage" => params.push(parameter(
+            "size",
+            "query",
+            false,
+            json!({"type":"integer","minimum":1,"maximum":3840}),
         )),
         "browseConnection" => {
             params.push(parameter(
@@ -610,7 +678,12 @@ mod tests {
             .unwrap();
         assert_eq!(order["in"], "query");
         assert_eq!(order["required"], false);
-        assert_eq!(order["schema"]["enum"], json!(["title", "poster"]));
+        assert_eq!(
+            order["schema"]["enum"],
+            json!([
+                "title", "poster", "year", "added", "rating", "runtime", "random"
+            ])
+        );
     }
 
     #[test]

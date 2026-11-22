@@ -29,6 +29,7 @@ pub enum MediaChange {
     Scrobble { at: i64, submitted: bool },
     Rating(i32),
     Progress(PlaybackUpdate),
+    Played(bool),
 }
 
 async fn load(
@@ -76,6 +77,104 @@ struct ListedItem {
     library_id: String,
     kind: String,
     title: String,
+}
+
+fn apply_played(row: &mut state::Model, played: bool, revision: i64, now: i64) -> bool {
+    if played {
+        if row.completed
+            && row.position_ms == 0
+            && row.play_count > 0
+            && row.last_played_at.is_some()
+        {
+            return false;
+        }
+        row.previous_version = Some(row.playback_version);
+        row.playback_version = revision;
+        if !row.completed {
+            row.play_count = row.play_count.saturating_add(1);
+            row.last_played_at = Some(now);
+        } else {
+            if row.play_count == 0 {
+                row.play_count = 1;
+            }
+            if row.last_played_at.is_none() {
+                row.last_played_at = Some(now);
+            }
+        }
+        row.position_ms = 0;
+        row.completed = true;
+        true
+    } else {
+        if !row.completed
+            && row.position_ms == 0
+            && row.play_count == 0
+            && row.last_played_at.is_none()
+        {
+            return false;
+        }
+        row.previous_version = Some(row.playback_version);
+        row.playback_version = revision;
+        row.completed = false;
+        row.position_ms = 0;
+        row.play_count = 0;
+        row.last_played_at = None;
+        true
+    }
+}
+
+pub(crate) async fn apply_played_batch(
+    conn: &impl ConnectionTrait,
+    user: UserId,
+    item_ids: &[String],
+    played: bool,
+) -> Result<(), DbError> {
+    if item_ids.is_empty() {
+        return Ok(());
+    }
+    let user_id = user.to_string();
+    let revision = next_revision(conn).await?;
+    let now = now_ms();
+    let mut existing = std::collections::HashMap::new();
+    for chunk in item_ids.chunks(200) {
+        let rows = state::Entity::find()
+            .filter(C::UserId.eq(&user_id))
+            .filter(C::ItemId.is_in(chunk.iter().cloned()))
+            .all(conn)
+            .await?;
+        for row in rows {
+            existing.insert(row.item_id.clone(), row);
+        }
+    }
+    let mut inserts = Vec::new();
+    for item_id in item_ids {
+        if let Some(mut row) = existing.remove(item_id) {
+            if apply_played(&mut row, played, revision, now) {
+                let active: state::ActiveModel = row.into();
+                active.reset_all().update(conn).await?;
+            }
+        } else if played {
+            let mut row = state::Model {
+                user_id: user_id.clone(),
+                item_id: item_id.clone(),
+                favorite_order: None,
+                stars: 0,
+                position_ms: 0,
+                completed: false,
+                play_count: 0,
+                last_played_at: None,
+                playback_version: 0,
+                previous_version: None,
+            };
+            apply_played(&mut row, true, revision, now);
+            inserts.push(state::ActiveModel::from(row));
+        }
+    }
+    for chunk in inserts.chunks(200) {
+        state::Entity::insert_many(chunk.to_vec())
+            .exec_without_returning(conn)
+            .await?;
+    }
+    Ok(())
 }
 
 fn media_state(row: &state::Model) -> Result<MediaState, DbError> {
@@ -188,6 +287,11 @@ impl PersonalMedia<'_> {
                 row.completed = p.completed;
                 if p.completed {
                     row.play_count += 1;
+                }
+            }
+            MediaChange::Played(played) => {
+                if !apply_played(&mut row, played, revision, now_ms()) {
+                    return media_state(&row);
                 }
             }
         }

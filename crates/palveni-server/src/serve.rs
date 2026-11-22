@@ -84,11 +84,14 @@ pub async fn run(cli: &Cli) -> anyhow::Result<()> {
         bus.clone(),
         overrides.perf_tier.unwrap_or(tier).job_concurrency(),
     );
+    let ffmpeg_bin =
+        palveni_media::discovery::locate("ffmpeg", config.ffmpeg_path.as_deref()).map(|t| t.path);
+    let ffprobe_bin =
+        palveni_media::discovery::locate("ffprobe", config.ffmpeg_path.as_deref()).map(|t| t.path);
     let settings = Arc::new(tokio::sync::RwLock::new(overrides));
-    jobs.register(Arc::new(ScanJobHandler::new(Scanner::new(
-        db.clone(),
-        bus.clone(),
-    ))));
+    jobs.register(Arc::new(ScanJobHandler::new(
+        Scanner::new(db.clone(), bus.clone()).with_ffprobe(ffprobe_bin.clone()),
+    )));
 
     let monitor = tokio::spawn(crate::library_monitor::run(
         db.clone(),
@@ -153,6 +156,11 @@ pub async fn run(cli: &Cli) -> anyhow::Result<()> {
     let state = AppState {
         music_search: Arc::new(palveni_library::music_search::MusicSearch::new(
             config.data_dir.join("search"),
+        )),
+        video_images: Arc::new(palveni_library::video::VideoImages::new(
+            config.data_dir.join("cache").join("video"),
+            ffmpeg_bin,
+            ffprobe_bin,
         )),
         db: db.clone(),
         identity: Arc::new(identity),

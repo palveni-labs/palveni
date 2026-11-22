@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<episodedetails>
+    <title>Second Light</title>
+    <showtitle>Orbit Shift</showtitle>
+    <rating>7.0</rating>
+    <season>1</season>
+    <episode>2</episode>
+    <plot>The station loses power.</plot>
+    <credits>Ina Lund</credits>
+    <director>Ola Berg</director>
+    <aired>2014-04-13</aired>
+    <fileinfo>
+        <streamdetails>
+            <video>
+                <durationinseconds>1412</durationinseconds>
+            </video>
+        </streamdetails>
+    </fileinfo>
+</episodedetails>

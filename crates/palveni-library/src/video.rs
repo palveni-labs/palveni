@@ -1,9 +1,12 @@
 //! Local film and TV sidecars. Discovery uses the scanner's existing directory listing.
+mod images;
 mod nfo;
 mod recognition;
 pub mod subtitles;
 #[cfg(test)]
 mod tests;
+
+pub use images::{VideoImages, snap_size};
 
 use crate::classify::extension_of;
 use crate::{LocalStorage, ScanError, ScanObserver, ScanStep};
@@ -13,7 +16,7 @@ use palveni_core::{
 };
 use palveni_db::{
     Db,
-    video::{VideoMetadata, sidecar_fingerprint},
+    video::{VideoMetadata, VideoPersonInput, sidecar_fingerprint},
 };
 use std::collections::HashMap;
 use std::fmt::Write as _;
@@ -43,6 +46,8 @@ struct Sidecar {
 #[derive(Default, Debug)]
 struct Folder {
     files: HashMap<String, Sidecar>,
+    actors: HashMap<String, Sidecar>,
+    videos: HashMap<String, (u64, i64)>,
     films: usize,
 }
 
@@ -73,13 +78,21 @@ impl Inventory {
         entries: &[DirEntry],
     ) {
         let parent = PathBuf::from(storage.display_path(dir));
-        let mut folder = Folder::default();
+        let mut folder = self.folders.remove(&parent).unwrap_or_default();
         for entry in entries
             .iter()
             .filter(|e| e.kind == EntryKind::File && !crate::classify::is_ignored_name(&e.name))
         {
+            let modified = entry
+                .modified
+                .map(palveni_core::clock::to_millis)
+                .unwrap_or(0);
             if crate::classify::classify(palveni_core::LibraryKind::Video, &entry.name).is_some() {
                 folder.films += 1;
+                folder.videos.insert(
+                    entry.name.to_ascii_lowercase(),
+                    (entry.size.unwrap_or(0), modified),
+                );
             }
             if matches!(
                 extension_of(&entry.name).as_deref(),
@@ -94,22 +107,59 @@ impl Inventory {
                     Sidecar {
                         path: parent.join(&entry.name),
                         bytes,
-                        modified: entry
-                            .modified
-                            .map(palveni_core::clock::to_millis)
-                            .unwrap_or(0),
+                        modified,
                     },
                 );
             }
         }
-        if folder.films > 0 || !folder.files.is_empty() {
+        if folder.films > 0 || !folder.files.is_empty() || !folder.actors.is_empty() {
             self.folders.insert(parent, folder);
+        }
+    }
+
+    pub(crate) fn observe_actors(
+        &mut self,
+        storage: &LocalStorage,
+        parent_dir: &StoragePath,
+        actors_dir: &StoragePath,
+        entries: &[DirEntry],
+    ) {
+        let parent = PathBuf::from(storage.display_path(parent_dir));
+        let actors_root = PathBuf::from(storage.display_path(actors_dir));
+        let folder = self.folders.entry(parent).or_default();
+        for entry in entries
+            .iter()
+            .filter(|e| e.kind == EntryKind::File && !crate::classify::is_ignored_name(&e.name))
+        {
+            if !matches!(
+                extension_of(&entry.name).as_deref(),
+                Some("jpg" | "jpeg" | "png" | "webp")
+            ) {
+                continue;
+            }
+            let Some(bytes) = entry.size else { continue };
+            if bytes > MAX_POSTER {
+                continue;
+            }
+            let modified = entry
+                .modified
+                .map(palveni_core::clock::to_millis)
+                .unwrap_or(0);
+            folder.actors.insert(
+                entry.name.to_lowercase(),
+                Sidecar {
+                    path: actors_root.join(&entry.name),
+                    bytes,
+                    modified,
+                },
+            );
         }
     }
 
     fn candidate(&self, path: &Path, root: &Path) -> Option<Candidate> {
         let folder_path = path.parent()?;
         let folder = self.folders.get(folder_path)?;
+        let file_name = path.file_name()?.to_str()?;
         let stem = path.file_stem()?.to_str()?;
         let named_nfo = folder.file(&format!("{stem}.nfo"));
         let file_nfo = named_nfo
@@ -140,6 +190,25 @@ impl Inventory {
                     .then(|| folder.poster(&["poster", "movie-poster", "folder", "cover"]))
                     .flatten()
             });
+        let movie_backdrop = folder
+            .poster(&[
+                &format!("{stem}-fanart"),
+                &format!("{stem}-backdrop"),
+                &format!("{stem}-landscape"),
+            ])
+            .or_else(|| {
+                (folder.films == 1)
+                    .then(|| {
+                        folder.poster(&[
+                            "fanart",
+                            "backdrop",
+                            "landscape",
+                            "movie-fanart",
+                            "movie-backdrop",
+                        ])
+                    })
+                    .flatten()
+            });
         let marker_start = mark
             .map(|m| m.start)
             .or_else(|| recognition::episode_only(stem).map(|(start, _)| start));
@@ -154,9 +223,19 @@ impl Inventory {
                         .eq_ignore_ascii_case(&by_file)
                 })
         });
+        let owns_show_art = show_nfo.is_some() || season_folder.is_some() || folder_names_series;
         let show_poster = show_folder
-            .filter(|_| show_nfo.is_some() || season_folder.is_some() || folder_names_series)
+            .filter(|_| owns_show_art)
             .and_then(|d| d.poster(&["poster", "tvshow-poster", "folder", "cover"]));
+        let show_backdrop = show_folder.filter(|_| owns_show_art).and_then(|d| {
+            d.poster(&[
+                "fanart",
+                "backdrop",
+                "landscape",
+                "tvshow-fanart",
+                "tvshow-backdrop",
+            ])
+        });
         let season = season_folder.or(mark.map(|m| m.season));
         let season_poster = season
             .and_then(|s| {
@@ -169,9 +248,34 @@ impl Inventory {
                 })
             })
             .or_else(|| season_folder.and_then(|_| folder.poster(&["poster", "folder", "cover"])));
-        let episode_poster = folder.poster(&[&format!("{stem}-thumb"), &format!("{stem}-poster")]);
+        let episode_thumb = folder.poster(&[&format!("{stem}-thumb"), stem]);
+        let movie_thumb = folder.poster(&[&format!("{stem}-thumb")]);
+        let episode_poster =
+            folder.poster(&[&format!("{stem}-thumb"), &format!("{stem}-poster"), stem]);
+
+        let mut actors: HashMap<String, PathBuf> = HashMap::new();
+        let mut actor_sig: Vec<(&str, &Sidecar)> = Vec::new();
+        if let Some(show_folder) = show_folder
+            && show_dir != folder_path
+        {
+            for (k, v) in &show_folder.actors {
+                actors.insert(k.clone(), v.path.clone());
+                actor_sig.push((k.as_str(), v));
+            }
+        }
+        for (k, v) in &folder.actors {
+            actors.insert(k.clone(), v.path.clone());
+            actor_sig.push((k.as_str(), v));
+        }
+        actor_sig.sort_unstable_by(|a, b| a.0.cmp(b.0).then_with(|| a.1.path.cmp(&b.1.path)));
+
         let owns_folder = folder.films == 1 && folder_path != root;
-        let mut signature = format!("video-sidecars-1/{owns_folder}");
+        let (v_bytes, v_mod) = folder
+            .videos
+            .get(&file_name.to_ascii_lowercase())
+            .copied()
+            .unwrap_or((0, 0));
+        let mut signature = format!("video-sidecars-2/{owns_folder}/{v_bytes}:{v_mod}");
         for file in [
             file_nfo,
             show_nfo,
@@ -179,6 +283,10 @@ impl Inventory {
             show_poster,
             season_poster,
             episode_poster,
+            movie_backdrop,
+            show_backdrop,
+            episode_thumb,
+            movie_thumb,
         ] {
             signature.push('|');
             if let Some(file) = file {
@@ -192,8 +300,20 @@ impl Inventory {
                 );
             }
         }
+        for (k, file) in actor_sig {
+            if let Some(p) = file.path.to_str() {
+                let _ = write!(
+                    signature,
+                    "|a:{k}={}:{p}/{}:{}",
+                    p.len(),
+                    file.bytes,
+                    file.modified
+                );
+            }
+        }
         Some(Candidate {
             path: path.to_owned(),
+            folder_path: folder_path.to_owned(),
             show_dir: show_dir.to_owned(),
             file_nfo: file_nfo.map(|s| s.path.clone()),
             show_nfo: show_nfo.map(|s| s.path.clone()),
@@ -201,6 +321,11 @@ impl Inventory {
             show_poster: show_poster.map(|s| s.path.clone()),
             season_poster: season_poster.map(|s| s.path.clone()),
             episode_poster: episode_poster.map(|s| s.path.clone()),
+            movie_backdrop: movie_backdrop.map(|s| s.path.clone()),
+            show_backdrop: show_backdrop.map(|s| s.path.clone()),
+            episode_thumb: episode_thumb.map(|s| s.path.clone()),
+            movie_thumb: movie_thumb.map(|s| s.path.clone()),
+            actors,
             season_folder,
             stamp: sidecar_fingerprint(&signature),
             owns_folder,
@@ -212,6 +337,7 @@ impl Inventory {
         db: &Db,
         library: LibraryId,
         roots: Arc<Vec<LocalStorage>>,
+        ffprobe: Option<&Path>,
         observer: &dyn ScanObserver,
         allowed: impl Fn(&str) -> bool,
     ) -> std::result::Result<(), ScanError> {
@@ -261,18 +387,49 @@ impl Inventory {
             );
             let batch: Vec<_> = pending.by_ref().take(48).collect();
             let batch_size = batch.len();
-            let roots = roots.clone();
-            let (rows, batch_read_time) = tokio::task::spawn_blocking(move || {
+            let roots_for_read = roots.clone();
+            let (mut read_rows, batch_read_time) = tokio::task::spawn_blocking(move || {
                 let started = Instant::now();
                 let mut shared = HashMap::new();
                 let rows = batch
                     .into_iter()
-                    .map(|(id, index, candidate)| candidate.read(id, &roots[index], &mut shared))
+                    .map(|(id, index, candidate)| {
+                        let path = candidate.path.clone();
+                        let (meta, fallback_runtime) =
+                            candidate.read(id, &roots_for_read[index], &mut shared);
+                        (meta, index, path, fallback_runtime)
+                    })
                     .collect::<Vec<_>>();
                 (rows, started.elapsed())
             })
             .await
             .map_err(|e| ScanError::Metadata(e.to_string()))?;
+
+            // Cheap duration fallback when NFO provides no runtime.
+            for (meta, root_idx, path, fallback_runtime) in &mut read_rows {
+                if meta.runtime_ms.is_none() {
+                    let probed = if let Some(ffprobe) = ffprobe {
+                        let root = roots[*root_idx].clone();
+                        let path_clone = path.clone();
+                        let opened = tokio::task::spawn_blocking(move || {
+                            let sp = storage_path(&root, &path_clone)?;
+                            root.open_file_blocking(&sp).ok()
+                        })
+                        .await
+                        .ok()
+                        .flatten();
+                        match opened {
+                            Some(file) => images::probe_duration_ms(ffprobe, file).await,
+                            None => None,
+                        }
+                    } else {
+                        None
+                    };
+                    meta.runtime_ms = probed.or(*fallback_runtime);
+                }
+            }
+
+            let rows: Vec<VideoMetadata> = read_rows.into_iter().map(|(m, _, _, _)| m).collect();
             read_time += batch_read_time;
             longest_read = longest_read.max(batch_read_time);
             let write_started = Instant::now();
@@ -294,6 +451,7 @@ impl Inventory {
 
 struct Candidate {
     path: PathBuf,
+    folder_path: PathBuf,
     show_dir: PathBuf,
     file_nfo: Option<PathBuf>,
     show_nfo: Option<PathBuf>,
@@ -301,6 +459,11 @@ struct Candidate {
     show_poster: Option<PathBuf>,
     season_poster: Option<PathBuf>,
     episode_poster: Option<PathBuf>,
+    movie_backdrop: Option<PathBuf>,
+    show_backdrop: Option<PathBuf>,
+    episode_thumb: Option<PathBuf>,
+    movie_thumb: Option<PathBuf>,
+    actors: HashMap<String, PathBuf>,
     season_folder: Option<i32>,
     owns_folder: bool,
     stamp: String,
@@ -310,13 +473,101 @@ fn path_string(path: Option<&PathBuf>) -> Option<String> {
     path.and_then(|p| p.to_str()).map(str::to_owned)
 }
 
+fn rating_tenths(rating: Option<f64>) -> Option<i32> {
+    rating.and_then(|r| {
+        if !r.is_finite() || !(0.0..=10.0).contains(&r) {
+            return None;
+        }
+        #[allow(clippy::cast_possible_truncation)]
+        let tenths = (r * 10.0).round() as i32;
+        Some(tenths.clamp(0, 100))
+    })
+}
+
+fn validate_local_image(root: &LocalStorage, candidate: &Path) -> Option<String> {
+    let ext = candidate
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(str::to_ascii_lowercase)?;
+    if !matches!(ext.as_str(), "jpg" | "jpeg" | "png" | "webp") {
+        return None;
+    }
+    let sp = storage_path(root, candidate)?;
+    let mut file = root.open_file_blocking(&sp).ok()?;
+    let size = file.metadata().ok()?.len();
+    if !(3..=MAX_POSTER).contains(&size) {
+        return None;
+    }
+    let mut header = [0u8; 12];
+    let n = usize::try_from(size.min(12)).ok()?;
+    file.read_exact(&mut header[..n]).ok()?;
+    crate::artwork::mime(&header[..n])?;
+    candidate.to_str().map(str::to_owned)
+}
+
+fn resolve_person_image(
+    root: &LocalStorage,
+    base_dir: &Path,
+    person: &nfo::Person,
+    actors: &HashMap<String, PathBuf>,
+) -> Option<String> {
+    if let Some(raw_thumb) = person.thumb.as_deref().map(str::trim)
+        && !raw_thumb.is_empty()
+        && !raw_thumb.contains("://")
+        && !raw_thumb.starts_with("//")
+    {
+        let normalized = raw_thumb.replace('\\', "/");
+        let candidate = if Path::new(&normalized).is_absolute() {
+            PathBuf::from(&normalized)
+        } else {
+            base_dir.join(&normalized)
+        };
+        if let Some(valid) = validate_local_image(root, &candidate) {
+            return Some(valid);
+        }
+    }
+    let trimmed = person.name.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let underscored = trimmed.replace(' ', "_");
+    for stem in [underscored.as_str(), trimmed] {
+        for ext in ["jpg", "jpeg", "png", "webp"] {
+            let key = format!("{stem}.{ext}").to_lowercase();
+            if let Some(path) = actors.get(&key)
+                && let Some(valid) = validate_local_image(root, path)
+            {
+                return Some(valid);
+            }
+        }
+    }
+    None
+}
+
+fn map_people(
+    root: &LocalStorage,
+    base_dir: &Path,
+    people: &[nfo::Person],
+    actors: &HashMap<String, PathBuf>,
+) -> Vec<VideoPersonInput> {
+    people
+        .iter()
+        .map(|p| VideoPersonInput {
+            kind: p.kind,
+            name: p.name.clone(),
+            role: p.role.clone(),
+            image: resolve_person_image(root, base_dir, p, actors),
+        })
+        .collect()
+}
+
 impl Candidate {
     fn read(
         self,
         id: palveni_core::ItemId,
         root: &LocalStorage,
         cache: &mut HashMap<PathBuf, Option<nfo::Nfo>>,
-    ) -> VideoMetadata {
+    ) -> (VideoMetadata, Option<i64>) {
         let file = self
             .file_nfo
             .as_ref()
@@ -363,7 +614,25 @@ impl Candidate {
                     .or_else(|| episode_only.map(|(_, n)| n))
             })
             .flatten();
-        let (work_group, work_title, year, work_overview, work_poster) = if series {
+
+        let (
+            work_group,
+            work_title,
+            year,
+            work_overview,
+            work_poster,
+            work_original_title,
+            work_tagline,
+            work_rating,
+            work_official_rating,
+            work_premiered,
+            work_studios,
+            work_backdrop,
+            genres,
+            people,
+            thumb,
+            fallback_runtime,
+        ) = if series {
             let owns_series = self.season_folder.is_some() || self.show_nfo.is_some();
             let fallback_title = if owns_series {
                 folder_title.0.clone()
@@ -377,7 +646,7 @@ impl Candidate {
                     .unwrap_or_else(|| folder_title.0.clone())
             };
             let title = if owns_series {
-                show.title
+                show.title.clone()
             } else {
                 file.show_title.clone()
             }
@@ -388,6 +657,17 @@ impl Candidate {
             } else {
                 format!("{}\n{}", self.show_dir.display(), title.to_lowercase())
             };
+            let genres = if !show.genres.is_empty() {
+                show.genres.clone()
+            } else {
+                file.genres.clone()
+            };
+            let people_src = if !show.people.is_empty() {
+                &show.people
+            } else {
+                &file.people
+            };
+            let people = map_people(root, &self.show_dir, people_src, &self.actors);
             (
                 format!("series\n{group}"),
                 title,
@@ -399,6 +679,17 @@ impl Candidate {
                         .or(self.season_poster.as_ref())
                         .or(self.episode_poster.as_ref()),
                 ),
+                show.original_title,
+                show.tagline,
+                rating_tenths(show.rating),
+                show.official_rating,
+                show.premiered,
+                show.studios,
+                path_string(self.show_backdrop.as_ref()),
+                genres,
+                people,
+                path_string(self.episode_thumb.as_ref()),
+                show.runtime_ms,
             )
         } else {
             let fallback = if self.owns_folder && folder_title.1.is_some() {
@@ -406,19 +697,31 @@ impl Candidate {
             } else {
                 film_title.clone()
             };
+            let people = map_people(root, &self.folder_path, &file.people, &self.actors);
             (
                 format!("movie\n{}", self.path.display()),
                 metadata_title.clone().unwrap_or(fallback.0),
                 file.year.or(fallback.1),
                 file.plot.clone(),
                 path_string(self.movie_poster.as_ref()),
+                file.original_title,
+                file.tagline,
+                rating_tenths(file.rating),
+                file.official_rating,
+                file.premiered.clone(),
+                file.studios,
+                path_string(self.movie_backdrop.as_ref()),
+                file.genres,
+                people,
+                path_string(self.movie_thumb.as_ref()),
+                None,
             )
         };
         let season_poster =
             path_string(self.season_poster.as_ref()).or_else(|| work_poster.clone());
         let episode_poster =
             path_string(self.episode_poster.as_ref()).or_else(|| season_poster.clone());
-        VideoMetadata {
+        let meta = VideoMetadata {
             item_id: id,
             stamp: self.stamp,
             work_group,
@@ -426,13 +729,27 @@ impl Candidate {
             year,
             work_overview,
             work_poster,
+            work_original_title,
+            work_tagline,
+            work_rating,
+            work_official_rating,
+            work_premiered,
+            work_studios,
+            work_backdrop,
             season,
             season_poster,
             episode,
             title: metadata_title.unwrap_or(film_title.0),
             overview: file.plot,
             episode_poster,
-        }
+            runtime_ms: file.runtime_ms,
+            rating: rating_tenths(file.rating),
+            premiered: file.premiered,
+            thumb,
+            genres,
+            people,
+        };
+        (meta, fallback_runtime)
     }
 }
 
@@ -447,7 +764,7 @@ pub async fn open_poster(
             return Err(Error::not_found("poster"));
         }
         let mut header = [0u8; 12];
-        let bytes = &mut header[..size.min(12) as usize];
+        let bytes = &mut header[..usize::try_from(size.min(12)).unwrap_or(12)];
         file.read_exact(bytes)?;
         let media = crate::artwork::mime(bytes).ok_or_else(|| Error::not_found("poster"))?;
         file.rewind()?;

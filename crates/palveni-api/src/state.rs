@@ -20,6 +20,7 @@ pub struct ServerInfo {
 pub struct AppState {
     pub db: Db,
     pub music_search: Arc<palveni_library::music_search::MusicSearch>,
+    pub video_images: Arc<palveni_library::video::VideoImages>,
     pub identity: Arc<palveni_link::NodeIdentity>,
     pub link: Arc<crate::LinkPairings>,
     pub login_limit: Arc<crate::LoginLimit>,

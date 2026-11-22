@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<movie>
+    <title>The Lighthouse Keeper</title>
+    <originaltitle>Le Gardien du Phare</originaltitle>
+    <sorttitle>Lighthouse Keeper</sorttitle>
+    <ratings>
+        <rating name="themoviedb" max="10">
+            <value>6.9</value>
+            <votes>210</votes>
+        </rating>
+        <rating name="imdb" max="10" default="true">
+            <value>7.8</value>
+            <votes>15400</votes>
+        </rating>
+    </ratings>
+    <userrating>0</userrating>
+    <outline>A short outline.</outline>
+    <plot>A keeper and his daughter tend a remote light.</plot>
+    <tagline>Every light hides a shadow.</tagline>
+    <runtime>118</runtime>
+    <thumb aspect="poster" preview="https://image.example/p.jpg">https://image.example/p.jpg</thumb>
+    <fanart>
+        <thumb preview="https://image.example/f.jpg">https://image.example/f.jpg</thumb>
+    </fanart>
+    <mpaa>US:PG-13</mpaa>
+    <uniqueid type="imdb" default="true">tt0000001</uniqueid>
+    <genre>Drama</genre>
+    <genre>Mystery</genre>
+    <genre>Thriller</genre>
+    <country>France</country>
+    <credits>Lena Morel</credits>
+    <credits>Paul Grant</credits>
+    <director>Lena Morel</director>
+    <producer>Mia Holt</producer>
+    <premiered>2019-10-18</premiered>
+    <studio>North Pier Films</studio>
+    <studio>Atlantic Pictures</studio>
+    <fileinfo>
+        <streamdetails>
+            <video>
+                <codec>h264</codec>
+                <durationinseconds>7090</durationinseconds>
+            </video>
+        </streamdetails>
+    </fileinfo>
+    <actor>
+        <name>Tom Weller</name>
+        <role>Keeper</role>
+        <order>1</order>
+    </actor>
+    <actor>
+        <name>Ana Ruiz</name>
+        <role>Marie</role>
+        <order>0</order>
+        <thumb>.actors/Ana_Ruiz.jpg</thumb>
+    </actor>
+    <actor>
+        <name>Jo Park</name>
+        <thumb>https://image.example/jo.jpg</thumb>
+    </actor>
+</movie>
+https://www.themoviedb.org/movie/1

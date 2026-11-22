@@ -16,7 +16,7 @@ mod reviews;
 
 use palveni_core::music::TrackTags;
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use palveni_core::events::{EventBus, ServerEvent};
 use palveni_core::storage::{DirEntry, EntryKind, StoragePath, StorageProvider};
@@ -271,11 +271,21 @@ impl WalkOutcome {
 pub struct Scanner {
     db: Db,
     bus: EventBus,
+    ffprobe: Option<PathBuf>,
 }
 
 impl Scanner {
     pub fn new(db: Db, bus: EventBus) -> Self {
-        Scanner { db, bus }
+        Scanner {
+            db,
+            bus,
+            ffprobe: None,
+        }
+    }
+
+    pub fn with_ffprobe(mut self, ffprobe: Option<PathBuf>) -> Self {
+        self.ffprobe = ffprobe;
+        self
     }
 
     pub async fn scan(
@@ -455,9 +465,14 @@ impl Scanner {
         }
         if library.kind == LibraryKind::Video {
             video
-                .index(&self.db, library_id, roots, observer, |path| {
-                    !scopes.held(path)
-                })
+                .index(
+                    &self.db,
+                    library_id,
+                    roots,
+                    self.ffprobe.as_deref(),
+                    observer,
+                    |path| !scopes.held(path),
+                )
                 .await?;
         }
         if !self
@@ -534,6 +549,16 @@ async fn walk_root(
         };
         if kind == LibraryKind::Video {
             out.video.observe(storage, &dir, &entries);
+            for entry in entries.iter().filter(|e| {
+                e.kind == EntryKind::Directory && e.name.eq_ignore_ascii_case(".actors")
+            }) {
+                if let Ok(actors_dir) = dir.join(&entry.name)
+                    && let Ok(actor_entries) = storage.list_dir(&actors_dir).await
+                {
+                    out.video
+                        .observe_actors(storage, &dir, &actors_dir, &actor_entries);
+                }
+            }
         }
         let mut cue_sources = HashSet::new();
         if kind == LibraryKind::Music {
