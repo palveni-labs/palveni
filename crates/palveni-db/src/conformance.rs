@@ -45,6 +45,7 @@ pub const ENV_OPS_DATABASE_URL: &str = "PALVENI_TEST_OPS_DATABASE_URL";
 mod broadcast;
 mod connections;
 mod loudness;
+mod music_catalog;
 mod music_search;
 mod scan_reviews;
 mod video;
@@ -70,6 +71,9 @@ const PALVENI_TABLES: &[&str] = &[
     "subsonic_folders",
     "subsonic_plays",
     "track_loudness",
+    "music_album_pending",
+    "music_albums",
+    "track_genres",
     "track_metadata",
     "items",
     "scan_review_items",

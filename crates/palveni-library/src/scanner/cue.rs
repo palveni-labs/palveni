@@ -1,5 +1,5 @@
 use super::*;
-use palveni_core::music::{CueSegment, TrackTags};
+use palveni_core::music::{AudioProperties, CueSegment, TrackTags};
 use std::io::Read;
 
 const MAX_SHEET: u64 = 256 * 1024;
@@ -8,6 +8,8 @@ const MAX_SHEET: u64 = 256 * 1024;
 struct Sheet {
     album: Option<String>,
     artist: Option<String>,
+    year: Option<i32>,
+    genres: Vec<String>,
     tracks: Vec<Track>,
 }
 struct Track {
@@ -106,6 +108,22 @@ fn parse(text: &str) -> Option<Sheet> {
                     }
                 }
             }
+            "REM" if !active && sheet.tracks.is_empty() => {
+                if let Some((rem_key, rem_val)) = value.split_once(char::is_whitespace) {
+                    let rem_val = rem_val.trim();
+                    match rem_key.to_ascii_uppercase().as_str() {
+                        "DATE" if sheet.year.is_none() => {
+                            sheet.year = label(rem_val).as_deref().and_then(crate::tags::year);
+                        }
+                        "GENRE" => {
+                            if let Some(raw) = label(rem_val) {
+                                sheet.genres.push(raw);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -177,6 +195,7 @@ fn project(
             .clone()
             .unwrap_or_else(|| format!("Track {:02}", track.number));
         let virtual_path = storage.display_path(&path.join(&format!("{:02}", track.number)).ok()?);
+        let parsed_genres = crate::tags::genres(sheet.genres.iter().map(String::as_str));
         let tags = TrackTags {
             title: Some(title.clone()),
             artist: track.artist.clone().or_else(|| sheet.artist.clone()),
@@ -184,6 +203,15 @@ fn project(
             album: Some(album.clone()),
             track_number: Some(track.number),
             duration_ms: Some((end - start) * 1000 / 75),
+            year: sheet.year,
+            genres: parsed_genres,
+            audio: AudioProperties {
+                codec: Some("wav".into()),
+                bitrate_kbps: Some(1411),
+                sample_rate_hz: Some(44_100),
+                bit_depth: Some(16),
+                channels: Some(2),
+            },
             cue: Some(CueSegment {
                 source: storage.display_path(&source),
                 start_frame: start,

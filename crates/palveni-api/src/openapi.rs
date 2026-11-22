@@ -383,6 +383,83 @@ fn parameters(cap: &Capability) -> Vec<Value> {
                 json!({"type":"string"}),
             ));
         }
+        "listMusicAlbums" | "listMusicArtists" | "listMusicTracks" => {
+            let sort_schema = match cap.id {
+                "listMusicAlbums" => reference("MusicAlbumSort"),
+                "listMusicArtists" => reference("MusicArtistSort"),
+                _ => reference("MusicTrackSort"),
+            };
+            params.extend([
+                parameter("sort", "query", false, sort_schema),
+                parameter("order", "query", false, reference("MusicSortOrder")),
+            ]);
+            if cap.id != "listMusicArtists" {
+                params.push(parameter(
+                    "genre",
+                    "query",
+                    false,
+                    json!({"type":"string","maxLength":128}),
+                ));
+                params.push(parameter(
+                    "artistId",
+                    "query",
+                    false,
+                    json!({"type":"string","pattern":"^[0-9a-f]{64}$"}),
+                ));
+            }
+            if cap.id == "listMusicAlbums" {
+                params.extend([
+                    parameter(
+                        "yearFrom",
+                        "query",
+                        false,
+                        json!({"type":"integer","minimum":1,"maximum":9999}),
+                    ),
+                    parameter(
+                        "yearTo",
+                        "query",
+                        false,
+                        json!({"type":"integer","minimum":1,"maximum":9999}),
+                    ),
+                ]);
+            }
+            if cap.id == "listMusicTracks" {
+                params.push(parameter(
+                    "albumId",
+                    "query",
+                    false,
+                    json!({"type":"string","pattern":"^[0-9a-f]{64}\\.[0-9a-f]{64}$"}),
+                ));
+            }
+            params.extend([
+                parameter("favorite", "query", false, json!({"type":"boolean"})),
+                parameter(
+                    "q",
+                    "query",
+                    false,
+                    json!({"type":"string","maxLength":128}),
+                ),
+                parameter(
+                    "seed",
+                    "query",
+                    false,
+                    json!({"type":"string","maxLength":64}),
+                ),
+                parameter("cursor", "query", false, json!({"type":"string"})),
+                parameter(
+                    "limit",
+                    "query",
+                    false,
+                    json!({"type":"integer","minimum":1,"maximum":200,"default":60}),
+                ),
+            ]);
+        }
+        "getMusicArtwork" => params.push(parameter(
+            "size",
+            "query",
+            false,
+            json!({"type":"integer","minimum":1,"maximum":4096,"description":"Target width in pixels; snapped to 96, 240, 480, 960 or 1920."}),
+        )),
         "listItems" => {
             params.extend([
                 parameter(
@@ -621,5 +698,51 @@ mod tests {
             paths["/api/v1/events"]["get"]["responses"]["200"]["content"]["text/event-stream"]
                 .is_object()
         );
+        for path in [
+            "/api/v1/libraries/{id}/music/albums",
+            "/api/v1/libraries/{id}/music/albums/{albumId}",
+            "/api/v1/libraries/{id}/music/artists",
+            "/api/v1/libraries/{id}/music/artists/{artistId}",
+            "/api/v1/libraries/{id}/music/genres",
+            "/api/v1/libraries/{id}/music/tracks",
+        ] {
+            assert!(paths[path]["get"]["responses"]["200"].is_object(), "{path}");
+        }
+        assert!(
+            paths["/api/v1/music/tracks/lookup"]["post"]["requestBody"]["content"]
+                ["application/json"]
+                .is_object()
+        );
+        for path in [
+            "/api/v1/libraries/{id}/music/albums/{albumId}/favorite",
+            "/api/v1/libraries/{id}/music/artists/{artistId}/favorite",
+        ] {
+            assert!(paths[path]["put"]["responses"]["204"].is_object(), "{path}");
+            assert!(
+                paths[path]["delete"]["responses"]["204"].is_object(),
+                "{path}"
+            );
+        }
+        for schema in [
+            "MusicTrack",
+            "MusicTrackState",
+            "MusicAlbum",
+            "MusicArtist",
+            "MusicGenre",
+            "MusicAlbumPage",
+            "MusicAlbumDetail",
+            "MusicArtistPage",
+            "MusicArtistDetail",
+            "MusicGenreList",
+            "MusicTrackPage",
+            "MusicTrackLookupRequest",
+            "MusicTrackLookupResponse",
+        ] {
+            assert!(schemas[schema].is_object(), "missing schema {schema}");
+        }
+        let artwork_params = paths["/api/v1/items/{id}/artwork"]["get"]["parameters"]
+            .as_array()
+            .unwrap();
+        assert!(artwork_params.iter().any(|p| p["name"] == "size"));
     }
 }

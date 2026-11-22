@@ -22,6 +22,19 @@ pub struct Model {
     pub cue_start: Option<i64>,
     pub cue_end: Option<i64>,
     pub cue_stamp: Option<String>,
+    pub year: Option<i64>,
+    pub codec: Option<String>,
+    pub bitrate_kbps: Option<i64>,
+    pub sample_rate_hz: Option<i64>,
+    pub bit_depth: Option<i64>,
+    pub channels: Option<i64>,
+    /// Global title order; `track_sort` only orders tracks within an album.
+    pub title_sort: Option<String>,
+    pub track_artist_sort: Option<String>,
+    /// Stable pseudo-random rank in `[0, 2^31 - 1)` for seeded shuffles.
+    pub shuffle: Option<i64>,
+    /// Tag reader generation; older rows are read again on the next scan.
+    pub tags_version: Option<i64>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

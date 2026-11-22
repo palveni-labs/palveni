@@ -85,20 +85,24 @@ impl Music<'_> {
             album.unwrap_or_default().to_owned(),
         );
         if favorite {
-            if favorites::Entity::find_by_id(key.clone())
-                .one(&db)
-                .await?
-                .is_none()
-            {
-                favorites::Entity::insert(favorites::ActiveModel {
-                    user_id: Set(key.0),
-                    folder_id: Set(key.1),
-                    artist_key: Set(key.2),
-                    album_key: Set(key.3),
-                })
-                .exec_without_returning(&db)
-                .await?;
-            }
+            favorites::Entity::insert(favorites::ActiveModel {
+                user_id: Set(key.0),
+                folder_id: Set(key.1),
+                artist_key: Set(key.2),
+                album_key: Set(key.3),
+            })
+            .on_conflict(
+                sea_orm::sea_query::OnConflict::columns([
+                    Fav::UserId,
+                    Fav::FolderId,
+                    Fav::ArtistKey,
+                    Fav::AlbumKey,
+                ])
+                .update_column(Fav::AlbumKey)
+                .to_owned(),
+            )
+            .exec_without_returning(&db)
+            .await?;
         } else {
             favorites::Entity::delete_by_id(key).exec(&db).await?;
         }

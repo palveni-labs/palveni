@@ -535,6 +535,127 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/libraries/{id}/music/albums": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List albums in a music library with filtering, sorting and per-user state. */
+        get: operations["listMusicAlbums"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{id}/music/albums/{albumId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read a music album and its tracks ordered by disc and track number. */
+        get: operations["getMusicAlbum"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{id}/music/albums/{albumId}/favorite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Add a music album to your favorites. */
+        put: operations["favoriteMusicAlbum"];
+        post?: never;
+        /** @description Remove a music album from your favorites. */
+        delete: operations["unfavoriteMusicAlbum"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{id}/music/artists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List album artists in a music library with filtering, sorting and per-user state. */
+        get: operations["listMusicArtists"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{id}/music/artists/{artistId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read a music artist, their albums by release year and top tracks. */
+        get: operations["getMusicArtist"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{id}/music/artists/{artistId}/favorite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Add a music artist to your favorites. */
+        put: operations["favoriteMusicArtist"];
+        post?: never;
+        /** @description Remove a music artist from your favorites. */
+        delete: operations["unfavoriteMusicArtist"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{id}/music/genres": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List music genres in a library with album and track counts. */
+        get: operations["listMusicGenres"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/libraries/{id}/music/loudness": {
         parameters: {
             query?: never;
@@ -561,6 +682,23 @@ export interface paths {
         };
         /** @description Search tracks, albums or artists in this music library. */
         get: operations["searchMusic"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{id}/music/tracks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List tracks in a music library with filtering, sorting and per-user state. */
+        get: operations["listMusicTracks"];
         put?: never;
         post?: never;
         delete?: never;
@@ -924,6 +1062,23 @@ export interface paths {
         get: operations["searchAllMusic"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/music/tracks/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Look up up to 500 music tracks by ID in the requested order. */
+        post: operations["lookupMusicTracks"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1629,6 +1784,70 @@ export interface components {
             protocol: components["schemas"]["MountProtocol"];
             readOnly: boolean;
         };
+        MusicAlbum: {
+            /** Format: date-time */
+            addedAt: string;
+            artist: string | null;
+            artistId: string;
+            artworkItemId: null | components["schemas"]["ItemId"];
+            /** Format: int64 */
+            discCount: number;
+            /** Format: int64 */
+            durationMs: number;
+            favorite: boolean;
+            genres: string[];
+            id: string;
+            /** Format: date-time */
+            lastPlayedAt: string | null;
+            libraryId: components["schemas"]["LibraryId"];
+            name: string | null;
+            /** Format: int64 */
+            playCount: number;
+            /** Format: int32 */
+            stars: number;
+            /** Format: int64 */
+            trackCount: number;
+            /** Format: int32 */
+            year: number | null;
+        };
+        MusicAlbumDetail: {
+            album: components["schemas"]["MusicAlbum"];
+            tracks: components["schemas"]["MusicTrack"][];
+        };
+        MusicAlbumPage: {
+            albums: components["schemas"]["MusicAlbum"][];
+            nextCursor: string | null;
+            /** Format: int64 */
+            total: number;
+        };
+        /** @enum {string} */
+        MusicAlbumSort: "title" | "artist" | "year" | "added" | "played" | "plays" | "rating" | "random";
+        MusicArtist: {
+            /** Format: int64 */
+            albumCount: number;
+            artworkItemId: null | components["schemas"]["ItemId"];
+            favorite: boolean;
+            id: string;
+            libraryId: components["schemas"]["LibraryId"];
+            name: string | null;
+            /** Format: int64 */
+            playCount: number;
+            /** Format: int64 */
+            trackCount: number;
+        };
+        MusicArtistDetail: {
+            albums: components["schemas"]["MusicAlbum"][];
+            artist: components["schemas"]["MusicArtist"];
+            topTracks: components["schemas"]["MusicTrack"][];
+        };
+        MusicArtistPage: {
+            artists: components["schemas"]["MusicArtist"][];
+            nextCursor: string | null;
+            /** Format: int64 */
+            total: number;
+        };
+        /** @enum {string} */
+        MusicArtistSort: "name" | "albums" | "tracks" | "plays" | "random";
         MusicEntry: {
             id: string;
             /** @enum {string} */
@@ -1653,6 +1872,16 @@ export interface components {
             /** Format: int32 */
             trackNumber: number | null;
         };
+        MusicGenre: {
+            /** Format: int64 */
+            albumCount: number;
+            name: string;
+            /** Format: int64 */
+            trackCount: number;
+        };
+        MusicGenreList: {
+            genres: components["schemas"]["MusicGenre"][];
+        };
         MusicPage: {
             entries: components["schemas"]["MusicEntry"][];
             nextCursor: string | null;
@@ -1669,6 +1898,65 @@ export interface components {
         MusicSearchPage: {
             entries: components["schemas"]["MusicSearchHit"][];
             nextCursor: string | null;
+        };
+        /** @enum {string} */
+        MusicSortOrder: "asc" | "desc";
+        MusicTrack: {
+            /** Format: date-time */
+            addedAt: string;
+            album: string | null;
+            albumArtist: string | null;
+            albumId: string | null;
+            artist: string | null;
+            artistId: string | null;
+            artworkItemId: null | components["schemas"]["ItemId"];
+            /** Format: int32 */
+            bitDepth: number | null;
+            /** Format: int32 */
+            bitrateKbps: number | null;
+            /** Format: int32 */
+            channels: number | null;
+            codec: string | null;
+            /** Format: int32 */
+            discNumber: number | null;
+            /** Format: int64 */
+            durationMs: number | null;
+            genres: string[];
+            id: components["schemas"]["ItemId"];
+            libraryId: components["schemas"]["LibraryId"];
+            /** Format: int32 */
+            sampleRateHz: number | null;
+            /** Format: int64 */
+            sizeBytes: number | null;
+            state: components["schemas"]["MusicTrackState"];
+            title: string;
+            /** Format: int32 */
+            trackNumber: number | null;
+            /** Format: int32 */
+            year: number | null;
+        };
+        MusicTrackLookupRequest: {
+            ids: components["schemas"]["ItemId"][];
+        };
+        MusicTrackLookupResponse: {
+            tracks: components["schemas"]["MusicTrack"][];
+        };
+        MusicTrackPage: {
+            nextCursor: string | null;
+            /** Format: int64 */
+            total: number;
+            tracks: components["schemas"]["MusicTrack"][];
+        };
+        /** @enum {string} */
+        MusicTrackSort: "title" | "artist" | "album" | "year" | "added" | "duration" | "plays" | "played" | "rating" | "random";
+        MusicTrackState: {
+            favorite: boolean;
+            /** Format: date-time */
+            lastPlayedAt: string | null;
+            /** Format: int64 */
+            playCount: number;
+            /** Format: int32 */
+            stars: number;
         };
         OpdsAccess: {
             password: string;
@@ -3241,7 +3529,9 @@ export interface operations {
     };
     getMusicArtwork: {
         parameters: {
-            query?: never;
+            query?: {
+                size?: number;
+            };
             header?: never;
             path: {
                 id: string;
@@ -4908,6 +5198,582 @@ export interface operations {
             };
         };
     };
+    listMusicAlbums: {
+        parameters: {
+            query?: {
+                sort?: components["schemas"]["MusicAlbumSort"];
+                order?: components["schemas"]["MusicSortOrder"];
+                genre?: string;
+                artistId?: string;
+                yearFrom?: number;
+                yearTo?: number;
+                favorite?: boolean;
+                q?: string;
+                seed?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MusicAlbumPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    getMusicAlbum: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                albumId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MusicAlbumDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    favoriteMusicAlbum: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                albumId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    unfavoriteMusicAlbum: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                albumId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    listMusicArtists: {
+        parameters: {
+            query?: {
+                sort?: components["schemas"]["MusicArtistSort"];
+                order?: components["schemas"]["MusicSortOrder"];
+                favorite?: boolean;
+                q?: string;
+                seed?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MusicArtistPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    getMusicArtist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                artistId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MusicArtistDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    favoriteMusicArtist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                artistId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    unfavoriteMusicArtist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                artistId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    listMusicGenres: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MusicGenreList"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
     analyzeLoudness: {
         parameters: {
             query?: never;
@@ -5043,6 +5909,86 @@ export interface operations {
             /** @description Conflict */
             409: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    listMusicTracks: {
+        parameters: {
+            query?: {
+                sort?: components["schemas"]["MusicTrackSort"];
+                order?: components["schemas"]["MusicSortOrder"];
+                genre?: string;
+                artistId?: string;
+                albumId?: string;
+                favorite?: boolean;
+                q?: string;
+                seed?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MusicTrackPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6730,6 +7676,68 @@ export interface operations {
             /** @description Conflict */
             409: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    lookupMusicTracks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MusicTrackLookupRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MusicTrackLookupResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
                     [name: string]: unknown;
                 };
                 content: {

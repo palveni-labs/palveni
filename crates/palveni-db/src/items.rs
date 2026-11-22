@@ -262,6 +262,7 @@ impl Items<'_> {
         let mut out = Vec::with_capacity(rows.len());
         for row in rows {
             let Some(path) = row.path else { continue };
+            let track = indexed.get(&row.id);
             out.push(IndexedItem {
                 id: parse_id(&row.id, "item id")?,
                 parent_id: parse_opt_id(row.parent_id.as_deref(), "item parent id")?,
@@ -270,8 +271,8 @@ impl Items<'_> {
                 size_bytes: row.size_bytes,
                 modified_at: row.modified_at,
                 deleted: row.deleted_at.is_some(),
-                music_indexed: indexed.contains_key(&row.id),
-                cue_stamp: indexed.get(&row.id).cloned().flatten(),
+                music_indexed: track.is_some_and(|t| t.current),
+                cue_stamp: track.and_then(|t| t.cue_stamp.clone()),
             });
         }
         Ok(out)
@@ -336,7 +337,7 @@ pub(crate) async fn write_scan_batch(
             .await?;
     }
 
-    crate::music::update(txn, library_id, upserts, tombstones).await
+    crate::music::update(txn, library_id, upserts, tombstones, rev).await
 }
 
 /// Multi-row upsert keyed by `(library_id, path_hash)`: `ON CONFLICT … DO

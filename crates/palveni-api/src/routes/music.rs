@@ -1,3 +1,4 @@
+pub mod library;
 pub mod search;
 
 use axum::{
@@ -143,19 +144,47 @@ pub async fn lyrics(
     Ok((headers, Json(palveni_core::music::TrackLyrics { lyrics })))
 }
 
+#[derive(Deserialize)]
+pub struct ArtworkQuery {
+    size: Option<u16>,
+}
+
+fn artwork_tier(size: u16) -> u16 {
+    const TIERS: [u16; 5] = [96, 240, 480, 960, 1920];
+    TIERS
+        .into_iter()
+        .min_by_key(|tier| tier.abs_diff(size))
+        .unwrap_or(1920)
+}
+
 pub async fn artwork(
     _: CurrentUser,
     State(state): State<AppState>,
     path: Result<Path<String>, PathRejection>,
+    query: Result<Query<ArtworkQuery>, QueryRejection>,
 ) -> Result<axum::response::Response, ApiError> {
     use axum::{body::Body, http::header, response::Response};
+    static SCALER: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(2);
     let id = path_id(&path?.0, "Track")?;
-    let (mime, data) = palveni_library::artwork::open(&state.db, id)
+    let requested = query?.0.size;
+    if let Some(size) = requested
+        && !(1..=4096).contains(&size)
+    {
+        return Err(ApiError::validation("size must be between 1 and 4096").field("size"));
+    }
+    let (mut mime, mut data) = palveni_library::artwork::open(&state.db, id)
         .await
         .map_err(|e| match e {
             palveni_core::Error::Internal(_) => ApiError::internal(e),
             _ => ApiError::not_found("Artwork unavailable"),
         })?;
+    if let Some(tier) = requested.map(artwork_tier).filter(|t| *t <= 960)
+        && let Ok(_permit) = SCALER.acquire().await
+        && let Ok(scaled) = state.hardware.cover_thumbnail(&data, mime, tier).await
+    {
+        data = scaled;
+        mime = "image/jpeg";
+    }
     Response::builder()
         .header(header::CONTENT_TYPE, mime)
         .header(header::CONTENT_LENGTH, data.len())

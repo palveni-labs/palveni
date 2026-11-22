@@ -30,6 +30,7 @@ mod m20261121_000016_cue_tracks;
 mod m20261121_000017_track_loudness;
 mod m20261121_000018_scan_reviews;
 mod m20261121_000019_link_device_key;
+mod m20261122_000020_music_catalog;
 
 pub struct MainMigrator;
 
@@ -52,6 +53,7 @@ impl MigratorTrait for MainMigrator {
             Box::new(m20261121_000017_track_loudness::Migration),
             Box::new(m20261121_000018_scan_reviews::Migration),
             Box::new(m20261121_000019_link_device_key::Migration),
+            Box::new(m20261122_000020_music_catalog::Migration),
         ]
     }
 

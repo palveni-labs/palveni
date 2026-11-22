@@ -450,6 +450,9 @@ impl Scanner {
             report_writes(observer, done, total);
         }
 
+        if library.kind == LibraryKind::Music {
+            self.db.music().refresh_albums(library_id).await?;
+        }
         if library.kind == LibraryKind::Video {
             video
                 .index(&self.db, library_id, roots, observer, |path| {

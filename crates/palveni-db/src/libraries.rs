@@ -330,6 +330,14 @@ impl Libraries<'_> {
             .filter(items::Column::LibraryId.eq(id.to_string()))
             .exec(&txn)
             .await?;
+        crate::entities::music_album_pending::Entity::delete_many()
+            .filter(crate::entities::music_album_pending::Column::LibraryId.eq(id.to_string()))
+            .exec(&txn)
+            .await?;
+        crate::entities::music_albums::Entity::delete_many()
+            .filter(crate::entities::music_albums::Column::LibraryId.eq(id.to_string()))
+            .exec(&txn)
+            .await?;
         crate::entities::scan_reviews::Entity::delete_many()
             .filter(crate::entities::scan_reviews::Column::LibraryId.eq(id.to_string()))
             .exec(&txn)
