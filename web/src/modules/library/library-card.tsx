@@ -1,6 +1,6 @@
 import { Button, Spinner, toast } from "@heroui/react";
 import { Link } from "@tanstack/react-router";
-import { ChevronRight, ScanSearch } from "lucide-react";
+import { ChevronRight, FolderOpen, ScanSearch } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
 import { useIsAdmin } from "@/api/queries/auth";
@@ -8,6 +8,7 @@ import { useScanLibrary } from "@/api/queries/libraries";
 import type { Library } from "@/api/types";
 import { errorText } from "@/lib/errors";
 import { LIBRARY_KIND_META } from "@/lib/kinds";
+import { useFeature } from "@/modules/access";
 import { useSlot } from "@/skins/scope";
 import { ProgressBar, RunProgress } from "@/ui/progress";
 import { useRowInset, useSectionVariant } from "@/ui/section";
@@ -21,11 +22,15 @@ import { LibraryMeta } from "./library-meta";
 export function LibraryRow({ library, covers, scanning }: { library: Library; covers: string[]; scanning: boolean }) {
   const { t } = useTranslation();
   const isAdmin = useIsAdmin();
+  const videoEnabled = useFeature("video");
   const itemColor = useSlot("itemColor");
   const progress = useSlot("progress");
   const variant = useSectionVariant();
   const inset = useRowInset();
   const scan = useScanLibrary();
+  const musicEnabled = useFeature("music");
+  const openVideoApp = videoEnabled && library.kind === "video";
+  const openMusicApp = musicEnabled && library.kind === "music";
   const Icon = LIBRARY_KIND_META[library.kind].icon;
   const unscanned = library.lastScanAt === null && library.itemCount === 0;
   const scanLabel = t("libraries.scanNamed", { name: library.name });
@@ -55,25 +60,59 @@ export function LibraryRow({ library, covers, scanning }: { library: Library; co
         )}
       >
         {lead}
-        <Link
-          to="/library/$libraryId"
-          params={{ libraryId: library.id }}
-          className="grid min-w-0 flex-1 gap-0.5 outline-none after:absolute after:inset-0 after:rounded-[inherit] focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-(--pv-focus)"
-        >
-          <span className={cn("truncate text-md font-strong text-fg", variant === "rule" && "group-hover:underline")}>{library.name}</span>
-          <LibraryMeta library={library} scanning={scanning} className="truncate text-sm text-fg-muted" />
-          {isAdmin && library.paths.length > 0 ? (
-            <span className="truncate text-xs text-fg-muted">
-              <span className="sr-only">{t("libraries.folders")}: </span>
-              {library.paths.map((path, index) => (
-                <span key={path}>
-                  {index > 0 ? <span aria-hidden> · </span> : null}
-                  <span className="font-mono">{path}</span>
-                </span>
-              ))}
-            </span>
-          ) : null}
-        </Link>
+        {openMusicApp ? (
+          <Link
+            to="/music"
+            search={{ library: library.id }}
+            className="grid min-w-0 flex-1 gap-0.5 outline-none after:absolute after:inset-0 after:rounded-[inherit] focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-(--pv-focus)"
+          >
+            <span className={cn("truncate text-md font-strong text-fg", variant === "rule" && "group-hover:underline")}>{library.name}</span>
+            <LibraryMeta library={library} scanning={scanning} className="truncate text-sm text-fg-muted" />
+            {isAdmin && library.paths.length > 0 ? (
+              <span className="truncate text-xs text-fg-muted">
+                <span className="sr-only">{t("libraries.folders")}: </span>
+                {library.paths.map((path, index) => (
+                  <span key={path}>
+                    {index > 0 ? <span aria-hidden> · </span> : null}
+                    <span className="font-mono">{path}</span>
+                  </span>
+                ))}
+              </span>
+            ) : null}
+          </Link>
+        ) : (
+          <Link
+            to={openVideoApp ? "/video/$libraryId" : "/library/$libraryId"}
+            params={{ libraryId: library.id }}
+            className="grid min-w-0 flex-1 gap-0.5 outline-none after:absolute after:inset-0 after:rounded-[inherit] focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-(--pv-focus)"
+          >
+            <span className={cn("truncate text-md font-strong text-fg", variant === "rule" && "group-hover:underline")}>{library.name}</span>
+            <LibraryMeta library={library} scanning={scanning} className="truncate text-sm text-fg-muted" />
+            {isAdmin && library.paths.length > 0 ? (
+              <span className="truncate text-xs text-fg-muted">
+                <span className="sr-only">{t("libraries.folders")}: </span>
+                {library.paths.map((path, index) => (
+                  <span key={path}>
+                    {index > 0 ? <span aria-hidden> · </span> : null}
+                    <span className="font-mono">{path}</span>
+                  </span>
+                ))}
+              </span>
+            ) : null}
+          </Link>
+        )}
+        {(openMusicApp || openVideoApp) && !unscanned ? (
+          <Link
+            to="/library/$libraryId"
+            params={{ libraryId: library.id }}
+            search={{ view: "files" }}
+            aria-label={`${library.name} · ${t("browse.files")}`}
+            className="relative z-10 inline-flex h-7 shrink-0 items-center gap-1 rounded-control px-2 text-xs font-mid text-fg-muted transition-colors hover:bg-sunken hover:text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+          >
+            <FolderOpen className="size-3.5" aria-hidden />
+            <span className="max-sm:sr-only">{t("browse.files")}</span>
+          </Link>
+        ) : null}
         {scanning && progress === "bar" ? <ProgressBar value={null} label={scanLabel} className="w-20 shrink-0 max-sm:hidden" /> : null}
         {unscanned && isAdmin && !scanning ? (
           <Button

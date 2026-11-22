@@ -136,7 +136,7 @@ function MusicGroups({ libraryId, artist, artistName, album, albumName }: {
                     : <AlbumCover libraryId={libraryId} id={artwork ? entry.artworkItemId : undefined} />}
                   <span className="grid min-w-0 flex-1 gap-0.5">
                     <span className="truncate font-strong" title={name}>{name}</span>
-                    {entry.kind === "album" && !split && <span className="truncate text-xs text-fg-muted">{artistTitle}</span>}
+                    {entry.kind === "album" && !split && <span aria-hidden className="truncate text-xs text-fg-muted">{artistTitle}</span>}
                   </span>
                   {!split && <ChevronRight className="size-4 shrink-0 text-fg-subtle" aria-hidden />}
                 </Link>

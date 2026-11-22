@@ -9,6 +9,7 @@ import type { Library } from "@/api/types";
 import { RelativeTime } from "@/components/relative-time";
 import { formatNumber } from "@/lib/format";
 import { LIBRARY_KIND_META, LIBRARY_KINDS } from "@/lib/kinds";
+import { useFeature } from "@/modules/access";
 import { useSlot } from "@/skins/scope";
 import { StatusLabel } from "@/ui/marks";
 import { useSectionVariant } from "@/ui/section";
@@ -21,10 +22,14 @@ function LibraryCell({ library, covers, scanning }: { library: Library; covers: 
   const itemColor = useSlot("itemColor");
   const progress = useSlot("progress");
   const isAdmin = useIsAdmin();
+  const videoEnabled = useFeature("video");
   const scan = useScanLibrary();
+  const musicEnabled = useFeature("music");
+  const openMusic = musicEnabled && library.kind === "music";
   const Icon = LIBRARY_KIND_META[library.kind].icon;
   const empty = library.itemCount === 0 && !library.lastScanAt;
   const count = `${formatNumber(library.itemCount, i18n.resolvedLanguage ?? "en")} ${t(`units.${library.kind}`)}`;
+  const useVideoApp = library.kind === "video" && videoEnabled;
   return (
     <div className={cn("relative flex min-h-[4.75rem] items-center gap-3 py-3.5 ps-(--pv-pad-panel) pe-2.5", empty && "bg-sunken/60")}>
       {itemColor === "on" ? (
@@ -38,24 +43,45 @@ function LibraryCell({ library, covers, scanning }: { library: Library; covers: 
       ) : (
         <Icon className="size-[1.15rem] shrink-0 text-icon" aria-hidden />
       )}
-      <Link to="/library/$libraryId" params={{ libraryId: library.id }} className="grid min-w-0 flex-1 gap-0.5 outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-focus">
-        <span className="truncate text-md font-strong text-fg">{library.name}</span>
-        <span className="truncate text-sm text-fg-muted">
-          <span data-num className="tabular-nums">
-            {count}
+      {openMusic ? (
+        <Link to="/music" search={{ library: library.id }} className="grid min-w-0 flex-1 gap-0.5 outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-focus">
+          <span className="truncate text-md font-strong text-fg">{library.name}</span>
+          <span className="truncate text-sm text-fg-muted">
+            <span data-num className="tabular-nums">
+              {count}
+            </span>
+            <span aria-hidden> · </span>
+            {scanning ? (
+              <StatusLabel tone="active" className="text-sm">
+                {t("libraries.scanning")}
+              </StatusLabel>
+            ) : library.lastScanAt ? (
+              <RelativeTime value={library.lastScanAt} format={(time) => t("libraries.scannedAt", { time })} />
+            ) : (
+              t("libraries.neverScanned")
+            )}
           </span>
-          <span aria-hidden> · </span>
-          {scanning ? (
-            <StatusLabel tone="active" className="text-sm">
-              {t("libraries.scanning")}
-            </StatusLabel>
-          ) : library.lastScanAt ? (
-            <RelativeTime value={library.lastScanAt} format={(time) => t("libraries.scannedAt", { time })} />
-          ) : (
-            t("libraries.neverScanned")
-          )}
-        </span>
-      </Link>
+        </Link>
+      ) : (
+        <Link to={useVideoApp ? "/video/$libraryId" : "/library/$libraryId"} params={{ libraryId: library.id }} className="grid min-w-0 flex-1 gap-0.5 outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-focus">
+          <span className="truncate text-md font-strong text-fg">{library.name}</span>
+          <span className="truncate text-sm text-fg-muted">
+            <span data-num className="tabular-nums">
+              {count}
+            </span>
+            <span aria-hidden> · </span>
+            {scanning ? (
+              <StatusLabel tone="active" className="text-sm">
+                {t("libraries.scanning")}
+              </StatusLabel>
+            ) : library.lastScanAt ? (
+              <RelativeTime value={library.lastScanAt} format={(time) => t("libraries.scannedAt", { time })} />
+            ) : (
+              t("libraries.neverScanned")
+            )}
+          </span>
+        </Link>
+      )}
       {empty && isAdmin ? (
         <Link to="/system/libraries" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "relative z-10 shrink-0")}>
           <FolderPlus aria-hidden />
@@ -73,7 +99,7 @@ function LibraryCell({ library, covers, scanning }: { library: Library; covers: 
                 if (key === "scan") scan.mutate(library.id);
               }}
             >
-              <Dropdown.Item id="browse" textValue={t("adminLibraries.browse")} href={`/library/${library.id}`}>
+              <Dropdown.Item id="browse" textValue={t("adminLibraries.browse")} href={openMusic ? `/music?library=${library.id}` : useVideoApp ? `/video/${library.id}` : `/library/${library.id}`}>
                 <FolderOpen className="size-4 text-fg-muted" aria-hidden />
                 <Label>{t("adminLibraries.browse")}</Label>
               </Dropdown.Item>

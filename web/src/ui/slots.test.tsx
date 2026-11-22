@@ -129,10 +129,12 @@ describe("no skin identity in the app", () => {
     });
 
   it("never branches on a skin's id: structure comes from slots", () => {
+    // `hls: "native" | "mse" | "none"` shares the word "native" with a skin id.
+    const stripHlsMode = (source: string) => source.replaceAll(/\b(?:hls|HlsSupport)\s*(?::|===|!==|=)\s*["']native["']/g, "");
     const offenders = files(SRC)
       .filter((file) => /\.(ts|tsx)$/.test(file) && !/\.test\.tsx?$/.test(file))
       .filter((file) => !file.startsWith(path.join(SRC, "skins")) && !file.startsWith(path.join(SRC, "mocks")))
-      .filter((file) => /["'`](workcolor|native|ink|gear)["'`]/.test(readFileSync(file, "utf8")))
+      .filter((file) => /["'`](workcolor|native|ink|gear)["'`]/.test(stripHlsMode(readFileSync(file, "utf8"))))
       .map((file) => path.relative(SRC, file));
     expect(offenders).toEqual([]);
   });

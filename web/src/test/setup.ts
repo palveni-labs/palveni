@@ -4,6 +4,8 @@ import { afterAll, afterEach, beforeAll, beforeEach } from "vitest";
 import { setUnauthorizedHandler } from "@/api/client";
 import { resetSessionCache } from "@/api/session";
 import i18n from "@/i18n";
+import { resetSelectedMusicLibrary } from "@/modules/music/library-store";
+import { playerStore } from "@/player/store";
 import { resetSkinStore } from "@/skins/store";
 import { disposeMockDb, server } from "./msw-server";
 
@@ -46,6 +48,8 @@ beforeEach(async () => {
   window.localStorage.clear();
   resetSessionCache();
   resetSkinStore();
+  resetSelectedMusicLibrary();
+  playerStore.reset(false);
   await i18n.changeLanguage("zh-CN");
 });
 

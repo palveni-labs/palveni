@@ -3,6 +3,8 @@ import type {
   ApiErrorDetails, ApiErrorCode, CreateLibraryRequest, UpdateLibraryRequest, Credentials, LoginRequest, RuntimeSettings, User } from "@/api/types";
 import { ITEM_KIND_ICON, LIBRARY_KINDS } from "@/lib/kinds";
 import type { MockDb } from "./db";
+import { createMusicHandlers } from "./music/handlers";
+import { createVideoHandlers } from "./video/handlers";
 
 const BASE = "/api/v1";
 const ITEM_KINDS = Object.keys(ITEM_KIND_ICON);
@@ -374,5 +376,7 @@ export function createHandlers(db: MockDb, options: HandlerOptions = {}) {
         headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
       });
     }),
+    ...(db.features.includes("music") ? createMusicHandlers(db, options) : []),
+    ...(db.features.includes("video") ? createVideoHandlers(db, options) : []),
   ];
 }

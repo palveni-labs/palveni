@@ -37,6 +37,14 @@ function ToolbarPortal({ slot, children }: { slot: ToolbarSlot; children: ReactN
   return target ? createPortal(children, target) : null;
 }
 
+/** Sets the desktop toolbar breadcrumb title when a page already renders its own visible `<h1>`. */
+export function ToolbarTitle({ title }: { title: string }) {
+  const placement = useSlot("pageTitle");
+  const toolbar = useIsTabletUp();
+  if (placement !== "toolbar" || !toolbar) return null;
+  return <ToolbarPortal slot="title">{title}</ToolbarPortal>;
+}
+
 export function PageHeader({ title, summary, actions, className }: { title: string; summary?: ReactNode; actions?: ReactNode; className?: string }) {
   const placement = useSlot("pageTitle");
   const toolbar = useIsTabletUp();

@@ -12,7 +12,9 @@ export function useActiveModuleId(): string | undefined {
 export function useActiveModule(): { module: ModuleDefinition | undefined; entry: NavEntry | undefined; pathname: string } {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const module = moduleForPath(pathname);
-  const entry = module?.nav?.find((candidate) => pathname === candidate.to || pathname.startsWith(`${candidate.to}/`));
+  const entry = module?.nav
+    ?.filter((candidate) => pathname === candidate.to || pathname.startsWith(`${candidate.to}/`))
+    .sort((a, b) => b.to.length - a.to.length)[0];
   return { module, entry, pathname };
 }
 

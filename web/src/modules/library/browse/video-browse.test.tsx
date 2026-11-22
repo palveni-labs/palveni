@@ -20,6 +20,7 @@ it("opens an authenticated poster wall, navigates episodes and resumes when the 
   const work: components["schemas"]["VideoEntry"] = {
     id: series,
     kind: "series",
+    libraryId: lib.id,
     title: "Harbour",
     fileCount: 1,
     year: 2024,
@@ -28,6 +29,19 @@ it("opens an authenticated poster wall, navigates episodes and resumes when the 
     overview: null,
     seasonNumber: null,
     episodeNumber: null,
+    seriesId: null,
+    seriesTitle: null,
+    originalTitle: null,
+    tagline: null,
+    genres: [],
+    runtimeMs: null,
+    communityRating: null,
+    officialRating: null,
+    premiered: null,
+    backdropItemId: null,
+    thumbItemId: null,
+    addedAt: "2026-11-22T00:00:00Z",
+    state: null,
   };
   const state: components["schemas"]["MediaState"] = {
     favorite: false,
@@ -131,8 +145,30 @@ it("searches all titles by name and type, keeps filters across seasons and can c
   signIn(db, MOCK_ACCOUNTS.user.username);
   const series = "f".repeat(64);
   const entry: components["schemas"]["VideoEntry"] = {
-    id: series, kind: "series", title: "Beyond the Sea", fileCount: 4, year: null,
-    seasonNumber: null, episodeNumber: null, overview: null, posterItemId: null, itemId: null,
+    id: series,
+    kind: "series",
+    libraryId: lib.id,
+    title: "Beyond the Sea",
+    fileCount: 4,
+    year: null,
+    seasonNumber: null,
+    episodeNumber: null,
+    overview: null,
+    posterItemId: null,
+    itemId: null,
+    seriesId: null,
+    seriesTitle: null,
+    originalTitle: null,
+    tagline: null,
+    genres: [],
+    runtimeMs: null,
+    communityRating: null,
+    officialRating: null,
+    premiered: null,
+    backdropItemId: null,
+    thumbItemId: null,
+    addedAt: "2026-11-22T00:00:00Z",
+    state: null,
   };
   const requests: URLSearchParams[] = [];
   server.use(http.get(`/api/v1/libraries/${lib.id}/videos`, ({ request }) => {

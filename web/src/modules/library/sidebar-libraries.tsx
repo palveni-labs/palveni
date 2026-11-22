@@ -1,5 +1,5 @@
 import { Dropdown, Header, Label, Separator } from "@heroui/react";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 import { Check, ChevronDown, FolderOpen, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLibraries } from "@/api/queries/libraries";
@@ -8,6 +8,7 @@ import type { LibraryKind } from "@/api/types";
 import { cn } from "@/lib/cn";
 import { formatNumber } from "@/lib/format";
 import { LIBRARY_KIND_META, LIBRARY_KINDS } from "@/lib/kinds";
+import { useFeature } from "@/modules/access";
 import { useSlot } from "@/skins/scope";
 import { useScanningLibraries } from "./use-scanning";
 
@@ -32,36 +33,51 @@ function useSortedLibraries() {
 export default function SidebarLibraries() {
   const { i18n } = useTranslation();
   const params = useParams({ strict: false });
+  const videoEnabled = useFeature("video");
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const itemColor = useSlot("itemColor");
+  const musicEnabled = useFeature("music");
   const scanning = useScanningLibraries();
   const libraries = useSortedLibraries();
   return (
     <ul className="grid gap-0.5">
       {libraries.map((library) => {
         const Icon = LIBRARY_KIND_META[library.kind].icon;
-        const active = params.libraryId === library.id;
+        const active = (pathname.startsWith("/library/") || pathname.startsWith("/video/")) && params.libraryId === library.id;
+        const linkClass = cn(
+          "flex h-8 items-center gap-2.5 rounded-tile px-2.5 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
+          active ? "bg-nav-active font-strong text-nav-active-fg shadow-panel" : "font-mid text-shell-fg hover:bg-hover",
+        );
+        const content = (
+          <>
+            {itemColor === "on" ? (
+              <span aria-hidden className="ms-0.5 me-0.5 size-2 shrink-0 rounded-[3px]" style={{ backgroundColor: KIND_SWATCH[library.kind] }} />
+            ) : (
+              <Icon className={cn("size-4 shrink-0", active ? "text-nav-active-fg" : "text-icon")} aria-hidden />
+            )}
+            <span className="min-w-0 flex-1 truncate">{library.name}</span>
+            {scanning.has(library.id) ? <Loader2 className={cn("pv-spin size-3.5", active ? "text-nav-active-fg" : "text-active-mark")} aria-hidden /> : null}
+            <span data-num className={cn("text-xs tabular-nums", active ? "text-nav-active-fg" : "text-shell-fg-muted")}>
+              {formatNumber(library.itemCount, i18n.resolvedLanguage ?? "en")}
+            </span>
+          </>
+        );
         return (
           <li key={library.id}>
-            <Link
-              to="/library/$libraryId"
-              params={{ libraryId: library.id }}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex h-8 items-center gap-2.5 rounded-tile px-2.5 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
-                active ? "bg-nav-active font-strong text-nav-active-fg shadow-panel" : "font-mid text-shell-fg hover:bg-hover",
-              )}
-            >
-              {itemColor === "on" ? (
-                <span aria-hidden className="ms-0.5 me-0.5 size-2 shrink-0 rounded-[3px]" style={{ backgroundColor: KIND_SWATCH[library.kind] }} />
-              ) : (
-                <Icon className={cn("size-4 shrink-0", active ? "text-nav-active-fg" : "text-icon")} aria-hidden />
-              )}
-              <span className="min-w-0 flex-1 truncate">{library.name}</span>
-              {scanning.has(library.id) ? <Loader2 className={cn("pv-spin size-3.5", active ? "text-nav-active-fg" : "text-active-mark")} aria-hidden /> : null}
-              <span data-num className={cn("text-xs tabular-nums", active ? "text-nav-active-fg" : "text-shell-fg-muted")}>
-                {formatNumber(library.itemCount, i18n.resolvedLanguage ?? "en")}
-              </span>
-            </Link>
+            {musicEnabled && library.kind === "music" ? (
+              <Link to="/music" search={{ library: library.id }} className={linkClass}>
+                {content}
+              </Link>
+            ) : (
+              <Link
+                to={videoEnabled && library.kind === "video" ? "/video/$libraryId" : "/library/$libraryId"}
+                params={{ libraryId: library.id }}
+                aria-current={active ? "page" : undefined}
+                className={linkClass}
+              >
+                {content}
+              </Link>
+            )}
           </li>
         );
       })}
@@ -73,6 +89,8 @@ export function LibraryMenu({ children, className, active }: NavMenuProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const params = useParams({ strict: false });
+  const videoEnabled = useFeature("video");
+  const musicEnabled = useFeature("music");
   const libraries = useSortedLibraries();
 
   if (libraries.length === 0) {
@@ -95,7 +113,16 @@ export function LibraryMenu({ children, className, active }: NavMenuProps) {
           onAction={(key) => {
             const id = String(key);
             if (id === "__all__") void navigate({ to: "/library" });
-            else void navigate({ to: "/library/$libraryId", params: { libraryId: id } });
+            else {
+              const target = libraries.find((entry) => entry.id === id);
+              if (musicEnabled && target?.kind === "music") {
+                void navigate({ to: "/music", search: { library: id } });
+              } else if (videoEnabled && target?.kind === "video") {
+                void navigate({ to: "/video/$libraryId", params: { libraryId: id } });
+              } else {
+                void navigate({ to: "/library/$libraryId", params: { libraryId: id } });
+              }
+            }
           }}
         >
           <Dropdown.Section>

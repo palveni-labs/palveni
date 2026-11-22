@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import en from "@/i18n/locales/en.json";
-import zhCN from "@/i18n/locales/zh-CN.json";
+import i18n from "@/i18n";
 import { allWidgets, basePathOf, collectModules, isEnabled, isVisible, MODULES, moduleForPath } from "./registry";
 import type { ModuleDefinition } from "./types";
 
@@ -21,7 +20,7 @@ const routeFiles = import.meta.glob("./*/routes/*.tsx");
 describe("module registry", () => {
   it("discovers every module folder, ordered and with unique ids", () => {
     const ids = MODULES.map((module) => module.id);
-    expect(ids).toEqual(["overview", "library", "broadcast", "tasks", "apps", "system"]);
+    expect(ids).toEqual(["overview", "music", "video", "library", "broadcast", "tasks", "apps", "system"]);
     expect(new Set(ids).size).toBe(ids.length);
     const withRoutes = new Set(Object.keys(routeFiles).map((file) => file.split("/")[1]));
     expect([...withRoutes].sort()).toEqual([...ids].sort());
@@ -36,6 +35,8 @@ describe("module registry", () => {
   });
 
   it("only uses message keys that exist in both locales", () => {
+    const zhBundle = i18n.getResourceBundle("zh-CN", "translation") as unknown;
+    const enBundle = i18n.getResourceBundle("en", "translation") as unknown;
     const keys = MODULES.flatMap((module) => [
       module.titleKey,
       ...(module.nav ?? []).map((entry) => entry.titleKey),
@@ -43,8 +44,8 @@ describe("module registry", () => {
       ...(module.commands ?? []).map((command) => command.titleKey),
     ]);
     for (const key of keys) {
-      expect(hasKey(zhCN, key), `zh-CN is missing ${key}`).toBe(true);
-      expect(hasKey(en, key), `en is missing ${key}`).toBe(true);
+      expect(hasKey(zhBundle, key), `zh-CN is missing ${key}`).toBe(true);
+      expect(hasKey(enBundle, key), `en is missing ${key}`).toBe(true);
     }
   });
 
@@ -73,8 +74,10 @@ describe("module registry", () => {
     expect(isVisible({ adminOnly: true }, admin)).toBe(true);
     expect(isEnabled({ feature: "unknown-feature" }, admin)).toBe(false);
     expect(isEnabled({ feature: "jobs" }, member)).toBe(true);
-    const broadcast = MODULES.find((module) => module.id === "broadcast");
-    expect(broadcast?.feature).toBe("broadcast");
-    expect(broadcast && isEnabled(broadcast, member)).toBe(false);
+    for (const id of ["broadcast", "music", "video"]) {
+      const module = MODULES.find((entry) => entry.id === id)!;
+      expect(module.feature).toBe(id);
+      expect(isEnabled(module, member)).toBe(false);
+    }
   });
 });

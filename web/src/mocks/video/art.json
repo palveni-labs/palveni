@@ -1,0 +1,42 @@
+{
+  "works": [
+    { "id": "velvet-horizon", "title": "天鹅绒地平线", "original": "The Velvet Horizon", "year": 2021, "scene": "sea", "palette": ["#1d0c1a", "#b8484a", "#ffd9a8", "#7a2a35", "#4a1622", "#22080f"], "seed": 11 },
+    { "id": "after-the-city", "title": "城市之后", "original": "After the City", "year": 2019, "scene": "city", "palette": ["#06121c", "#1f4a5e", "#ffcf7a", "#1b3442", "#10222c", "#060d12"], "seed": 23 },
+    { "id": "blue-hour", "title": "蓝调时刻", "original": "Blue Hour", "year": 2022, "scene": "mountains", "palette": ["#0d1f3a", "#4f86b8", "#f3e2c0", "#36577e", "#223c5c", "#0f1d33"], "seed": 37 },
+    { "id": "golden-atlas", "title": "金色地图集", "original": "The Golden Atlas", "year": 2018, "scene": "desert", "palette": ["#3b1d0a", "#e09a3e", "#fff1c2", "#c0702c", "#8e4a1c", "#4a230c"], "seed": 41 },
+    { "id": "night-route", "title": "夜行路线", "original": "Night Route", "year": 2023, "scene": "rain", "palette": ["#05090f", "#17323f", "#3fe0c5", "#13242e", "#0b161d", "#04080b"], "seed": 53 },
+    { "id": "northbound", "title": "向北", "original": "Northbound", "year": 2020, "scene": "snow", "palette": ["#0e2236", "#8fb6cf", "#fff6e0", "#5f87a3", "#3b5e78", "#1a3247"], "seed": 61 },
+    { "id": "paper-lanterns", "title": "纸灯笼", "original": "Paper Lanterns", "year": 2017, "scene": "lanterns", "palette": ["#0a0d1c", "#24304f", "#ffb35c", "#1b2340", "#121830", "#070a14"], "seed": 71 },
+    { "id": "tide-archive", "title": "潮汐档案", "original": "Tide Archive", "year": 2024, "scene": "lighthouse", "palette": ["#0b1820", "#406b78", "#f6e7b4", "#2a4b56", "#17323b", "#081419"], "seed": 83 },
+    { "id": "above-snowline", "title": "雪线以上", "original": "Above the Snowline", "year": 2016, "scene": "snow", "palette": ["#1c3a5a", "#d6e6f0", "#ffffff", "#7d9db8", "#557a99", "#2a4a66"], "seed": 97 },
+    { "id": "seventh-summer", "title": "第七个夏天", "original": "The Seventh Summer", "year": 2015, "scene": "fields", "palette": ["#5d9fc9", "#f5d9a0", "#fff4cf", "#8cb46a", "#5f8f45", "#3b6630"], "seed": 101 },
+    { "id": "end-of-line", "title": "铁轨尽头", "original": "End of the Line", "year": 2019, "scene": "rail", "palette": ["#2a1a14", "#d97b44", "#ffe2a8", "#7d4a2e", "#4f2d1c", "#24140c"], "seed": 113 },
+    { "id": "neon-rain", "title": "霓虹雨", "original": "Neon Rain", "year": 2025, "scene": "rain", "palette": ["#07060c", "#2a1220", "#ff5f7e", "#1d1220", "#120b14", "#060408"], "seed": 127 },
+    { "id": "lighthouse-keeper", "title": "灯塔守望者", "original": "The Lighthouse Keeper", "year": 2014, "scene": "lighthouse", "palette": ["#1b2b33", "#93a9a8", "#fff3d6", "#55706f", "#36504f", "#18282b"], "seed": 131 },
+    { "id": "song-of-dunes", "title": "沙丘之歌", "original": "Song of the Dunes", "year": 2021, "scene": "desert", "palette": ["#2c1408", "#f08a4b", "#ffe8b0", "#d0683a", "#a24a28", "#5a2410"], "seed": 139 },
+    { "id": "last-train", "title": "午夜末班车", "original": "Last Train to Midnight", "year": 2022, "scene": "rail", "palette": ["#060a14", "#1d2d4a", "#ffd27a", "#16233a", "#0e1828", "#05080f"], "seed": 149 },
+    { "id": "forest-letters", "title": "森林来信", "original": "Letters from the Forest", "year": 2020, "scene": "forest", "palette": ["#0f2a22", "#a7c9a0", "#fff2c4", "#4f7d5c", "#2f5a40", "#14301f"], "seed": 157 },
+    { "id": "deep-echo", "title": "深蓝回声", "original": "Deep Blue Echo", "year": 2023, "scene": "space", "palette": ["#020611", "#0d2a48", "#6fe0ff", "#0f3554", "#0a2238", "#02060d"], "seed": 163 },
+    { "id": "salt-flats", "title": "盐湖", "original": "Salt Flats", "year": 2024, "scene": "mountains", "palette": ["#2b3f5c", "#f2c6a0", "#fff7e6", "#a08aa0", "#6f7590", "#34405a"], "seed": 171 },
+    { "id": "harbour", "title": "港口", "original": "Harbour", "year": 2022, "scene": "harbour", "palette": ["#0a1622", "#3b5f78", "#ffb870", "#203a4c", "#13283a", "#071019"], "seed": 181 },
+    { "id": "star-courier", "title": "星际邮差", "original": "Star Courier", "year": 2021, "scene": "space", "palette": ["#04050a", "#1a1430", "#ffb347", "#2a1d3a", "#140f24", "#030308"], "seed": 191 },
+    { "id": "mountain-town", "title": "山城往事", "original": "Mountain Town Stories", "year": 2019, "scene": "town", "palette": ["#1a2433", "#d98f62", "#ffe0b0", "#5a5a6a", "#3a3d4c", "#1c1f29"], "seed": 199 },
+    { "id": "kitchen-lab", "title": "厨房实验室", "original": "Kitchen Lab", "year": 2024, "scene": "table", "palette": ["#e9dcc4", "#d7c3a0", "#d9452b", "#2f6f5e", "#f2b632", "#3a2a1e"], "seed": 211 },
+    { "id": "under-aurora", "title": "极光之下", "original": "Under the Aurora", "year": 2023, "scene": "aurora", "palette": ["#020a12", "#0b2a33", "#5dffb0", "#0d2630", "#081a22", "#03090d"], "seed": 223 }
+  ],
+  "thumbs": { "harbour": 6, "star-courier": 6, "mountain-town": 5, "kitchen-lab": 5, "under-aurora": 4 },
+  "people": [
+    { "id": "p01", "bg": "#3f5e73", "skin": "#e9c3a3", "hair": "#2a1d17", "style": "short" },
+    { "id": "p02", "bg": "#7a4b3a", "skin": "#f1d0b5", "hair": "#16110e", "style": "long" },
+    { "id": "p03", "bg": "#2f5a4a", "skin": "#c99773", "hair": "#1d1410", "style": "bun" },
+    { "id": "p04", "bg": "#5b5f6e", "skin": "#e2b48f", "hair": "#8c8c8c", "style": "short" },
+    { "id": "p05", "bg": "#8a6a2f", "skin": "#f3d6bf", "hair": "#4a2a18", "style": "bob" },
+    { "id": "p06", "bg": "#33485e", "skin": "#a8734f", "hair": "#120d0a", "style": "crop" },
+    { "id": "p07", "bg": "#6d3d45", "skin": "#eec9ae", "hair": "#2b1a12", "style": "long" },
+    { "id": "p08", "bg": "#456b5b", "skin": "#d9a882", "hair": "#3a2a1e", "style": "short" },
+    { "id": "p09", "bg": "#4f4a63", "skin": "#f0cfb6", "hair": "#1a1412", "style": "bob" },
+    { "id": "p10", "bg": "#2d4f66", "skin": "#c48b66", "hair": "#0f0b09", "style": "bun" },
+    { "id": "p11", "bg": "#735a3c", "skin": "#e7bf9c", "hair": "#d6d0c4", "style": "crop" },
+    { "id": "p12", "bg": "#3c5a3e", "skin": "#f2d2bb", "hair": "#5a3a22", "style": "long" }
+  ]
+}

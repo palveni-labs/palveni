@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { ScrollContainerContext } from "@/lib/scroll-container";
 import { readLocal, writeLocal } from "@/lib/storage";
+import { PlayerHost } from "@/player/player-host";
+import { usePlayer } from "@/player/store";
 import { useSlot } from "@/skins/scope";
 import { useSkin } from "@/skins/store";
 import { CommandPalette } from "./command-palette";
@@ -27,6 +29,7 @@ export function AppShell() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const searchStr = useRouterState({ select: (state) => state.location.searchStr });
+  const hasActiveTrack = usePlayer().currentTrack !== null;
   const [sidebarOpen, setSidebarOpen] = useState(() => readLocal(SIDEBAR_KEY) !== "closed");
 
   // The workspace is the scroll container: start every page (and folder) at the top.
@@ -49,31 +52,36 @@ export function AppShell() {
   return (
     <ScrollContainerContext value={scrollRef}>
       <InboxCollectors />
-      <div className="flex h-svh overflow-hidden bg-page text-fg">
-        {navSide === "left" ? sidebarNode : null}
-        <div className="flex min-w-0 flex-1 flex-col">
-          {nav === "sidebar" ? (
-            <Toolbar sidebarOpen={sidebarOpen} sidebarSide={navSide} onOpenSidebar={() => toggleSidebar(true)} />
-          ) : (
-            <TopBar />
-          )}
-          <main
-            ref={scrollRef}
-            id="workspace-content"
-            className={cn(
-              "min-h-0 flex-1 overflow-y-auto overscroll-contain",
-              navPhone === "bottom-bar" && "max-md:scroll-pb-[calc(4rem+env(safe-area-inset-bottom))] max-md:pb-[calc(4rem+env(safe-area-inset-bottom))]",
+      <div className="flex h-svh flex-col overflow-hidden bg-page text-fg">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          {navSide === "left" ? sidebarNode : null}
+          <div className="flex min-w-0 flex-1 flex-col">
+            {nav === "sidebar" ? (
+              <Toolbar sidebarOpen={sidebarOpen} sidebarSide={navSide} onOpenSidebar={() => toggleSidebar(true)} />
+            ) : (
+              <TopBar />
             )}
-          >
-            <div key={pathname} className="workspace-page flex min-h-full flex-col">
-              <ModuleTabs />
-              <FeatureGate>
-                <Outlet />
-              </FeatureGate>
-            </div>
-          </main>
+            <main
+              ref={scrollRef}
+              id="workspace-content"
+              className={cn(
+                "min-h-0 flex-1 overflow-y-auto overscroll-contain",
+                navPhone === "bottom-bar" && !hasActiveTrack && "max-md:scroll-pb-[calc(4rem+env(safe-area-inset-bottom))] max-md:pb-[calc(4rem+env(safe-area-inset-bottom))]",
+                navPhone === "bottom-bar" && hasActiveTrack && "max-md:scroll-pb-[calc(8.25rem+env(safe-area-inset-bottom))] max-md:pb-[calc(8.25rem+env(safe-area-inset-bottom))]",
+                navPhone !== "bottom-bar" && hasActiveTrack && "max-md:scroll-pb-[calc(4.5rem+env(safe-area-inset-bottom))] max-md:pb-[calc(4.5rem+env(safe-area-inset-bottom))]",
+              )}
+            >
+              <div key={pathname} className="workspace-page flex min-h-full flex-col">
+                <ModuleTabs />
+                <FeatureGate>
+                  <Outlet />
+                </FeatureGate>
+              </div>
+            </main>
+          </div>
+          {navSide === "right" ? sidebarNode : null}
         </div>
-        {navSide === "right" ? sidebarNode : null}
+        <PlayerHost />
         {navPhone === "bottom-bar" ? <BottomTabBar /> : null}
         <CommandPalette />
       </div>

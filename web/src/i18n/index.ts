@@ -5,6 +5,10 @@ import en from "./locales/en.json";
 import zhCN from "./locales/zh-CN.json";
 import broadcastEn from "@/modules/broadcast/locales/en.json";
 import broadcastZh from "@/modules/broadcast/locales/zh-CN.json";
+import musicEn from "@/modules/music/locales/en.json";
+import musicZh from "@/modules/music/locales/zh-CN.json";
+import videoEn from "@/modules/video/locales/en.json";
+import videoZh from "@/modules/video/locales/zh-CN.json";
 
 export const SUPPORTED_LANGUAGES = ["zh-CN", "en"] as const;
 export type Language = (typeof SUPPORTED_LANGUAGES)[number];
@@ -34,8 +38,8 @@ void i18n
   .use(initReactI18next)
   .init({
     resources: {
-      "zh-CN": { translation: { ...zhCN, broadcast: broadcastZh } },
-      en: { translation: { ...en, broadcast: broadcastEn } },
+      "zh-CN": { translation: { ...zhCN, broadcast: broadcastZh, musicApp: musicZh, videoApp: videoZh } },
+      en: { translation: { ...en, broadcast: broadcastEn, musicApp: musicEn, videoApp: videoEn } },
     },
     supportedLngs: [...SUPPORTED_LANGUAGES],
     fallbackLng: "en",

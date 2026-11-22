@@ -1,7 +1,7 @@
 import { Button, Dropdown, Label, Spinner, toast, ToggleButton, ToggleButtonGroup, buttonVariants } from "@heroui/react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { ArrowUp, CheckSquare, ChevronRight, Ellipsis, Folder, FolderOpen, LayoutGrid, Library as LibraryIcon, List, RotateCw, ScanSearch, SearchX, X } from "lucide-react";
+import { ArrowUp, CheckSquare, ChevronRight, Ellipsis, Film, Folder, FolderOpen, LayoutGrid, Library as LibraryIcon, List, Music, RotateCw, ScanSearch, SearchX, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
@@ -424,13 +424,29 @@ export function LibraryBrowsePage() {
 }
 
 function BrowseHeader({ library }: { library: Library }) {
+  const { t } = useTranslation();
   const isAdmin = useIsAdmin();
   const { running } = useLibraryScan(library);
   const loudness = useFeature("musicLoudness");
+  const videoEnabled = useFeature("video");
+  const musicEnabled = useFeature("music");
   // A library that was never scanned offers the scan as the page's next step instead.
   const scan = isAdmin && (library.lastScanAt !== null || running) ? <ScanControl library={library} /> : null;
-  const actions = isAdmin && loudness && library.kind === "music" && library.lastScanAt
-    ? <><AnalyzeLoudness libraryId={library.id} />{scan}</>
-    : scan;
+  const openVideo = videoEnabled && library.kind === "video" ? (
+    <Link to="/video/$libraryId" params={{ libraryId: library.id }} className={buttonVariants({ variant: "primary", size: "sm" })}>
+      <Film className="size-4" aria-hidden />
+      {t("videoApp.library.openInVideo")}
+    </Link>
+  ) : null;
+  const openMusic = musicEnabled && library.kind === "music" ? (
+    <Link to="/music" search={{ library: library.id }} className={buttonVariants({ variant: "primary", size: "sm" })}>
+      <Music className="size-4" aria-hidden />
+      {t("musicApp.library.openMusicApp")}
+    </Link>
+  ) : null;
+  const loudnessAction = isAdmin && loudness && library.kind === "music" && library.lastScanAt
+    ? <AnalyzeLoudness libraryId={library.id} />
+    : null;
+  const actions = openVideo || openMusic || loudnessAction || scan ? <>{openVideo}{openMusic}{loudnessAction}{scan}</> : null;
   return <PageHeader title={library.name} summary={<LibraryMeta library={library} scanning={running} />} actions={actions} />;
 }
