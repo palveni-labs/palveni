@@ -16,11 +16,14 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
+tokio-util.workspace = true
 tracing.workspace = true
+uuid.workspace = true
 
 [dev-dependencies]
 # Gives `cargo test -p palveni-media` a database backend.
 palveni-db = { workspace = true, features = ["sqlite"] }
+tempfile.workspace = true
 
 [lints]
 workspace = true

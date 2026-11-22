@@ -4,6 +4,8 @@
 //! report is kept in memory and in the settings table; it is refreshed at
 //! startup in the background and on explicit request.
 
+use std::path::PathBuf;
+
 use palveni_db::Db;
 use palveni_db::settings::KEY_HARDWARE_REPORT;
 use tokio::sync::{Mutex, RwLock};
@@ -14,6 +16,7 @@ pub struct HardwareService {
     pub audio: crate::audio::AudioTranscoder,
     pub chapters: crate::chapters::AudiobookChapters,
     pub subtitles: crate::subtitles::EmbeddedSubtitles,
+    pub video: crate::video::VideoService,
     db: Db,
     options: ProbeOptions,
     cache: RwLock<Option<HardwareReport>>,
@@ -21,11 +24,12 @@ pub struct HardwareService {
 }
 
 impl HardwareService {
-    pub fn new(db: Db, options: ProbeOptions) -> Self {
+    pub fn new(db: Db, data_dir: PathBuf, options: ProbeOptions) -> Self {
         HardwareService {
             audio: crate::audio::AudioTranscoder::new(options.ffmpeg_path.as_deref()),
             chapters: crate::chapters::AudiobookChapters::new(options.ffmpeg_path.as_deref()),
             subtitles: crate::subtitles::EmbeddedSubtitles::new(options.ffmpeg_path.as_deref()),
+            video: crate::video::VideoService::new(options.ffmpeg_path.as_deref(), data_dir),
             db,
             options,
             cache: RwLock::new(None),

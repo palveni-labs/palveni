@@ -3140,6 +3140,7 @@ dependencies = [
  "tower-http 0.7.1",
  "tracing",
  "utoipa",
+ "uuid",
 ]
 
 [[package]]
@@ -3240,10 +3241,13 @@ dependencies = [
  "palveni-db",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.21",
  "tokio",
+ "tokio-util",
  "tracing",
  "utoipa",
+ "uuid",
 ]
 
 [[package]]

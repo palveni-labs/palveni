@@ -1,6 +1,7 @@
 mod byte_range;
 mod cue;
 mod transcode;
+pub mod video;
 pub use transcode::audio;
 
 use axum::{
@@ -57,7 +58,17 @@ pub(super) fn issue_ticket(
     session: SessionId,
     now: DateTime<Utc>,
 ) -> (DateTime<Utc>, String) {
-    let expires_at = now + TICKET_LIFETIME;
+    issue_ticket_with_lifetime(identity, scope, session, now, TICKET_LIFETIME)
+}
+
+pub(super) fn issue_ticket_with_lifetime(
+    identity: &NodeIdentity,
+    scope: &str,
+    session: SessionId,
+    now: DateTime<Utc>,
+    lifetime: TimeDelta,
+) -> (DateTime<Utc>, String) {
+    let expires_at = now + lifetime;
     let expiry = expires_at.timestamp_millis();
     let signature = identity.sign(format!("{scope}\n{session}\n{expiry}").as_bytes());
     (

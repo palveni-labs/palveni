@@ -576,13 +576,22 @@ mod tests {
             music_search: Arc::new(palveni_library::music_search::MusicSearch::new(
                 dir.join("search"),
             )),
+            video_images: Arc::new(palveni_library::video::VideoImages::new(
+                dir.join("cache").join("video"),
+                None,
+                None,
+            )),
             identity: Arc::new(palveni_link::NodeIdentity::generate().unwrap()),
             link: Arc::new(crate::LinkPairings::default()),
             login_limit: Arc::new(crate::LoginLimit::new(4)),
             subsonic_limit: Arc::new(crate::LoginLimit::new(4)),
             bus,
             jobs,
-            hardware: Arc::new(HardwareService::new(db.clone(), ProbeOptions::default())),
+            hardware: Arc::new(HardwareService::new(
+                db.clone(),
+                dir.to_path_buf(),
+                ProbeOptions::default(),
+            )),
             plugins: Arc::new(PluginCatalog::new()),
             settings: Arc::new(tokio::sync::RwLock::new(Default::default())),
             boot_tier: PerfTier::detect(0, 1, false),

@@ -1,0 +1,95 @@
+{
+    "streams": [
+        {
+            "index": 0,
+            "codec_name": "mjpeg",
+            "codec_type": "video",
+            "width": 1000,
+            "height": 1500,
+            "pix_fmt": "yuvj420p",
+            "disposition": { "default": 0, "attached_pic": 1 },
+            "tags": { "filename": "cover.jpg", "mimetype": "image/jpeg" }
+        },
+        {
+            "index": 1,
+            "codec_name": "hevc",
+            "profile": "Main 10",
+            "codec_type": "video",
+            "codec_tag_string": "[0][0][0][0]",
+            "width": 3840,
+            "height": 2160,
+            "pix_fmt": "yuv420p10le",
+            "color_transfer": "smpte2084",
+            "color_primaries": "bt2020",
+            "r_frame_rate": "24000/1001",
+            "avg_frame_rate": "24000/1001",
+            "disposition": { "default": 1, "forced": 0, "attached_pic": 0 },
+            "side_data_list": [
+                { "side_data_type": "Mastering display metadata" },
+                { "side_data_type": "Content light level metadata", "max_content": 1000 }
+            ],
+            "tags": { "BPS": "16000000", "DURATION": "01:30:00.250000000" }
+        },
+        {
+            "index": 2,
+            "codec_name": "eac3",
+            "codec_type": "audio",
+            "sample_rate": "48000",
+            "channels": 6,
+            "channel_layout": "5.1(side)",
+            "disposition": { "default": 1, "forced": 0 },
+            "tags": { "language": "eng", "title": "Surround 5.1" }
+        },
+        {
+            "index": 3,
+            "codec_name": "ac3",
+            "codec_type": "audio",
+            "sample_rate": "48000",
+            "channels": 6,
+            "channel_layout": "5.1(side)",
+            "disposition": { "default": 0, "forced": 0 },
+            "tags": { "language": "und", "TITLE": "Commentary" }
+        },
+        {
+            "index": 4,
+            "codec_name": "subrip",
+            "codec_type": "subtitle",
+            "disposition": { "default": 0, "forced": 1 },
+            "tags": { "language": "chi", "title": "Signs" }
+        },
+        {
+            "index": 5,
+            "codec_name": "hdmv_pgs_subtitle",
+            "codec_type": "subtitle",
+            "disposition": { "default": 0, "forced": 0 },
+            "tags": { "language": "eng" }
+        }
+    ],
+    "chapters": [
+        {
+            "id": 1,
+            "time_base": "1/1000000000",
+            "start": 600500000000,
+            "start_time": "600.500000",
+            "end_time": "1200.000000",
+            "tags": { "title": "  " }
+        },
+        {
+            "id": 0,
+            "time_base": "1/1000000000",
+            "start": 0,
+            "start_time": "0.000000",
+            "end_time": "600.500000",
+            "tags": { "title": "Opening" }
+        }
+    ],
+    "format": {
+        "filename": "fd:",
+        "nb_streams": 6,
+        "format_name": "matroska,webm",
+        "start_time": "0.000000",
+        "duration": "5400.250000",
+        "size": "12150562500",
+        "bit_rate": "18000000"
+    }
+}

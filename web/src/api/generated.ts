@@ -378,6 +378,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/items/{id}/media-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read codec, stream, HDR and chapter details for an indexed video. */
+        get: operations["getVideoMediaInfo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/items/{id}/playback": {
         parameters: {
             query?: never;
@@ -475,6 +492,23 @@ export interface paths {
         get: operations["getVideoThumb"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{id}/video-playback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Choose direct, remux or transcoded video delivery and start an HLS session when needed. */
+        post: operations["startVideoPlayback"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1548,6 +1582,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/video-sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description Stop an active video HLS session and remove its temporary segments. */
+        delete: operations["deleteVideoSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/video-sessions/{sessionId}/master.m3u8": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read the live HLS media playlist for an active video session. */
+        get: operations["getVideoMasterPlaylist"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/video-sessions/{sessionId}/segment/{file}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read one initialization or media segment from an active video HLS session. */
+        get: operations["getVideoSegment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/videos/home": {
         parameters: {
             query?: never;
@@ -1582,6 +1667,20 @@ export interface components {
             field?: string;
             index?: number;
             path?: string;
+        };
+        AudioStreamInfo: {
+            channelLayout: string | null;
+            /** Format: int32 */
+            channels: number | null;
+            codec: string;
+            default: boolean;
+            /**
+             * Format: int32
+             * @description Stream index in the file; pass it back as `audioIndex`.
+             */
+            index: number;
+            language: string | null;
+            title: string | null;
         };
         BookDownload: {
             /** Format: date-time */
@@ -1650,6 +1749,17 @@ export interface components {
             reversible: boolean;
             risk: components["schemas"]["Risk"];
         };
+        ChapterInfo: {
+            /** Format: int64 */
+            startMs: number;
+            title: string | null;
+        };
+        ClientProfile: {
+            audioCodecs?: string[];
+            containers?: string[];
+            hls?: components["schemas"]["HlsSupport"];
+            videoCodecs?: string[];
+        };
         ConnectionEntry: {
             id: string;
             kind: components["schemas"]["ConnectionEntryKind"];
@@ -1693,6 +1803,8 @@ export interface components {
             name: string;
             paths: string[];
         };
+        /** @enum {string} */
+        DeliveryMode: "direct" | "remux" | "transcode";
         /**
          * Format: uuid
          * @description A registered client installation.
@@ -1736,10 +1848,14 @@ export interface components {
             /** Format: date-time */
             probedAt: string;
         };
+        /** @enum {string} */
+        HdrFormat: "sdr" | "hdr10" | "hlg" | "dolby-vision";
         Health: {
             /** @constant */
             status: "ok";
         };
+        /** @enum {string} */
+        HlsSupport: "native" | "mse" | "none";
         InstalledSkin: components["schemas"]["SkinInfo"] & {
             installedAt: string;
             source: components["schemas"]["SkinSource"];
@@ -1914,6 +2030,20 @@ export interface components {
         LyricsFormat: "lrc" | "plain";
         /** @enum {string} */
         LyricsSource: "sidecar" | "embedded";
+        MediaInfo: {
+            audio: components["schemas"]["AudioStreamInfo"][];
+            /** Format: int32 */
+            bitrateKbps: number | null;
+            chapters: components["schemas"]["ChapterInfo"][];
+            /** @description Normalized container: `mp4`, `mov`, `mkv`, `webm`, `ts`, `avi`, … */
+            container: string | null;
+            /** Format: int64 */
+            durationMs: number | null;
+            /** Format: int64 */
+            sizeBytes: number | null;
+            subtitles: components["schemas"]["SubtitleStreamInfo"][];
+            video: null | components["schemas"]["VideoStreamInfo"];
+        };
         MediaState: {
             completed: boolean;
             favorite: boolean;
@@ -2145,6 +2275,8 @@ export interface components {
         };
         /** @enum {string} */
         PlaybackMode: "direct" | "transcode";
+        /** @enum {string} */
+        PlaybackProtocol: "file" | "hls";
         PlaybackUpdate: {
             completed: boolean;
             /** Format: int64 */
@@ -2216,6 +2348,8 @@ export interface components {
             publishedAt: string;
             sha256: string;
         };
+        /** @enum {string} */
+        RequestedMode: "auto" | "direct" | "transcode";
         /** @enum {string} */
         Risk: "read" | "write" | "destructive";
         /** @enum {string} */
@@ -2363,6 +2497,17 @@ export interface components {
             tracks: components["schemas"]["SubtitleTrack"][];
             truncated: boolean;
         };
+        SubtitleStreamInfo: {
+            codec: string;
+            default: boolean;
+            forced: boolean;
+            /** Format: int32 */
+            index: number;
+            language: string | null;
+            /** @description Can be converted to WebVTT by `GET /items/{id}/subtitles/{track}`. */
+            textBased: boolean;
+            title: string | null;
+        };
         SubtitleTrack: {
             forced: boolean;
             format: components["schemas"]["SubtitleFormat"];
@@ -2486,6 +2631,42 @@ export interface components {
         };
         /** @enum {string} */
         VideoPersonKind: "actor" | "director" | "writer" | "producer";
+        VideoPlaybackRequest: {
+            /** Format: int32 */
+            audioIndex?: number | null;
+            client: components["schemas"]["ClientProfile"];
+            /** Format: int32 */
+            maxBitrateKbps?: number | null;
+            /** Format: int32 */
+            maxHeight?: number | null;
+            mode?: null | components["schemas"]["RequestedMode"];
+            /** Format: int64 */
+            startMs?: number | null;
+        };
+        VideoPlaybackResponse: {
+            /** Format: date-time */
+            expiresAt: string;
+            mode: components["schemas"]["DeliveryMode"];
+            protocol: components["schemas"]["PlaybackProtocol"];
+            reason: string | null;
+            sessionId: string;
+            /** Format: int64 */
+            startMs: number;
+            url: string;
+        };
+        VideoStreamInfo: {
+            /** Format: int32 */
+            bitDepth: number | null;
+            codec: string;
+            /** Format: double */
+            frameRate: number | null;
+            hdr: null | components["schemas"]["HdrFormat"];
+            /** Format: int32 */
+            height: number;
+            profile: string | null;
+            /** Format: int32 */
+            width: number;
+        };
         /** @description Per-account state. For series and seasons the values summarize episodes. */
         VideoUserState: {
             favorite: boolean;
@@ -4479,6 +4660,84 @@ export interface operations {
             };
         };
     };
+    getVideoMediaInfo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaInfo"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
     preparePlayback: {
         parameters: {
             query?: {
@@ -5007,6 +5266,97 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    startVideoPlayback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VideoPlaybackRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VideoPlaybackResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9917,6 +10267,219 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    deleteVideoSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    getVideoMasterPlaylist: {
+        parameters: {
+            query?: {
+                ticket?: string;
+            };
+            header?: never;
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.apple.mpegurl": string;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    getVideoSegment: {
+        parameters: {
+            query?: {
+                ticket?: string;
+            };
+            header?: never;
+            path: {
+                sessionId: string;
+                file: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/mp2t": string;
+                    "video/mp4": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

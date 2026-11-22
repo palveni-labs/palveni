@@ -89,7 +89,10 @@ use crate::routes::{
     link::{LinkChallenge, LinkDevice, LinkDeviceList, LinkPairRequest, LinkPairing},
     opds::OpdsAccess,
     personal::{FavoriteUpdate, PlaylistUpdate, RatingUpdate},
-    playback::{PlaybackInfo, PlaybackMode},
+    playback::{
+        PlaybackInfo, PlaybackMode,
+        video::{PlaybackProtocol, VideoPlaybackRequest, VideoPlaybackResponse},
+    },
     plugins::PluginList,
     scan_reviews::{ScanReview, ScanReviewList, ScanReviewPaths},
     subsonic::{SubsonicPassword, SubsonicPasswordStatus},
@@ -126,6 +129,10 @@ use palveni_core::{
     Item, ItemKind, Job, Library, User, features::Capability, settings::RuntimeSettings,
 };
 use palveni_media::HardwareReport;
+use palveni_media::video::{
+    AudioStreamInfo, ChapterInfo, ClientProfile, DeliveryMode, HdrFormat, HlsSupport, MediaInfo,
+    RequestedMode, SubtitleStreamInfo, VideoStreamInfo,
+};
 use palveni_plugin_host::skin_store::{InstalledSkin, RegistrySkin};
 use utoipa::OpenApi;
 
@@ -240,6 +247,19 @@ use utoipa::OpenApi;
     PlaylistUpdate,
     PlaybackInfo,
     PlaybackMode,
+    MediaInfo,
+    HdrFormat,
+    VideoStreamInfo,
+    AudioStreamInfo,
+    SubtitleStreamInfo,
+    ChapterInfo,
+    HlsSupport,
+    RequestedMode,
+    DeliveryMode,
+    ClientProfile,
+    PlaybackProtocol,
+    VideoPlaybackRequest,
+    VideoPlaybackResponse,
     Item,
     ItemKind,
     JobList,

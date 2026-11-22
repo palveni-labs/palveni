@@ -99,6 +99,8 @@ fn success(output: Output) -> Value {
         Output::Audio => binary(&["audio/*", "video/*", "application/octet-stream"]),
         Output::Attachment => binary(&["application/octet-stream"]),
         Output::WebVtt => content("text/vtt", json!({"type":"string"})),
+        Output::HlsPlaylist => content("application/vnd.apple.mpegurl", json!({"type":"string"})),
+        Output::HlsSegment => binary(&["video/mp4", "video/mp2t"]),
         Output::Poster => binary(&["image/jpeg", "image/png", "image/webp"]),
         Output::Document => json_content(json!({"type":"object","additionalProperties":true})),
         Output::SkinManifest => json_content(reference("SkinManifest")),
@@ -156,6 +158,8 @@ fn parameters(cap: &Capability) -> Vec<Value> {
             | "headAudio"
             | "downloadBook"
             | "headBook"
+            | "getVideoMasterPlaylist"
+            | "getVideoSegment"
     ) {
         params.push(parameter("ticket", "query", false, json!({"type":"string","description":"Short-lived credential issued for this file and session, as an alternative to a bearer header."})));
     }
@@ -646,6 +650,11 @@ fn operation(endpoint: &Endpoint) -> Value {
                 entry.remove("content");
             }
         }
+    }
+    if matches!(cap.id, "getVideoMasterPlaylist" | "getVideoSegment") {
+        op["security"] = json!([{"bearerAuth":[]},{"mediaTicket":[]}]);
+        op["responses"]["200"]["headers"]["Cache-Control"] =
+            json!({"schema":{"type":"string","const":"private, no-store"}});
     }
     match endpoint.input {
         Input::None => (),

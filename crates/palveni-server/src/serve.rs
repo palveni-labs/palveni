@@ -103,12 +103,14 @@ pub async fn run(cli: &Cli) -> anyhow::Result<()> {
 
     let hardware = Arc::new(HardwareService::new(
         db.clone(),
+        config.data_dir.clone(),
         ProbeOptions {
             ffmpeg_path: config.ffmpeg_path.clone(),
             perf_tier_override: config.perf_tier,
             ..ProbeOptions::default()
         },
     ));
+    let video_shutdown = Arc::clone(&hardware);
     jobs.register(Arc::new(crate::loudness_job::LoudnessJob {
         db: db.clone(),
         hardware: Arc::clone(&hardware),
@@ -124,6 +126,7 @@ pub async fn run(cli: &Cli) -> anyhow::Result<()> {
         tokio::spawn(async move {
             shutdown.cancelled().await;
             hardware.audio.shutdown();
+            hardware.video.shutdown().await;
         });
     }
     {
@@ -214,6 +217,7 @@ pub async fn run(cli: &Cli) -> anyhow::Result<()> {
     }
 
     shutdown.cancel();
+    video_shutdown.video.shutdown().await;
     if let Some(listener) = link_listener
         && let Err(err) = listener.await
     {
