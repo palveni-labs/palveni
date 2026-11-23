@@ -64,6 +64,11 @@ export type MusicSearchHit = Schemas["MusicSearchHit"];
 export type MusicSearchKind = Schemas["MusicSearchKind"];
 export type GlobalMusicSearchHit = Schemas["GlobalMusicSearchHit"];
 export type GlobalMusicSearchPage = Schemas["GlobalMusicSearchPage"];
+export type SpokenPage = Schemas["SpokenPage"];
+export type SpokenEntry = Schemas["SpokenEntry"];
+export type SpokenRecording = Schemas["SpokenRecording"];
+export type SpokenChapter = Schemas["SpokenChapter"];
+export type SpokenChapterList = Schemas["SpokenChapterList"];
 
 export type TranscodeFormat = "mp3" | "aac" | "opus";
 
@@ -138,6 +143,25 @@ export const musicApi = {
     request<Schemas["MusicSearchPage"]>(`${lib(libraryId)}/search`, { query: { q, kind, limit }, signal }),
   searchAll: (q: string, kind: MusicSearchKind, limit = 24, cursor?: string | null, signal?: AbortSignal) =>
     request<GlobalMusicSearchPage>("/music/search", { query: { q, kind, limit, cursor: cursor ?? undefined }, signal }),
+  spoken: (libraryId: string, params: { collection?: string | null; cursor?: string | null; limit?: number } = {}, signal?: AbortSignal) =>
+    request<SpokenPage>(`/libraries/${enc(libraryId)}/spoken`, {
+      query: {
+        collection: params.collection ?? undefined,
+        cursor: params.cursor ?? undefined,
+        limit: params.limit,
+      },
+      signal,
+    }),
+  chapters: async (itemId: ItemId, signal?: AbortSignal): Promise<SpokenChapterList> => {
+    try {
+      return await request<SpokenChapterList>(`/items/${enc(itemId)}/chapters`, { signal });
+    } catch (error) {
+      if (isApiError(error) && (error.status === 404 || error.status === 503)) {
+        return { chapters: [] };
+      }
+      throw error;
+    }
+  },
 
   playlists: {
     list: (before?: number | null, signal?: AbortSignal) =>

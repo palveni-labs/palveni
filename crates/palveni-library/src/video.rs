@@ -212,7 +212,6 @@ impl Inventory {
         let bdmv_disc_folder = bdmv_disc_root
             .filter(|d| Some(*d) != bdmv_work_dir)
             .and_then(|d| self.folders.get(d));
-        let named_nfo = folder.file(&format!("{stem}.nfo"));
         let bdmv_nfo = bdmv_work_dir.and_then(|dir| {
             let dir_stem = dir.file_name().and_then(|n| n.to_str());
             bdmv_work_folder
@@ -223,14 +222,16 @@ impl Inventory {
                 })
                 .or_else(|| bdmv_disc_folder.and_then(|f| f.file("movie.nfo")))
         });
-        let file_nfo = named_nfo
-            .or(bdmv_nfo)
-            .or_else(|| {
+        let file_nfo = if bdmv.is_some() {
+            bdmv_nfo
+        } else {
+            folder.file(&format!("{stem}.nfo")).or_else(|| {
                 (folder.films == 1)
                     .then(|| folder.file("movie.nfo"))
                     .flatten()
             })
-            .filter(|s| s.bytes <= MAX_NFO);
+        }
+        .filter(|s| s.bytes <= MAX_NFO);
         let season_folder = if bdmv.is_some() {
             None
         } else {
@@ -381,7 +382,7 @@ impl Inventory {
         if let Some((ref work_dir, _, ref disc_label)) = bdmv {
             let _ = write!(
                 signature,
-                "/v3-bdmv:{}:{}",
+                "/v4-bdmv:{}:{}",
                 work_dir.display(),
                 disc_label.as_deref().unwrap_or("")
             );

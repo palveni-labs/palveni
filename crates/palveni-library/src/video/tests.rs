@@ -435,3 +435,61 @@ async fn groups_bdmv_discs_by_largest_stream_and_parses_year_seasons() {
     assert_eq!(mad.kind, VideoKind::Series);
     assert_eq!(mad.file_count, 2);
 }
+
+#[tokio::test]
+async fn ignores_bogus_bdmv_stream_nfo_and_prefers_film_folder_metadata() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("media");
+    let mugen_dir = root.join("电影/动画电影/鬼灭之刃剧场版-无限列车篇 (2020)");
+    let mugen_stream = mugen_dir.join("BDMV/STREAM");
+    fs::create_dir_all(&mugen_stream).unwrap();
+    fs::write(mugen_stream.join("00000.m2ts"), vec![0u8; 2048]).unwrap();
+    fs::write(
+        mugen_stream.join("00000.nfo"),
+        b"<movie><title>00000</title><year>1900</year></movie>",
+    )
+    .unwrap();
+
+    let opts = DbOptions {
+        main_url: format!("sqlite://{}?mode=rwc", tmp.path().join("m.db").display()),
+        ops_url: format!("sqlite://{}?mode=rwc", tmp.path().join("o.db").display()),
+        max_connections: Some(4),
+        min_connections: None,
+    };
+    let db = Db::open(&opts).await.unwrap();
+    let id = db
+        .libraries()
+        .create(NewLibrary {
+            name: "Blu-ray".into(),
+            kind: LibraryKind::Video,
+            paths: vec![fs::canonicalize(&root).unwrap().to_str().unwrap().into()],
+        })
+        .await
+        .unwrap()
+        .id;
+    let seq = Arc::new(AtomicI64::new(0));
+    let events = EventBus::new(32, 0, move || {
+        let n = seq.fetch_add(1, Ordering::Relaxed) + 1;
+        async move { Ok::<_, std::io::Error>(n) }
+    });
+    let scanner = crate::Scanner::new(db.clone(), events);
+
+    // Without a film-level NFO, stream-level `00000.nfo` must not override the folder title/year.
+    scanner.scan(id, &Observer).await.unwrap();
+    let page = db.video().browse(id, None, None, 10, None).await.unwrap();
+    assert_eq!(page.entries.len(), 1);
+    assert_eq!(page.entries[0].title, "鬼灭之刃剧场版-无限列车篇");
+    assert_eq!(page.entries[0].year, Some(2020));
+
+    // When `movie.nfo` exists on the film folder alongside `BDMV/STREAM/00000.nfo`, `movie.nfo` wins.
+    fs::write(
+        mugen_dir.join("movie.nfo"),
+        "<movie><title>剧场版「鬼灭之刃」无限列车篇</title><year>2020</year></movie>",
+    )
+    .unwrap();
+    scanner.scan(id, &Observer).await.unwrap();
+    let page = db.video().browse(id, None, None, 10, None).await.unwrap();
+    assert_eq!(page.entries.len(), 1);
+    assert_eq!(page.entries[0].title, "剧场版「鬼灭之刃」无限列车篇");
+    assert_eq!(page.entries[0].year, Some(2020));
+}

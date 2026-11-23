@@ -228,6 +228,63 @@ describe("MusicPlayerStore", () => {
       window.removeEventListener(MEDIA_EXCLUSIVE_EVENT, store.handleExclusiveEvent);
     }
   });
+
+  it("persists playbackRate across reloads and supports starting at a resume offset", () => {
+    expect(store.getSnapshot().playbackRate).toBe(1);
+
+    store.playQueue(tracks, 0, { shuffle: false, startPositionSec: 84 });
+    expect(store.getSnapshot().currentTimeSec).toBe(84);
+
+    store.setPlaybackRate(1.5);
+    expect(store.getSnapshot().playbackRate).toBe(1.5);
+    store.persist(true);
+
+    const restored = new MusicPlayerStore({ loadPersisted: true });
+    expect(restored.getSnapshot().playbackRate).toBe(1.5);
+
+    restored.setPlaybackRate(0.75);
+    expect(restored.getSnapshot().playbackRate).toBe(0.75);
+  });
+
+  it("auto-pauses playback when timed sleep timer expires or at end of current track", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-11-23T12:00:00Z"));
+      store.playQueue([tracks[0]!, tracks[1]!], 0, { shuffle: false });
+      expect(store.getSnapshot().playing).toBe(true);
+
+      // 15-minute countdown updates remaining minutes and pauses on expiration
+      store.setSleepTimer(15);
+      expect(store.getSnapshot().sleepRemainingMinutes).toBe(15);
+      expect(store.getSnapshot().sleepEndOfTrack).toBe(false);
+
+      vi.advanceTimersByTime(5 * 60_000);
+      expect(store.getSnapshot().sleepRemainingMinutes).toBe(10);
+      expect(store.getSnapshot().playing).toBe(true);
+
+      vi.advanceTimersByTime(10 * 60_000);
+      expect(store.getSnapshot().playing).toBe(false);
+      expect(store.getSnapshot().status).toBe("paused");
+      expect(store.getSnapshot().sleepUntilMs).toBeNull();
+      expect(store.getSnapshot().sleepRemainingMinutes).toBeNull();
+
+      // Resume and arm "end_of_track" sleep mode (even with repeat="one")
+      store.setRepeat("one");
+      store.play();
+      store.setSleepTimer("end_of_track");
+      expect(store.getSnapshot().sleepEndOfTrack).toBe(true);
+
+      // Natural track end pauses instead of advancing or repeating
+      store.next(false);
+      expect(store.getSnapshot().playing).toBe(false);
+      expect(store.getSnapshot().status).toBe("paused");
+      expect(store.getSnapshot().currentTrack?.id).toBe("t1");
+      expect(store.getSnapshot().sleepEndOfTrack).toBe(false);
+    } finally {
+      store.reset(false);
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("LRC lyrics parser", () => {

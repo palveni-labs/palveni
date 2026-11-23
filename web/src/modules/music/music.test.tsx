@@ -1,10 +1,12 @@
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
-import { M0_FEATURES, MOCK_ACCOUNTS } from "@/mocks/db";
+import type { components } from "@/api/generated";
 import { MUSIC_MOCK_FEATURES } from "@/mocks/music/handlers";
+import { M0_FEATURES, MOCK_ACCOUNTS } from "@/mocks/db";
 import { MEDIA_EXCLUSIVE_EVENT, playerStore } from "@/player/store";
-import { installMockDb } from "@/test/msw-server";
+import { installMockDb, server } from "@/test/msw-server";
 import { renderLoadedApp, signIn } from "@/test/render-app";
 import en from "./locales/en.json";
 import zhCN from "./locales/zh-CN.json";
@@ -158,4 +160,147 @@ describe("music app module", () => {
     const artistsRegion = await within(searchApp.container).findByRole("region", { name: "艺人" });
     expect(within(artistsRegion).getByRole("link", { name: "林间信号" })).toBeInTheDocument();
   }, 15_000);
+
+  it("browses /music/audiobooks, resumes spoken chapters, jumps M4B timestamps, and controls speed & sleep timer", async () => {
+    const db = installMockDb({ features: [...M0_FEATURES, ...MUSIC_MOCK_FEATURES, "spoken", "spokenChapters"] });
+    const audiobookLib = db.createLibrary("有声书房", "audiobook", ["/srv/media/audiobooks"]);
+    const podcastLib = db.createLibrary("深夜电台", "podcast", ["/srv/media/podcasts"]);
+    signIn(db, MOCK_ACCOUNTS.admin.username);
+
+    const bookCollectionId = "b".repeat(64);
+    const chapter1Id = "7177b2e7-9da5-4bd4-9226-c5f75ca47e11";
+    const chapter2Id = "7177b2e7-9da5-4bd4-9226-c5f75ca47e12";
+    const chapter1State: components["schemas"]["MediaState"] = {
+      favorite: false,
+      stars: 0,
+      positionMs: 85_000,
+      completed: false,
+      playbackVersion: 2,
+      lastPlayedAt: "2026-11-22T20:00:00Z",
+      playCount: 0,
+    };
+    const chapter2State: components["schemas"]["MediaState"] = {
+      favorite: false,
+      stars: 0,
+      positionMs: 0,
+      completed: true,
+      playbackVersion: 1,
+      lastPlayedAt: "2026-11-21T20:00:00Z",
+      playCount: 1,
+    };
+
+    server.use(
+      http.get(`/api/v1/libraries/${audiobookLib.id}/spoken`, ({ request }) => {
+        const col = new URL(request.url).searchParams.get("collection");
+        if (col === bookCollectionId) {
+          return HttpResponse.json({
+            entries: [
+              { kind: "chapter", id: chapter1Id, title: "第一部 · 沉默的春天", artist: "刘慈欣", discNumber: 1, number: 1, durationMs: 1_800_000 },
+              { kind: "chapter", id: chapter2Id, title: "第二部 · 黑暗森林", artist: "刘慈欣", discNumber: 1, number: 2, durationMs: 2_100_000 },
+            ],
+            nextCursor: null,
+          });
+        }
+        return HttpResponse.json({
+          entries: [{ kind: "book", id: bookCollectionId, title: "三体全集（有声珍藏版）" }],
+          nextCursor: null,
+        });
+      }),
+      http.get(`/api/v1/libraries/${podcastLib.id}/spoken`, () =>
+        HttpResponse.json({
+          entries: [{ kind: "show", id: "c".repeat(64), title: "内核漫游指南" }],
+          nextCursor: null,
+        }),
+      ),
+      http.get(`/api/v1/items/${chapter1Id}/chapters`, () =>
+        HttpResponse.json({
+          chapters: [
+            { title: "序幕", startMs: 0 },
+            { title: "红岸基地", startMs: 300_000 },
+          ],
+        }),
+      ),
+      http.get(`/api/v1/items/${chapter2Id}/chapters`, () => HttpResponse.json({ chapters: [] })),
+      http.get(`/api/v1/me/items/${chapter1Id}`, () => HttpResponse.json(chapter1State)),
+      http.get(`/api/v1/me/items/${chapter2Id}`, () => HttpResponse.json(chapter2State)),
+      http.put(`/api/v1/me/items/${chapter1Id}/progress`, async ({ request }) => {
+        const body = (await request.json()) as { positionMs: number; completed: boolean };
+        chapter1State.positionMs = body.positionMs;
+        chapter1State.completed = body.completed;
+        chapter1State.playbackVersion += 1;
+        return HttpResponse.json(chapter1State);
+      }),
+      http.post(`/api/v1/items/${chapter1Id}/playback`, () =>
+        HttpResponse.json({
+          mode: "direct",
+          url: "/api/v1/items/mock-stream",
+          expiresAt: new Date(Date.now() + 900_000).toISOString(),
+        }),
+      ),
+      http.get(`/api/v1/items/${chapter1Id}/artwork`, () => new HttpResponse(null, { status: 404 })),
+      http.get(`/api/v1/items/${chapter1Id}/loudness`, () => new HttpResponse(null, { status: 404 })),
+    );
+
+    const user = userEvent.setup();
+    await renderLoadedApp("/music/audiobooks");
+
+    // Both spoken libraries appear in switcher; open the audiobook collection
+    expect(await screen.findByRole("button", { name: "有声书房" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "深夜电台" })).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: /三体全集（有声珍藏版）/ }));
+    expect(await screen.findByRole("heading", { level: 2, name: "三体全集（有声珍藏版）" })).toBeInTheDocument();
+
+    // Resume badge + button for chapter 1 (85s -> 1:25) and Completed badge for chapter 2
+    const resumeBtn = await screen.findByRole("button", { name: /续听 1:25/ });
+    expect(resumeBtn).toBeInTheDocument();
+    expect(await screen.findByText("已听完")).toBeInTheDocument();
+
+    // M4B embedded chapters render and can seek/start playback
+    expect(await screen.findByRole("button", { name: "跳至章节：红岸基地" })).toBeInTheDocument();
+
+    // Click Resume -> starts global player at 85s
+    await user.click(resumeBtn);
+    await waitFor(() => expect(playerStore.getSnapshot().currentTrack?.id).toBe(chapter1Id));
+    expect(playerStore.getSnapshot().currentTimeSec).toBe(85);
+
+    // Click M4B embedded chapter "红岸基地" -> seeks global player to 300s
+    await user.click(screen.getByRole("button", { name: "跳至章节：红岸基地" }));
+    expect(playerStore.getSnapshot().currentTimeSec).toBe(300);
+
+    // Change playback speed to 1.5x via inline quick control
+    const speedGroup = screen.getByRole("group", { name: "播放倍速" });
+    await user.click(within(speedGroup).getByRole("button", { name: "1.5×" }));
+    expect(playerStore.getSnapshot().playbackRate).toBe(1.5);
+
+    // Activate Sleep Timer (30 min) via PlayerBar popover and verify live badge
+    const sleepTriggers = screen.getAllByRole("button", { name: "睡眠定时" });
+    await user.click(sleepTriggers[0]!);
+    const sleepDialog = await screen.findByRole("dialog", { name: "睡眠定时" });
+    await user.click(within(sleepDialog).getByRole("button", { name: "30 分钟" }));
+    expect(playerStore.getSnapshot().sleepRemainingMinutes).toBe(30);
+    expect(screen.getAllByText("30分").length).toBeGreaterThan(0);
+  }, 15_000);
+
+  it("shows empty state with Library Management link and spoken-genre quick link when no spoken library exists", async () => {
+    const db = installMockDb({ features: [...M0_FEATURES, ...MUSIC_MOCK_FEATURES] });
+    signIn(db, MOCK_ACCOUNTS.admin.username);
+    const musicLib = db.libraries.find((lib) => lib.kind === "music")!;
+    server.use(
+      http.get(`/api/v1/libraries/${musicLib.id}/music/genres`, () =>
+        HttpResponse.json({
+          genres: [
+            { name: "有声书", albumCount: 4, trackCount: 36 },
+            { name: "爵士", albumCount: 8, trackCount: 64 },
+          ],
+        }),
+      ),
+    );
+
+    await renderLoadedApp("/music/audiobooks");
+
+    expect(await screen.findByText("还没有有声书或播客媒体库")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "管理媒体库" })).toHaveAttribute("href", "/system/libraries?create=true");
+    expect(await screen.findByRole("link", { name: "查看“有声书”专辑" })).toBeInTheDocument();
+  });
 });

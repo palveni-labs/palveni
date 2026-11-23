@@ -15,6 +15,17 @@ export type AudioQuality = "original" | "320" | "192" | "128";
 export type PlayerStatus = "idle" | "loading" | "playing" | "paused" | "error";
 export type NowPlayingTab = "lyrics" | "queue";
 
+export const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5, 1.75, 2] as const;
+export type PlaybackRate = (typeof PLAYBACK_RATES)[number];
+
+export const SLEEP_TIMER_MINUTES = [15, 30, 45, 60] as const;
+export type SleepTimerMinutes = (typeof SLEEP_TIMER_MINUTES)[number];
+export type SleepTimerPreset = "off" | SleepTimerMinutes | "end_of_track";
+
+export type PlayableTrack = MusicTrack & {
+  spokenKind?: "audiobook" | "podcast";
+};
+
 export const PLAYER_STORAGE_KEY = "palveni.music.player";
 export const MEDIA_EXCLUSIVE_EVENT = "palveni:media-exclusive";
 
@@ -28,12 +39,13 @@ export interface PersistedPlayerState {
   repeat: RepeatMode;
   quality: AudioQuality;
   loudnessEnabled: boolean;
+  playbackRate: PlaybackRate;
 }
 
 export interface PlayerSnapshot {
-  queue: readonly MusicTrack[];
+  queue: readonly PlayableTrack[];
   currentIndex: number;
-  currentTrack: MusicTrack | null;
+  currentTrack: PlayableTrack | null;
   status: PlayerStatus;
   playing: boolean;
   /** Incremented whenever a track starts fresh or restarts so the audio engine reloads/resets play-count tracking. */
@@ -48,6 +60,10 @@ export interface PlayerSnapshot {
   shuffle: boolean;
   repeat: RepeatMode;
   quality: AudioQuality;
+  playbackRate: PlaybackRate;
+  sleepUntilMs: number | null;
+  sleepEndOfTrack: boolean;
+  sleepRemainingMinutes: number | null;
   loudnessEnabled: boolean;
   loudness: LoudnessMeasurement | null;
   loudnessScale: number;
@@ -59,6 +75,14 @@ export interface PlayerSnapshot {
   nowPlayingTab: NowPlayingTab;
   /** Whether the current playInstanceId has already reported completed=true for play-count increment. */
   playCountReported: boolean;
+}
+
+export function isValidPlaybackRate(value: unknown): value is PlaybackRate {
+  return typeof value === "number" && (PLAYBACK_RATES as readonly number[]).includes(value);
+}
+
+export function formatPlaybackRate(rate: PlaybackRate): string {
+  return `${rate}×`;
 }
 
 /** Report completed=true once played past 50% or 4 minutes (240s). */
@@ -109,6 +133,7 @@ function readPersisted(): PersistedPlayerState | null {
     const repeat: RepeatMode = parsed.repeat === "all" || parsed.repeat === "one" ? parsed.repeat : "off";
     const quality: AudioQuality =
       parsed.quality === "320" || parsed.quality === "192" || parsed.quality === "128" ? parsed.quality : "original";
+    const playbackRate: PlaybackRate = isValidPlaybackRate(parsed.playbackRate) ? parsed.playbackRate : 1;
     return {
       queueIds,
       currentIndex: typeof parsed.currentIndex === "number" && Number.isInteger(parsed.currentIndex) ? parsed.currentIndex : 0,
@@ -119,6 +144,7 @@ function readPersisted(): PersistedPlayerState | null {
       repeat,
       quality,
       loudnessEnabled: parsed.loudnessEnabled !== false,
+      playbackRate,
     };
   } catch {
     return null;
@@ -126,8 +152,8 @@ function readPersisted(): PersistedPlayerState | null {
 }
 
 export class MusicPlayerStore {
-  private queue: MusicTrack[] = [];
-  private unshuffledQueue: MusicTrack[] | null = null;
+  private queue: PlayableTrack[] = [];
+  private unshuffledQueue: PlayableTrack[] | null = null;
   private currentIndex = -1;
   private status: PlayerStatus = "idle";
   private playing = false;
@@ -142,6 +168,11 @@ export class MusicPlayerStore {
   private shuffle = false;
   private repeat: RepeatMode = "off";
   private quality: AudioQuality = "original";
+  private playbackRate: PlaybackRate = 1;
+  private sleepUntilMs: number | null = null;
+  private sleepEndOfTrack = false;
+  private sleepTimeout: ReturnType<typeof setTimeout> | null = null;
+  private sleepTickInterval: ReturnType<typeof setInterval> | null = null;
   private loudnessEnabled = true;
   private loudness: LoudnessMeasurement | null = null;
   private loudnessScale = 1;
@@ -168,12 +199,31 @@ export class MusicPlayerStore {
         this.repeat = saved.repeat;
         this.quality = saved.quality;
         this.loudnessEnabled = saved.loudnessEnabled;
+        this.playbackRate = saved.playbackRate;
       }
     }
     this.snapshot = this.buildSnapshot();
   }
 
-  private buildSnapshot(): PlayerSnapshot {
+  private computeSleepRemainingMinutes(nowMs = Date.now()): number | null {
+    if (this.sleepUntilMs === null) return null;
+    const remainingMs = this.sleepUntilMs - nowMs;
+    if (remainingMs <= 0) return 0;
+    return Math.max(1, Math.ceil(remainingMs / 60_000));
+  }
+
+  private clearSleepTimers() {
+    if (this.sleepTimeout !== null) {
+      clearTimeout(this.sleepTimeout);
+      this.sleepTimeout = null;
+    }
+    if (this.sleepTickInterval !== null) {
+      clearInterval(this.sleepTickInterval);
+      this.sleepTickInterval = null;
+    }
+  }
+
+  private buildSnapshot(nowMs = Date.now()): PlayerSnapshot {
     const currentTrack = this.currentIndex >= 0 ? (this.queue[this.currentIndex] ?? null) : null;
     return {
       queue: this.queue,
@@ -191,6 +241,10 @@ export class MusicPlayerStore {
       shuffle: this.shuffle,
       repeat: this.repeat,
       quality: this.quality,
+      playbackRate: this.playbackRate,
+      sleepUntilMs: this.sleepUntilMs,
+      sleepEndOfTrack: this.sleepEndOfTrack,
+      sleepRemainingMinutes: this.computeSleepRemainingMinutes(nowMs),
       loudnessEnabled: this.loudnessEnabled,
       loudness: this.loudness,
       loudnessScale: this.loudnessScale,
@@ -204,8 +258,8 @@ export class MusicPlayerStore {
     };
   }
 
-  private emit(persist = false) {
-    this.snapshot = this.buildSnapshot();
+  private emit(persist = false, nowMs = Date.now()) {
+    this.snapshot = this.buildSnapshot(nowMs);
     if (persist) this.persist(true);
     for (const listener of this.listeners) listener();
   }
@@ -243,12 +297,13 @@ export class MusicPlayerStore {
       repeat: this.repeat,
       quality: this.quality,
       loudnessEnabled: this.loudnessEnabled,
+      playbackRate: this.playbackRate,
     };
     writeLocal(PLAYER_STORAGE_KEY, JSON.stringify(data));
   }
 
   /** Restores a previously saved queue in paused state (called after POST /music/tracks/lookup). */
-  hydrateQueue(tracks: MusicTrack[], index: number, positionSec: number) {
+  hydrateQueue(tracks: PlayableTrack[], index: number, positionSec: number) {
     if (this.queue.length > 0 || tracks.length === 0) return;
     const clampedIndex = clamp(index, 0, tracks.length - 1);
     const current = tracks[clampedIndex]!;
@@ -264,7 +319,7 @@ export class MusicPlayerStore {
   }
 
   /** Replaces the queue and starts playback immediately. */
-  playQueue(tracks: MusicTrack[], startIndex = 0, options: { shuffle?: boolean } = {}) {
+  playQueue(tracks: PlayableTrack[], startIndex = 0, options: { shuffle?: boolean; startPositionSec?: number } = {}) {
     if (tracks.length === 0) return;
     const useShuffle = options.shuffle ?? this.shuffle;
     this.shuffle = useShuffle;
@@ -284,29 +339,29 @@ export class MusicPlayerStore {
       this.queue = [...tracks];
       this.currentIndex = clamp(startIndex, 0, tracks.length - 1);
     }
-    this.startCurrentTrack();
+    this.startCurrentTrack(options.startPositionSec ?? 0);
   }
 
   /** Convenience: play a single track, optionally within a surrounding track list. */
-  playTrack(track: MusicTrack, list?: MusicTrack[]) {
+  playTrack(track: PlayableTrack, list?: PlayableTrack[], options: { startPositionSec?: number } = {}) {
     if (list && list.length > 0) {
       const idx = list.findIndex((item) => item.id === track.id);
       if (idx >= 0) {
-        this.playQueue(list, idx);
+        this.playQueue(list, idx, { startPositionSec: options.startPositionSec });
         return;
       }
     }
-    this.playQueue([track], 0, { shuffle: false });
+    this.playQueue([track], 0, { shuffle: false, startPositionSec: options.startPositionSec });
   }
 
   /** Starts shuffled playback of a list of tracks. */
-  playShuffled(tracks: MusicTrack[]) {
+  playShuffled(tracks: PlayableTrack[]) {
     if (tracks.length === 0) return;
     this.playQueue(tracks, -1, { shuffle: true });
   }
 
   /** Inserts one or more tracks right after the currently playing track (or starts playing if idle). */
-  playNext(input: MusicTrack | MusicTrack[]) {
+  playNext(input: PlayableTrack | PlayableTrack[]) {
     const items = Array.isArray(input) ? input : [input];
     if (items.length === 0) return;
     if (this.queue.length === 0 || this.currentIndex < 0) {
@@ -322,7 +377,7 @@ export class MusicPlayerStore {
   }
 
   /** Appends one or more tracks to the end of the queue (or starts playing if idle). */
-  enqueue(input: MusicTrack | MusicTrack[]) {
+  enqueue(input: PlayableTrack | PlayableTrack[]) {
     const items = Array.isArray(input) ? input : [input];
     if (items.length === 0) return;
     if (this.queue.length === 0 || this.currentIndex < 0) {
@@ -409,6 +464,9 @@ export class MusicPlayerStore {
   }
 
   clearQueue() {
+    this.clearSleepTimers();
+    this.sleepUntilMs = null;
+    this.sleepEndOfTrack = false;
     this.queue = [];
     this.unshuffledQueue = null;
     this.currentIndex = -1;
@@ -428,12 +486,19 @@ export class MusicPlayerStore {
     this.emit(true);
   }
 
-  private startCurrentTrack() {
+  private startCurrentTrack(startPositionSec = 0) {
     const current = this.queue[this.currentIndex];
     if (!current) return;
+    const durationSec = (current.durationMs ?? 0) / 1000;
+    const initialSec =
+      startPositionSec > 0
+        ? durationSec > 0
+          ? clamp(startPositionSec, 0, Math.max(0, durationSec - 0.5))
+          : startPositionSec
+        : 0;
     this.playInstanceId += 1;
-    this.currentTimeSec = 0;
-    this.durationSec = (current.durationMs ?? 0) / 1000;
+    this.currentTimeSec = initialSec;
+    this.durationSec = durationSec;
     this.bufferedSec = 0;
     this.playing = true;
     this.status = "loading";
@@ -479,6 +544,13 @@ export class MusicPlayerStore {
   /** Advance to next track. `manual: true` bypasses repeat="one" so user clicks always skip. */
   next(manual = true) {
     if (this.queue.length === 0) return;
+    if (!manual && this.sleepEndOfTrack) {
+      this.sleepEndOfTrack = false;
+      this.playing = false;
+      this.status = "paused";
+      this.emit(true);
+      return;
+    }
     if (!manual && this.repeat === "one") {
       this.startCurrentTrack();
       return;
@@ -516,9 +588,9 @@ export class MusicPlayerStore {
   }
 
   /** Returns the upcoming track for preloading, respecting repeat mode. */
-  peekNextTrack(): MusicTrack | null {
+  peekNextTrack(): PlayableTrack | null {
     if (this.queue.length === 0 || this.currentIndex < 0) return null;
-    if (this.repeat === "one") return null;
+    if (this.repeat === "one" || this.sleepEndOfTrack) return null;
     if (this.currentIndex + 1 < this.queue.length) return this.queue[this.currentIndex + 1] ?? null;
     if (this.repeat === "all" && this.queue.length > 1) return this.queue[0] ?? null;
     return null;
@@ -601,6 +673,61 @@ export class MusicPlayerStore {
     this.emit(true);
   }
 
+  setPlaybackRate(rate: PlaybackRate) {
+    if (!isValidPlaybackRate(rate) || this.playbackRate === rate) return;
+    this.playbackRate = rate;
+    this.emit(true);
+  }
+
+  setSleepTimer(preset: SleepTimerPreset, nowMs = Date.now()) {
+    this.clearSleepTimers();
+    if (preset === "off") {
+      this.sleepUntilMs = null;
+      this.sleepEndOfTrack = false;
+      this.emit(false, nowMs);
+      return;
+    }
+    if (preset === "end_of_track") {
+      this.sleepUntilMs = null;
+      this.sleepEndOfTrack = true;
+      this.emit(false, nowMs);
+      return;
+    }
+    const durationMs = preset * 60_000;
+    this.sleepEndOfTrack = false;
+    this.sleepUntilMs = nowMs + durationMs;
+    this.sleepTimeout = setTimeout(() => {
+      this.checkSleepTimer();
+    }, durationMs);
+    this.sleepTickInterval = setInterval(() => {
+      this.tickSleepTimer();
+    }, 15_000);
+    this.emit(false, nowMs);
+  }
+
+  private tickSleepTimer(nowMs = Date.now()) {
+    if (this.sleepUntilMs === null) return;
+    if (this.checkSleepTimer(nowMs)) return;
+    const nextMinutes = this.computeSleepRemainingMinutes(nowMs);
+    if (nextMinutes !== this.snapshot.sleepRemainingMinutes) {
+      this.emit(false, nowMs);
+    }
+  }
+
+  /** Checks whether a timed sleep countdown has expired, auto-pausing playback if so. */
+  checkSleepTimer(nowMs = Date.now()): boolean {
+    if (this.sleepUntilMs === null || nowMs < this.sleepUntilMs) return false;
+    this.clearSleepTimers();
+    this.sleepUntilMs = null;
+    this.sleepEndOfTrack = false;
+    if (this.playing) {
+      this.pause();
+    } else {
+      this.emit(false, nowMs);
+    }
+    return true;
+  }
+
   setLoudnessEnabled(enabled: boolean) {
     this.loudnessEnabled = enabled;
     this.recomputeLoudness();
@@ -677,6 +804,10 @@ export class MusicPlayerStore {
     if (bufferedSec !== undefined && Number.isFinite(bufferedSec) && bufferedSec >= 0) {
       this.bufferedSec = bufferedSec;
     }
+    if (this.sleepUntilMs !== null && Date.now() >= this.sleepUntilMs) {
+      this.checkSleepTimer();
+      return;
+    }
     this.persist(false);
     this.emit(false);
   }
@@ -699,7 +830,7 @@ export class MusicPlayerStore {
   /** Syncs personal state updates (favorite/stars/playCount) across all matching tracks in the queue. */
   patchTrackState(trackId: string, patch: Partial<MusicTrackState>) {
     let changed = false;
-    const apply = (list: MusicTrack[]) =>
+    const apply = (list: PlayableTrack[]) =>
       list.map((track) => {
         if (track.id !== trackId) return track;
         changed = true;
@@ -719,6 +850,7 @@ export class MusicPlayerStore {
 
   /** Resets store completely (used in unit tests). */
   reset(clearStorage = true) {
+    this.clearSleepTimers();
     this.queue = [];
     this.unshuffledQueue = null;
     this.currentIndex = -1;
@@ -735,6 +867,9 @@ export class MusicPlayerStore {
     this.shuffle = false;
     this.repeat = "off";
     this.quality = "original";
+    this.playbackRate = 1;
+    this.sleepUntilMs = null;
+    this.sleepEndOfTrack = false;
     this.loudnessEnabled = true;
     this.loudness = null;
     this.loudnessScale = 1;

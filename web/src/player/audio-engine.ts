@@ -12,10 +12,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { isApiError } from "@/api/errors";
-import { musicApi, type MusicTrack, type PlaybackInfo, type TranscodeFormat } from "@/modules/music/api";
+import { musicApi, type PlaybackInfo, type TranscodeFormat } from "@/modules/music/api";
 import { useMusicArtworkUrl } from "@/modules/music/artwork-cache";
 import { musicKeys } from "@/modules/music/queries";
-import { playerStore, shouldReportPlayCount, usePlayer, type AudioQuality } from "./store";
+import { playerStore, shouldReportPlayCount, usePlayer, type AudioQuality, type PlayableTrack } from "./store";
 
 const AUDIO_FORMATS: ReadonlyArray<readonly [TranscodeFormat, string]> = [
   ["mp3", "audio/mpeg"],
@@ -84,6 +84,7 @@ export function useAudioEngine() {
   const loadAbortRef = useRef<AbortController | null>(null);
   const renewalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reportingRef = useRef<number | null>(null);
+  const lastSpokenCheckpointRef = useRef<number>(0);
 
   const currentTrack = player.currentTrack;
   const artworkUrl = useMusicArtworkUrl(currentTrack?.artworkItemId ?? currentTrack?.id, 480, Boolean(currentTrack));
@@ -114,7 +115,7 @@ export function useAudioEngine() {
   }, []);
 
   // Report completed=true for play-count increment (with 409 conflict retry).
-  const reportPlayCount = useRef(async (track: MusicTrack, playInstanceId: number) => {
+  const reportPlayCount = useRef(async (track: PlayableTrack, playInstanceId: number) => {
     if (reportingRef.current === playInstanceId) return;
     reportingRef.current = playInstanceId;
     playerStore.markPlayCountReported();
@@ -145,9 +146,40 @@ export function useAudioEngine() {
     }
   });
 
+  // Persist intermediate or final spoken-word (audiobook / podcast) resume checkpoints.
+  const saveSpokenCheckpoint = useRef(async (track: PlayableTrack, positionSec: number, completed: boolean) => {
+    if (!track.spokenKind) return;
+    lastSpokenCheckpointRef.current = Date.now();
+    try {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const state = await musicApi.state(track.id);
+        try {
+          const updated = await musicApi.progress(track.id, {
+            completed,
+            positionMs: completed ? 0 : Math.max(0, Math.round(positionSec * 1000)),
+            expectedVersion: state.playbackVersion,
+          });
+          playerStore.patchTrackState(track.id, {
+            playCount: updated.playCount,
+            lastPlayedAt: updated.lastPlayedAt,
+            favorite: updated.favorite,
+            stars: updated.stars,
+          });
+          void queryClient.invalidateQueries({ queryKey: ["music", "spoken-state", track.id] });
+          return;
+        } catch (error) {
+          if (isApiError(error) && error.status === 409 && attempt === 0) continue;
+          return;
+        }
+      }
+    } catch {
+      // Best-effort checkpointing; never interrupt playback.
+    }
+  });
+
   // Load (or reload) audio stream for a given track, quality, and start offset.
   const loadStreamRef = useRef(async (
-    track: MusicTrack,
+    track: PlayableTrack,
     playInstanceId: number,
     quality: AudioQuality,
     startSec: number,
@@ -217,9 +249,13 @@ export function useAudioEngine() {
       };
       sourceRef.current = loaded;
 
+      const rate = playerStore.getSnapshot().playbackRate;
+      audio.defaultPlaybackRate = rate;
+      audio.playbackRate = rate;
       audio.volume = playerStore.effectiveVolume();
       audio.src = ticket.url;
       audio.load();
+      audio.playbackRate = rate;
 
       if (ticket.mode === "direct" && startSec > 0) {
         const applyInitialSeek = () => {
@@ -268,18 +304,25 @@ export function useAudioEngine() {
     if (!audio) return;
 
     const onPlaying = () => {
+      const rate = playerStore.getSnapshot().playbackRate;
+      if (audio.playbackRate !== rate) audio.playbackRate = rate;
       playerStore.reportStatus("playing", { mode: sourceRef.current?.ticket.mode ?? null, error: null });
     };
     const onPause = () => {
       const snap = playerStore.getSnapshot();
       if (!audio.ended && snap.status !== "loading" && snap.status !== "error") {
         playerStore.reportStatus("paused");
+        if (snap.currentTrack?.spokenKind && snap.currentTimeSec > 0) {
+          void saveSpokenCheckpoint.current(snap.currentTrack, snap.currentTimeSec, false);
+        }
       }
     };
     const onWaiting = () => {
       if (playerStore.getSnapshot().playing) playerStore.reportStatus("loading");
     };
     const onLoadedMetadata = () => {
+      const rate = playerStore.getSnapshot().playbackRate;
+      if (audio.playbackRate !== rate) audio.playbackRate = rate;
       const src = sourceRef.current;
       const trackDuration = (playerStore.getSnapshot().currentTrack?.durationMs ?? 0) / 1000;
       const effectiveDuration =
@@ -306,13 +349,19 @@ export function useAudioEngine() {
         audio.buffered.length > 0 ? src.startOffsetSec + audio.buffered.end(audio.buffered.length - 1) : snap.bufferedSec;
       playerStore.reportTime(currentSec, durationSec, bufferedSec);
 
-      if (!snap.playCountReported && snap.playing && shouldReportPlayCount(currentSec, durationSec)) {
+      if (snap.currentTrack.spokenKind) {
+        if (snap.playing && currentSec > 0 && Date.now() - lastSpokenCheckpointRef.current >= 15_000) {
+          void saveSpokenCheckpoint.current(snap.currentTrack, currentSec, false);
+        }
+      } else if (!snap.playCountReported && snap.playing && shouldReportPlayCount(currentSec, durationSec)) {
         void reportPlayCount.current(snap.currentTrack, snap.playInstanceId);
       }
     };
     const onEnded = () => {
       const snap = playerStore.getSnapshot();
-      if (snap.currentTrack && !snap.playCountReported) {
+      if (snap.currentTrack?.spokenKind) {
+        void saveSpokenCheckpoint.current(snap.currentTrack, 0, true);
+      } else if (snap.currentTrack && !snap.playCountReported) {
         void reportPlayCount.current(snap.currentTrack, snap.playInstanceId);
       }
       playerStore.next(false);
@@ -390,7 +439,7 @@ export function useAudioEngine() {
 
     // Play / pause sync on already-loaded source.
     if (player.playing && audio.paused) {
-      void audio.play().catch(() => {
+      void Promise.resolve(audio.play()).catch(() => {
         playerStore.reportStatus("paused");
       });
     } else if (!player.playing && !audio.paused) {
@@ -405,6 +454,9 @@ export function useAudioEngine() {
     const src = sourceRef.current;
     if (!req || !audio || !currentTrack) return;
     playerStore.clearSeekRequest(req.seq);
+    if (currentTrack.spokenKind) {
+      void saveSpokenCheckpoint.current(currentTrack, req.sec, false);
+    }
     if (!src || src.trackId !== currentTrack.id) return;
     if (src.ticket.mode === "transcode") {
       void loadStreamRef.current(currentTrack, player.playInstanceId, player.quality, req.sec, player.playing);
@@ -412,6 +464,14 @@ export function useAudioEngine() {
       audio.currentTime = req.sec;
     }
   }, [player.seekRequest, currentTrack, player.playInstanceId, player.quality, player.playing]);
+
+  // Sync playback rate on load and whenever rate changes.
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.defaultPlaybackRate = player.playbackRate;
+    audio.playbackRate = player.playbackRate;
+  }, [player.playbackRate]);
 
   // Sync volume, mute, and loudness scaling.
   useEffect(() => {
@@ -496,13 +556,13 @@ export function useAudioEngine() {
     try {
       session.setPositionState({
         duration: player.durationSec,
-        playbackRate: 1,
+        playbackRate: player.playbackRate,
         position: Math.min(player.currentTimeSec, player.durationSec),
       });
     } catch {
       // Ignore browser quirks when duration is temporarily unavailable.
     }
-  }, [currentTrack, player.currentTimeSec, player.durationSec]);
+  }, [currentTrack, player.currentTimeSec, player.durationSec, player.playbackRate]);
 
   useEffect(() => {
     if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;

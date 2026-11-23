@@ -2,10 +2,12 @@ import { Popover, Spinner, Switch } from "@heroui/react";
 import { Link } from "@tanstack/react-router";
 import {
   AudioLines,
+  Gauge,
   Heart,
   ListMusic,
   Maximize2,
   MessageSquareQuote,
+  Moon,
   Pause,
   Play,
   Repeat,
@@ -26,7 +28,14 @@ import { formatSeconds } from "@/modules/music/format";
 import { useRateTrack, useToggleTrackFavorite } from "@/modules/music/queries";
 import { useSlot } from "@/skins/scope";
 import { Scrubber } from "./scrubber";
-import { playerStore, usePlayer, type AudioQuality } from "./store";
+import {
+  formatPlaybackRate,
+  PLAYBACK_RATES,
+  playerStore,
+  SLEEP_TIMER_MINUTES,
+  usePlayer,
+  type AudioQuality,
+} from "./store";
 
 const QUALITY_OPTIONS: Array<{ id: AudioQuality; labelKey: "qualityOriginal" | "quality320" | "quality192" | "quality128" }> = [
   { id: "original", labelKey: "qualityOriginal" },
@@ -60,6 +69,13 @@ export function PlayerBar() {
         ? t("musicApp.player.repeatAll")
         : t("musicApp.player.repeatOff");
   const qualityBadge = player.quality === "original" ? (track.codec?.toUpperCase() ?? t("musicApp.player.qualityOriginal")) : `${player.quality}k`;
+  const sleepActive = player.sleepUntilMs !== null || player.sleepEndOfTrack;
+  const sleepBadgeText =
+    player.sleepRemainingMinutes !== null
+      ? t("musicApp.player.sleepRemainingBadge", { minutes: player.sleepRemainingMinutes })
+      : player.sleepEndOfTrack
+        ? t("musicApp.player.sleepEndBadge")
+        : null;
 
   return (
     <>
@@ -224,8 +240,117 @@ export function PlayerBar() {
           </div>
         </div>
 
-        {/* Right: Quality + Loudness, Lyrics, Queue, Volume */}
+        {/* Right: Speed, Sleep Timer, Quality + Loudness, Lyrics, Queue, Volume */}
         <div className="flex items-center justify-end gap-1">
+          <Popover>
+            <Popover.Trigger
+              aria-label={t("musicApp.player.speed")}
+              className={cn(
+                "inline-flex h-7 items-center gap-1 rounded-chip border px-2 text-[0.7rem] font-mid transition-colors focus-visible:outline-2 focus-visible:outline-(--pv-focus)",
+                player.playbackRate !== 1
+                  ? "border-line-strong bg-selected/15 font-strong text-fg"
+                  : "border-line bg-sunken/70 text-fg-muted hover:bg-hover hover:text-fg",
+              )}
+            >
+              <Gauge className="size-3" aria-hidden />
+              <span data-num className="tabular-nums">{formatPlaybackRate(player.playbackRate)}</span>
+            </Popover.Trigger>
+            <Popover.Content placement="top end" className="w-52 p-3">
+              <Popover.Dialog aria-label={t("musicApp.player.speed")} className="grid gap-2 outline-none">
+                <p className="text-xs font-strong text-fg">{t("musicApp.player.speed")}</p>
+                <div className="grid grid-cols-3 gap-1">
+                  {PLAYBACK_RATES.map((rate) => (
+                    <button
+                      key={rate}
+                      type="button"
+                      aria-pressed={player.playbackRate === rate}
+                      onClick={() => playerStore.setPlaybackRate(rate)}
+                      className={cn(
+                        "rounded-control px-2 py-1.5 text-xs font-mid tabular-nums transition-colors focus-visible:outline-2 focus-visible:outline-(--pv-focus)",
+                        player.playbackRate === rate ? "bg-action text-action-fg font-strong" : "bg-sunken text-fg hover:bg-hover",
+                      )}
+                    >
+                      {formatPlaybackRate(rate)}
+                    </button>
+                  ))}
+                </div>
+              </Popover.Dialog>
+            </Popover.Content>
+          </Popover>
+
+          <Popover>
+            <Popover.Trigger
+              aria-label={t("musicApp.player.sleepTimer")}
+              className={cn(
+                "inline-flex h-7 items-center gap-1 rounded-chip border px-2 text-[0.7rem] font-mid transition-colors focus-visible:outline-2 focus-visible:outline-(--pv-focus)",
+                sleepActive
+                  ? "border-line-strong bg-selected/15 font-strong text-fg"
+                  : "border-line bg-sunken/70 text-fg-muted hover:bg-hover hover:text-fg",
+              )}
+            >
+              <Moon className="size-3" aria-hidden />
+              {sleepBadgeText ? <span data-num className="tabular-nums">{sleepBadgeText}</span> : null}
+            </Popover.Trigger>
+            <Popover.Content placement="top end" className="w-60 p-3">
+              <Popover.Dialog aria-label={t("musicApp.player.sleepTimer")} className="grid gap-2.5 outline-none">
+                <div className="grid gap-0.5">
+                  <p className="text-xs font-strong text-fg">{t("musicApp.player.sleepTimer")}</p>
+                  {player.sleepRemainingMinutes !== null ? (
+                    <p className="text-[0.7rem] text-fg-muted tabular-nums">
+                      {t("musicApp.player.sleepRemainingStatus", { minutes: player.sleepRemainingMinutes })}
+                    </p>
+                  ) : player.sleepEndOfTrack ? (
+                    <p className="text-[0.7rem] text-fg-muted">{t("musicApp.player.sleepEndStatus")}</p>
+                  ) : null}
+                </div>
+                <div className="grid grid-cols-2 gap-1">
+                  <button
+                    type="button"
+                    aria-pressed={!sleepActive}
+                    onClick={() => playerStore.setSleepTimer("off")}
+                    className={cn(
+                      "rounded-control px-2.5 py-1.5 text-xs font-mid transition-colors focus-visible:outline-2 focus-visible:outline-(--pv-focus)",
+                      !sleepActive ? "bg-action text-action-fg font-strong" : "bg-sunken text-fg hover:bg-hover",
+                    )}
+                  >
+                    {t("musicApp.player.sleepOff")}
+                  </button>
+                  {SLEEP_TIMER_MINUTES.map((minutes) => {
+                    const selected =
+                      player.sleepUntilMs !== null &&
+                      player.sleepRemainingMinutes !== null &&
+                      Math.abs(player.sleepRemainingMinutes - minutes) < 1;
+                    return (
+                      <button
+                        key={minutes}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => playerStore.setSleepTimer(minutes)}
+                        className={cn(
+                          "rounded-control px-2.5 py-1.5 text-xs font-mid tabular-nums transition-colors focus-visible:outline-2 focus-visible:outline-(--pv-focus)",
+                          selected ? "bg-action text-action-fg font-strong" : "bg-sunken text-fg hover:bg-hover",
+                        )}
+                      >
+                        {t("musicApp.player.sleepMinutes", { minutes })}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    aria-pressed={player.sleepEndOfTrack}
+                    onClick={() => playerStore.setSleepTimer("end_of_track")}
+                    className={cn(
+                      "col-span-2 rounded-control px-2.5 py-1.5 text-xs font-mid transition-colors focus-visible:outline-2 focus-visible:outline-(--pv-focus)",
+                      player.sleepEndOfTrack ? "bg-action text-action-fg font-strong" : "bg-sunken text-fg hover:bg-hover",
+                    )}
+                  >
+                    {t("musicApp.player.sleepEndOfTrack")}
+                  </button>
+                </div>
+              </Popover.Dialog>
+            </Popover.Content>
+          </Popover>
+
           <Popover>
             <Popover.Trigger
               aria-label={t("musicApp.player.quality")}
@@ -339,7 +464,20 @@ export function PlayerBar() {
             <MusicArtwork itemId={track.artworkItemId ?? track.id} size={96} eager className="size-10 rounded-[calc(var(--pv-radius-tile)*0.75)]" />
             <span className="grid min-w-0 flex-1">
               <span className="truncate text-sm font-strong text-fg">{track.title}</span>
-              <span className="truncate text-xs text-fg-muted">{track.artist ?? t("musicApp.artists.unknown")}</span>
+              <span className="flex min-w-0 items-center gap-1.5 text-xs text-fg-muted">
+                <span className="truncate">{track.artist ?? t("musicApp.artists.unknown")}</span>
+                {player.playbackRate !== 1 ? (
+                  <span data-num className="shrink-0 rounded-sm bg-selected/15 px-1 py-0.2 text-[0.65rem] font-strong text-fg tabular-nums">
+                    {formatPlaybackRate(player.playbackRate)}
+                  </span>
+                ) : null}
+                {sleepBadgeText ? (
+                  <span data-num className="inline-flex shrink-0 items-center gap-0.5 rounded-sm bg-selected/15 px-1 py-0.2 text-[0.65rem] font-strong text-fg tabular-nums">
+                    <Moon className="size-2.5" aria-hidden />
+                    {sleepBadgeText}
+                  </span>
+                ) : null}
+              </span>
             </span>
           </button>
           <button

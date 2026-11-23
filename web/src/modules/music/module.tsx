@@ -1,4 +1,4 @@
-import { Disc3, Heart, Home, ListMusic, Music, Music2, Search, Tag, UsersRound } from "lucide-react";
+import { BookAudio, Disc3, Heart, Home, ListMusic, Music, Music2, Search, Tag, UsersRound } from "lucide-react";
 import type { ModuleDefinition } from "../types";
 
 const music: ModuleDefinition = {
@@ -14,6 +14,7 @@ const music: ModuleDefinition = {
     { to: "/music/artists", titleKey: "musicApp.nav.artists", icon: UsersRound },
     { to: "/music/songs", titleKey: "musicApp.nav.songs", icon: Music2 },
     { to: "/music/genres", titleKey: "musicApp.nav.genres", icon: Tag },
+    { to: "/music/audiobooks", titleKey: "musicApp.nav.audiobooks", icon: BookAudio },
     { to: "/music/playlists", titleKey: "musicApp.nav.playlists", icon: ListMusic },
     { to: "/music/favorites", titleKey: "musicApp.nav.favorites", icon: Heart },
     { to: "/music/search", titleKey: "musicApp.nav.search", icon: Search },

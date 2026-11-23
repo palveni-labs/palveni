@@ -22,6 +22,7 @@ import { Route as LibraryLibraryIdRouteImport } from "./modules/library/routes/$
 import { Route as LibraryConnectionsRouteImport } from "./modules/library/routes/connections"
 import { Route as LibraryMusicSearchRouteImport } from "./modules/library/routes/music-search"
 import { Route as MusicIndexRouteImport } from "./modules/music/routes/index"
+import { Route as MusicAudiobooksRouteImport } from "./modules/music/routes/audiobooks"
 import { Route as MusicFavoritesRouteImport } from "./modules/music/routes/favorites"
 import { Route as MusicGenresRouteImport } from "./modules/music/routes/genres"
 import { Route as MusicSearchRouteImport } from "./modules/music/routes/search"
@@ -106,6 +107,11 @@ const LibraryMusicSearchRoute = LibraryMusicSearchRouteImport.update({
 const MusicIndexRoute = MusicIndexRouteImport.update({
   id: "/music/",
   path: "/music/",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
+const MusicAudiobooksRoute = MusicAudiobooksRouteImport.update({
+  id: "/music/audiobooks",
+  path: "/music/audiobooks",
   getParentRoute: () => shellRoutesAppRoute,
 } as any)
 const MusicFavoritesRoute = MusicFavoritesRouteImport.update({
@@ -227,6 +233,7 @@ export interface FileRoutesByFullPath {
   "/library/$libraryId": typeof LibraryLibraryIdRoute
   "/library/connections": typeof LibraryConnectionsRoute
   "/library/music-search": typeof LibraryMusicSearchRoute
+  "/music/audiobooks": typeof MusicAudiobooksRoute
   "/music/favorites": typeof MusicFavoritesRoute
   "/music/genres": typeof MusicGenresRoute
   "/music/search": typeof MusicSearchRoute
@@ -262,6 +269,7 @@ export interface FileRoutesByTo {
   "/library/$libraryId": typeof LibraryLibraryIdRoute
   "/library/connections": typeof LibraryConnectionsRoute
   "/library/music-search": typeof LibraryMusicSearchRoute
+  "/music/audiobooks": typeof MusicAudiobooksRoute
   "/music/favorites": typeof MusicFavoritesRoute
   "/music/genres": typeof MusicGenresRoute
   "/music/search": typeof MusicSearchRoute
@@ -299,6 +307,7 @@ export interface FileRoutesById {
   "/_app/library/$libraryId": typeof LibraryLibraryIdRoute
   "/_app/library/connections": typeof LibraryConnectionsRoute
   "/_app/library/music-search": typeof LibraryMusicSearchRoute
+  "/_app/music/audiobooks": typeof MusicAudiobooksRoute
   "/_app/music/favorites": typeof MusicFavoritesRoute
   "/_app/music/genres": typeof MusicGenresRoute
   "/_app/music/search": typeof MusicSearchRoute
@@ -336,6 +345,7 @@ export interface FileRouteTypes {
     | "/library/$libraryId"
     | "/library/connections"
     | "/library/music-search"
+    | "/music/audiobooks"
     | "/music/favorites"
     | "/music/genres"
     | "/music/search"
@@ -371,6 +381,7 @@ export interface FileRouteTypes {
     | "/library/$libraryId"
     | "/library/connections"
     | "/library/music-search"
+    | "/music/audiobooks"
     | "/music/favorites"
     | "/music/genres"
     | "/music/search"
@@ -407,6 +418,7 @@ export interface FileRouteTypes {
     | "/_app/library/$libraryId"
     | "/_app/library/connections"
     | "/_app/library/music-search"
+    | "/_app/music/audiobooks"
     | "/_app/music/favorites"
     | "/_app/music/genres"
     | "/_app/music/search"
@@ -531,6 +543,13 @@ declare module "@tanstack/react-router" {
       path: "/music"
       fullPath: "/music/"
       preLoaderRoute: typeof MusicIndexRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
+    "/_app/music/audiobooks": {
+      id: "/_app/music/audiobooks"
+      path: "/music/audiobooks"
+      fullPath: "/music/audiobooks"
+      preLoaderRoute: typeof MusicAudiobooksRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
     "/_app/music/favorites": {
@@ -690,6 +709,7 @@ interface shellRoutesAppRouteChildren {
   LibraryLibraryIdRoute: typeof LibraryLibraryIdRoute
   LibraryConnectionsRoute: typeof LibraryConnectionsRoute
   LibraryMusicSearchRoute: typeof LibraryMusicSearchRoute
+  MusicAudiobooksRoute: typeof MusicAudiobooksRoute
   MusicFavoritesRoute: typeof MusicFavoritesRoute
   MusicGenresRoute: typeof MusicGenresRoute
   MusicSearchRoute: typeof MusicSearchRoute
@@ -724,6 +744,7 @@ const shellRoutesAppRouteChildren: shellRoutesAppRouteChildren = {
   LibraryLibraryIdRoute: LibraryLibraryIdRoute,
   LibraryConnectionsRoute: LibraryConnectionsRoute,
   LibraryMusicSearchRoute: LibraryMusicSearchRoute,
+  MusicAudiobooksRoute: MusicAudiobooksRoute,
   MusicFavoritesRoute: MusicFavoritesRoute,
   MusicGenresRoute: MusicGenresRoute,
   MusicSearchRoute: MusicSearchRoute,
