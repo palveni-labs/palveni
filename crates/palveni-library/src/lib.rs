@@ -7,6 +7,7 @@ pub mod local;
 pub mod lyrics;
 pub mod mounts;
 pub mod music_search;
+pub mod photos;
 pub mod remote;
 pub mod scanner;
 mod tags;

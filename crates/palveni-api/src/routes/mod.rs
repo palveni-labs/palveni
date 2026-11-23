@@ -10,6 +10,7 @@ pub mod link;
 pub mod music;
 pub mod opds;
 pub mod personal;
+pub mod photos;
 pub mod playback;
 pub mod plugins;
 pub mod scan_reviews;

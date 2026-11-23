@@ -34,6 +34,7 @@ pub mod jobs;
 pub mod libraries;
 pub mod music;
 pub mod personal;
+pub mod photos;
 pub mod playlists;
 pub mod plugin_kv;
 pub mod scan_reviews;
@@ -179,6 +180,10 @@ impl Db {
 
     pub fn personal(&self) -> personal::PersonalMedia<'_> {
         personal::PersonalMedia { db: self }
+    }
+
+    pub fn photos(&self) -> photos::Photos<'_> {
+        photos::Photos { db: self }
     }
 
     pub fn playlists(&self) -> playlists::Playlists<'_> {

@@ -27,6 +27,10 @@ import { Route as MusicFavoritesRouteImport } from "./modules/music/routes/favor
 import { Route as MusicGenresRouteImport } from "./modules/music/routes/genres"
 import { Route as MusicSearchRouteImport } from "./modules/music/routes/search"
 import { Route as MusicSongsRouteImport } from "./modules/music/routes/songs"
+import { Route as PhotosIndexRouteImport } from "./modules/photos/routes/index"
+import { Route as PhotosFavoritesRouteImport } from "./modules/photos/routes/favorites"
+import { Route as PhotosMemoriesRouteImport } from "./modules/photos/routes/memories"
+import { Route as PhotosPlacesRouteImport } from "./modules/photos/routes/places"
 import { Route as SystemIndexRouteImport } from "./modules/system/routes/index"
 import { Route as SystemHardwareRouteImport } from "./modules/system/routes/hardware"
 import { Route as SystemLibrariesRouteImport } from "./modules/system/routes/libraries"
@@ -39,6 +43,8 @@ import { Route as MusicAlbumsIndexRouteImport } from "./modules/music/routes/alb
 import { Route as MusicArtistsIndexRouteImport } from "./modules/music/routes/artists/index"
 import { Route as MusicPlaylistsIndexRouteImport } from "./modules/music/routes/playlists/index"
 import { Route as MusicPlaylistsPlaylistIdRouteImport } from "./modules/music/routes/playlists/$playlistId"
+import { Route as PhotosAlbumsIndexRouteImport } from "./modules/photos/routes/albums/index"
+import { Route as PhotosAlbumsAlbumIdRouteImport } from "./modules/photos/routes/albums/$albumId"
 import { Route as VideoLibraryIdIndexRouteImport } from "./modules/video/routes/$libraryId/index"
 import { Route as VideoPlayItemIdRouteImport } from "./modules/video/routes/play/$itemId"
 import { Route as MusicAlbumsLibraryIdAlbumIdRouteImport } from "./modules/music/routes/albums/$libraryId/$albumId"
@@ -134,6 +140,26 @@ const MusicSongsRoute = MusicSongsRouteImport.update({
   path: "/music/songs",
   getParentRoute: () => shellRoutesAppRoute,
 } as any)
+const PhotosIndexRoute = PhotosIndexRouteImport.update({
+  id: "/photos/",
+  path: "/photos/",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
+const PhotosFavoritesRoute = PhotosFavoritesRouteImport.update({
+  id: "/photos/favorites",
+  path: "/photos/favorites",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
+const PhotosMemoriesRoute = PhotosMemoriesRouteImport.update({
+  id: "/photos/memories",
+  path: "/photos/memories",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
+const PhotosPlacesRoute = PhotosPlacesRouteImport.update({
+  id: "/photos/places",
+  path: "/photos/places",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
 const SystemIndexRoute = SystemIndexRouteImport.update({
   id: "/system/",
   path: "/system/",
@@ -195,6 +221,16 @@ const MusicPlaylistsPlaylistIdRoute =
     path: "/music/playlists/$playlistId",
     getParentRoute: () => shellRoutesAppRoute,
   } as any)
+const PhotosAlbumsIndexRoute = PhotosAlbumsIndexRouteImport.update({
+  id: "/photos/albums/",
+  path: "/photos/albums/",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
+const PhotosAlbumsAlbumIdRoute = PhotosAlbumsAlbumIdRouteImport.update({
+  id: "/photos/albums/$albumId",
+  path: "/photos/albums/$albumId",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
 const VideoLibraryIdIndexRoute = VideoLibraryIdIndexRouteImport.update({
   id: "/video/$libraryId/",
   path: "/video/$libraryId/",
@@ -238,6 +274,9 @@ export interface FileRoutesByFullPath {
   "/music/genres": typeof MusicGenresRoute
   "/music/search": typeof MusicSearchRoute
   "/music/songs": typeof MusicSongsRoute
+  "/photos/favorites": typeof PhotosFavoritesRoute
+  "/photos/memories": typeof PhotosMemoriesRoute
+  "/photos/places": typeof PhotosPlacesRoute
   "/system/hardware": typeof SystemHardwareRoute
   "/system/libraries": typeof SystemLibrariesRoute
   "/system/settings": typeof SystemSettingsRoute
@@ -247,14 +286,17 @@ export interface FileRoutesByFullPath {
   "/broadcast/": typeof BroadcastIndexRoute
   "/library/": typeof LibraryIndexRoute
   "/music/": typeof MusicIndexRoute
+  "/photos/": typeof PhotosIndexRoute
   "/system/": typeof SystemIndexRoute
   "/tasks/": typeof TasksIndexRoute
   "/video/": typeof VideoIndexRoute
   "/music/playlists/$playlistId": typeof MusicPlaylistsPlaylistIdRoute
+  "/photos/albums/$albumId": typeof PhotosAlbumsAlbumIdRoute
   "/video/play/$itemId": typeof VideoPlayItemIdRoute
   "/music/albums/": typeof MusicAlbumsIndexRoute
   "/music/artists/": typeof MusicArtistsIndexRoute
   "/music/playlists/": typeof MusicPlaylistsIndexRoute
+  "/photos/albums/": typeof PhotosAlbumsIndexRoute
   "/video/$libraryId/": typeof VideoLibraryIdIndexRoute
   "/music/albums/$libraryId/$albumId": typeof MusicAlbumsLibraryIdAlbumIdRoute
   "/music/artists/$libraryId/$artistId": typeof MusicArtistsLibraryIdArtistIdRoute
@@ -274,6 +316,9 @@ export interface FileRoutesByTo {
   "/music/genres": typeof MusicGenresRoute
   "/music/search": typeof MusicSearchRoute
   "/music/songs": typeof MusicSongsRoute
+  "/photos/favorites": typeof PhotosFavoritesRoute
+  "/photos/memories": typeof PhotosMemoriesRoute
+  "/photos/places": typeof PhotosPlacesRoute
   "/system/hardware": typeof SystemHardwareRoute
   "/system/libraries": typeof SystemLibrariesRoute
   "/system/settings": typeof SystemSettingsRoute
@@ -283,14 +328,17 @@ export interface FileRoutesByTo {
   "/broadcast": typeof BroadcastIndexRoute
   "/library": typeof LibraryIndexRoute
   "/music": typeof MusicIndexRoute
+  "/photos": typeof PhotosIndexRoute
   "/system": typeof SystemIndexRoute
   "/tasks": typeof TasksIndexRoute
   "/video": typeof VideoIndexRoute
   "/music/playlists/$playlistId": typeof MusicPlaylistsPlaylistIdRoute
+  "/photos/albums/$albumId": typeof PhotosAlbumsAlbumIdRoute
   "/video/play/$itemId": typeof VideoPlayItemIdRoute
   "/music/albums": typeof MusicAlbumsIndexRoute
   "/music/artists": typeof MusicArtistsIndexRoute
   "/music/playlists": typeof MusicPlaylistsIndexRoute
+  "/photos/albums": typeof PhotosAlbumsIndexRoute
   "/video/$libraryId": typeof VideoLibraryIdIndexRoute
   "/music/albums/$libraryId/$albumId": typeof MusicAlbumsLibraryIdAlbumIdRoute
   "/music/artists/$libraryId/$artistId": typeof MusicArtistsLibraryIdArtistIdRoute
@@ -312,6 +360,9 @@ export interface FileRoutesById {
   "/_app/music/genres": typeof MusicGenresRoute
   "/_app/music/search": typeof MusicSearchRoute
   "/_app/music/songs": typeof MusicSongsRoute
+  "/_app/photos/favorites": typeof PhotosFavoritesRoute
+  "/_app/photos/memories": typeof PhotosMemoriesRoute
+  "/_app/photos/places": typeof PhotosPlacesRoute
   "/_app/system/hardware": typeof SystemHardwareRoute
   "/_app/system/libraries": typeof SystemLibrariesRoute
   "/_app/system/settings": typeof SystemSettingsRoute
@@ -321,14 +372,17 @@ export interface FileRoutesById {
   "/_app/broadcast/": typeof BroadcastIndexRoute
   "/_app/library/": typeof LibraryIndexRoute
   "/_app/music/": typeof MusicIndexRoute
+  "/_app/photos/": typeof PhotosIndexRoute
   "/_app/system/": typeof SystemIndexRoute
   "/_app/tasks/": typeof TasksIndexRoute
   "/_app/video/": typeof VideoIndexRoute
   "/_app/music/playlists/$playlistId": typeof MusicPlaylistsPlaylistIdRoute
+  "/_app/photos/albums/$albumId": typeof PhotosAlbumsAlbumIdRoute
   "/_app/video/play/$itemId": typeof VideoPlayItemIdRoute
   "/_app/music/albums/": typeof MusicAlbumsIndexRoute
   "/_app/music/artists/": typeof MusicArtistsIndexRoute
   "/_app/music/playlists/": typeof MusicPlaylistsIndexRoute
+  "/_app/photos/albums/": typeof PhotosAlbumsIndexRoute
   "/_app/video/$libraryId/": typeof VideoLibraryIdIndexRoute
   "/_app/music/albums/$libraryId/$albumId": typeof MusicAlbumsLibraryIdAlbumIdRoute
   "/_app/music/artists/$libraryId/$artistId": typeof MusicArtistsLibraryIdArtistIdRoute
@@ -350,6 +404,9 @@ export interface FileRouteTypes {
     | "/music/genres"
     | "/music/search"
     | "/music/songs"
+    | "/photos/favorites"
+    | "/photos/memories"
+    | "/photos/places"
     | "/system/hardware"
     | "/system/libraries"
     | "/system/settings"
@@ -359,14 +416,17 @@ export interface FileRouteTypes {
     | "/broadcast/"
     | "/library/"
     | "/music/"
+    | "/photos/"
     | "/system/"
     | "/tasks/"
     | "/video/"
     | "/music/playlists/$playlistId"
+    | "/photos/albums/$albumId"
     | "/video/play/$itemId"
     | "/music/albums/"
     | "/music/artists/"
     | "/music/playlists/"
+    | "/photos/albums/"
     | "/video/$libraryId/"
     | "/music/albums/$libraryId/$albumId"
     | "/music/artists/$libraryId/$artistId"
@@ -386,6 +446,9 @@ export interface FileRouteTypes {
     | "/music/genres"
     | "/music/search"
     | "/music/songs"
+    | "/photos/favorites"
+    | "/photos/memories"
+    | "/photos/places"
     | "/system/hardware"
     | "/system/libraries"
     | "/system/settings"
@@ -395,14 +458,17 @@ export interface FileRouteTypes {
     | "/broadcast"
     | "/library"
     | "/music"
+    | "/photos"
     | "/system"
     | "/tasks"
     | "/video"
     | "/music/playlists/$playlistId"
+    | "/photos/albums/$albumId"
     | "/video/play/$itemId"
     | "/music/albums"
     | "/music/artists"
     | "/music/playlists"
+    | "/photos/albums"
     | "/video/$libraryId"
     | "/music/albums/$libraryId/$albumId"
     | "/music/artists/$libraryId/$artistId"
@@ -423,6 +489,9 @@ export interface FileRouteTypes {
     | "/_app/music/genres"
     | "/_app/music/search"
     | "/_app/music/songs"
+    | "/_app/photos/favorites"
+    | "/_app/photos/memories"
+    | "/_app/photos/places"
     | "/_app/system/hardware"
     | "/_app/system/libraries"
     | "/_app/system/settings"
@@ -432,14 +501,17 @@ export interface FileRouteTypes {
     | "/_app/broadcast/"
     | "/_app/library/"
     | "/_app/music/"
+    | "/_app/photos/"
     | "/_app/system/"
     | "/_app/tasks/"
     | "/_app/video/"
     | "/_app/music/playlists/$playlistId"
+    | "/_app/photos/albums/$albumId"
     | "/_app/video/play/$itemId"
     | "/_app/music/albums/"
     | "/_app/music/artists/"
     | "/_app/music/playlists/"
+    | "/_app/photos/albums/"
     | "/_app/video/$libraryId/"
     | "/_app/music/albums/$libraryId/$albumId"
     | "/_app/music/artists/$libraryId/$artistId"
@@ -580,6 +652,34 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof MusicSongsRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
+    "/_app/photos/": {
+      id: "/_app/photos/"
+      path: "/photos"
+      fullPath: "/photos/"
+      preLoaderRoute: typeof PhotosIndexRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
+    "/_app/photos/favorites": {
+      id: "/_app/photos/favorites"
+      path: "/photos/favorites"
+      fullPath: "/photos/favorites"
+      preLoaderRoute: typeof PhotosFavoritesRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
+    "/_app/photos/memories": {
+      id: "/_app/photos/memories"
+      path: "/photos/memories"
+      fullPath: "/photos/memories"
+      preLoaderRoute: typeof PhotosMemoriesRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
+    "/_app/photos/places": {
+      id: "/_app/photos/places"
+      path: "/photos/places"
+      fullPath: "/photos/places"
+      preLoaderRoute: typeof PhotosPlacesRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
     "/_app/system/": {
       id: "/_app/system/"
       path: "/system"
@@ -664,6 +764,20 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof MusicPlaylistsPlaylistIdRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
+    "/_app/photos/albums/": {
+      id: "/_app/photos/albums/"
+      path: "/photos/albums"
+      fullPath: "/photos/albums/"
+      preLoaderRoute: typeof PhotosAlbumsIndexRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
+    "/_app/photos/albums/$albumId": {
+      id: "/_app/photos/albums/$albumId"
+      path: "/photos/albums/$albumId"
+      fullPath: "/photos/albums/$albumId"
+      preLoaderRoute: typeof PhotosAlbumsAlbumIdRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
     "/_app/video/$libraryId/": {
       id: "/_app/video/$libraryId/"
       path: "/video/$libraryId"
@@ -714,6 +828,9 @@ interface shellRoutesAppRouteChildren {
   MusicGenresRoute: typeof MusicGenresRoute
   MusicSearchRoute: typeof MusicSearchRoute
   MusicSongsRoute: typeof MusicSongsRoute
+  PhotosFavoritesRoute: typeof PhotosFavoritesRoute
+  PhotosMemoriesRoute: typeof PhotosMemoriesRoute
+  PhotosPlacesRoute: typeof PhotosPlacesRoute
   SystemHardwareRoute: typeof SystemHardwareRoute
   SystemLibrariesRoute: typeof SystemLibrariesRoute
   SystemSettingsRoute: typeof SystemSettingsRoute
@@ -723,14 +840,17 @@ interface shellRoutesAppRouteChildren {
   BroadcastIndexRoute: typeof BroadcastIndexRoute
   LibraryIndexRoute: typeof LibraryIndexRoute
   MusicIndexRoute: typeof MusicIndexRoute
+  PhotosIndexRoute: typeof PhotosIndexRoute
   SystemIndexRoute: typeof SystemIndexRoute
   TasksIndexRoute: typeof TasksIndexRoute
   VideoIndexRoute: typeof VideoIndexRoute
   MusicPlaylistsPlaylistIdRoute: typeof MusicPlaylistsPlaylistIdRoute
+  PhotosAlbumsAlbumIdRoute: typeof PhotosAlbumsAlbumIdRoute
   VideoPlayItemIdRoute: typeof VideoPlayItemIdRoute
   MusicAlbumsIndexRoute: typeof MusicAlbumsIndexRoute
   MusicArtistsIndexRoute: typeof MusicArtistsIndexRoute
   MusicPlaylistsIndexRoute: typeof MusicPlaylistsIndexRoute
+  PhotosAlbumsIndexRoute: typeof PhotosAlbumsIndexRoute
   VideoLibraryIdIndexRoute: typeof VideoLibraryIdIndexRoute
   MusicAlbumsLibraryIdAlbumIdRoute: typeof MusicAlbumsLibraryIdAlbumIdRoute
   MusicArtistsLibraryIdArtistIdRoute: typeof MusicArtistsLibraryIdArtistIdRoute
@@ -749,6 +869,9 @@ const shellRoutesAppRouteChildren: shellRoutesAppRouteChildren = {
   MusicGenresRoute: MusicGenresRoute,
   MusicSearchRoute: MusicSearchRoute,
   MusicSongsRoute: MusicSongsRoute,
+  PhotosFavoritesRoute: PhotosFavoritesRoute,
+  PhotosMemoriesRoute: PhotosMemoriesRoute,
+  PhotosPlacesRoute: PhotosPlacesRoute,
   SystemHardwareRoute: SystemHardwareRoute,
   SystemLibrariesRoute: SystemLibrariesRoute,
   SystemSettingsRoute: SystemSettingsRoute,
@@ -758,14 +881,17 @@ const shellRoutesAppRouteChildren: shellRoutesAppRouteChildren = {
   BroadcastIndexRoute: BroadcastIndexRoute,
   LibraryIndexRoute: LibraryIndexRoute,
   MusicIndexRoute: MusicIndexRoute,
+  PhotosIndexRoute: PhotosIndexRoute,
   SystemIndexRoute: SystemIndexRoute,
   TasksIndexRoute: TasksIndexRoute,
   VideoIndexRoute: VideoIndexRoute,
   MusicPlaylistsPlaylistIdRoute: MusicPlaylistsPlaylistIdRoute,
+  PhotosAlbumsAlbumIdRoute: PhotosAlbumsAlbumIdRoute,
   VideoPlayItemIdRoute: VideoPlayItemIdRoute,
   MusicAlbumsIndexRoute: MusicAlbumsIndexRoute,
   MusicArtistsIndexRoute: MusicArtistsIndexRoute,
   MusicPlaylistsIndexRoute: MusicPlaylistsIndexRoute,
+  PhotosAlbumsIndexRoute: PhotosAlbumsIndexRoute,
   VideoLibraryIdIndexRoute: VideoLibraryIdIndexRoute,
   MusicAlbumsLibraryIdAlbumIdRoute: MusicAlbumsLibraryIdAlbumIdRoute,
   MusicArtistsLibraryIdArtistIdRoute: MusicArtistsLibraryIdArtistIdRoute,

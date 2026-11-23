@@ -17,6 +17,7 @@ pub mod model;
 pub mod music;
 pub mod perf;
 pub mod personal;
+pub mod photos;
 pub mod settings;
 pub mod spoken;
 pub mod storage;
@@ -27,7 +28,8 @@ pub use error::{Error, Result};
 pub use events::{EventBus, ServerEvent};
 pub use features::FeatureRegistry;
 pub use ids::{
-    AuditId, DeviceId, ItemId, JobId, LibraryId, LibraryPathId, ServerId, SessionId, UserId,
+    AuditId, DeviceId, ItemId, JobId, LibraryId, LibraryPathId, PhotoAlbumId, ServerId, SessionId,
+    UserId,
 };
 pub use model::{
     Item, ItemKind, Job, JobState, JobStep, JobSubject, Library, LibraryKind, Role, StepValue, User,

@@ -37,6 +37,7 @@ export default function SidebarLibraries() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const itemColor = useSlot("itemColor");
   const musicEnabled = useFeature("music");
+  const photosEnabled = useFeature("photos");
   const scanning = useScanningLibraries();
   const libraries = useSortedLibraries();
   return (
@@ -68,6 +69,10 @@ export default function SidebarLibraries() {
               <Link to="/music" search={{ library: library.id }} className={linkClass}>
                 {content}
               </Link>
+            ) : photosEnabled && library.kind === "photo" ? (
+              <Link to="/photos" search={{ libraryId: library.id }} className={linkClass}>
+                {content}
+              </Link>
             ) : (
               <Link
                 to={videoEnabled && library.kind === "video" ? "/video/$libraryId" : "/library/$libraryId"}
@@ -91,6 +96,7 @@ export function LibraryMenu({ children, className, active }: NavMenuProps) {
   const params = useParams({ strict: false });
   const videoEnabled = useFeature("video");
   const musicEnabled = useFeature("music");
+  const photosEnabled = useFeature("photos");
   const libraries = useSortedLibraries();
 
   if (libraries.length === 0) {
@@ -117,6 +123,8 @@ export function LibraryMenu({ children, className, active }: NavMenuProps) {
               const target = libraries.find((entry) => entry.id === id);
               if (musicEnabled && target?.kind === "music") {
                 void navigate({ to: "/music", search: { library: id } });
+              } else if (photosEnabled && target?.kind === "photo") {
+                void navigate({ to: "/photos", search: { libraryId: id } });
               } else if (videoEnabled && target?.kind === "video") {
                 void navigate({ to: "/video/$libraryId", params: { libraryId: id } });
               } else {

@@ -33,6 +33,7 @@ mod m20261121_000019_link_device_key;
 mod m20261122_000020_music_catalog;
 mod m20261122_000021_video_library;
 mod m20261122_000021a_video_work_initial;
+mod m20261123_000023_photos;
 
 pub struct MainMigrator;
 
@@ -58,6 +59,7 @@ impl MigratorTrait for MainMigrator {
             Box::new(m20261122_000020_music_catalog::Migration),
             Box::new(m20261122_000021_video_library::Migration),
             Box::new(m20261122_000021a_video_work_initial::Migration),
+            Box::new(m20261123_000023_photos::Migration),
         ]
     }
 

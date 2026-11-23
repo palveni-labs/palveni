@@ -238,6 +238,94 @@ impl VideoImages {
             .map_err(|_| Error::not_found("thumb"))
     }
 
+    pub async fn open_photo(
+        &self,
+        location: TrackLocation,
+        size: Option<u16>,
+        original: bool,
+    ) -> Result<(&'static str, u64, ByteStream)> {
+        let key_prefix = format!(
+            "photo-v1\0{}\0{}",
+            location.root.display(),
+            location.relative_path.display()
+        );
+        let file_name = location
+            .relative_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("photo.jpg")
+            .to_owned();
+        let (root, path) = crate::local::track_path(location).await?;
+        let (mut file, orig_size, modified_ms, mime) = tokio::task::spawn_blocking(move || {
+            let mut f = root.open_file_blocking(&path)?;
+            let meta = f.metadata()?;
+            let len = meta.len();
+            if len == 0 {
+                return Err(Error::not_found("photo"));
+            }
+            let mut header = [0u8; 16];
+            let hlen = usize::try_from(len.min(16)).unwrap_or(16);
+            f.read_exact(&mut header[..hlen])?;
+            f.rewind()?;
+            let mime = crate::photos::exif::detect_photo_mime(&header[..hlen], &file_name)
+                .unwrap_or("application/octet-stream");
+            let modified_ms = meta
+                .modified()
+                .ok()
+                .map(|t| clock::to_millis(clock::from_system_time(t)))
+                .unwrap_or(0);
+            Ok::<_, Error>((f, len, modified_ms, mime))
+        })
+        .await
+        .map_err(|e| Error::internal(e.to_string()))??;
+
+        if original {
+            return stream_opened_file(file, mime, orig_size);
+        }
+
+        let bucket = snap_size(size.unwrap_or(1920));
+        let cache_key = sidecar_fingerprint(&format!(
+            "{key_prefix}\0{orig_size}\0{modified_ms}\0{bucket}"
+        ));
+        let cache_path = self.cache_path("photos", &cache_key);
+        if let Ok(cached) = open_cached_jpeg(&cache_path).await {
+            return Ok(cached);
+        }
+
+        if let Some(ffmpeg) = &self.ffmpeg {
+            let _permit = self
+                .workers
+                .acquire()
+                .await
+                .map_err(|e| Error::internal(e.to_string()))?;
+            if let Ok(cached) = open_cached_jpeg(&cache_path).await {
+                return Ok(cached);
+            }
+            if let Ok(cloned) = file.try_clone()
+                && let Ok(resized) = resize_photo_fd(ffmpeg, cloned, bucket).await
+            {
+                let len = resized.len() as u64;
+                if write_atomic(&cache_path, &resized).await.is_ok()
+                    && let Ok(cached) = open_cached_jpeg(&cache_path).await
+                {
+                    return Ok(cached);
+                }
+                let cursor = io::Cursor::new(resized);
+                return Ok(("image/jpeg", len, Box::pin(cursor) as ByteStream));
+            }
+        }
+
+        let _ = file.seek(SeekFrom::Start(0));
+        if matches!(
+            mime,
+            "image/jpeg" | "image/png" | "image/webp" | "image/gif" | "image/bmp" | "image/avif"
+        ) {
+            stream_opened_file(file, mime, orig_size)
+        } else {
+            Err(Error::not_found("photo preview"))
+        }
+    }
+
     fn cache_path(&self, kind: &str, key: &str) -> PathBuf {
         let shard = key.get(..2).unwrap_or("00");
         self.cache_dir
@@ -487,6 +575,73 @@ async fn grab_frame(ffmpeg: &Path, file: File, seek_secs: f64) -> io::Result<Vec
     tokio::time::timeout(Duration::from_secs(10), run)
         .await
         .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "frame grab timed out"))?
+}
+
+async fn resize_photo_fd(ffmpeg: &Path, file: File, width: u16) -> io::Result<Vec<u8>> {
+    let vf = format!("scale=min(iw\\,{width}):-1,format=yuvj420p");
+    let input = format!("{FILE_INPUT}:");
+    let mut child = Command::new(ffmpeg)
+        .args([
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-nostdin",
+            "-max_alloc",
+            "134217728",
+            "-threads",
+            "1",
+            "-max_pixels",
+            "120000000",
+            "-protocol_whitelist",
+            FILE_INPUT,
+            "-i",
+            &input,
+            "-an",
+            "-sn",
+            "-dn",
+            "-frames:v",
+            "1",
+            "-filter_threads",
+            "1",
+            "-vf",
+            &vf,
+            "-threads",
+            "1",
+            "-c:v",
+            "mjpeg",
+            "-q:v",
+            "4",
+            "-f",
+            "image2pipe",
+            "pipe:1",
+        ])
+        .kill_on_drop(true)
+        .stdin(Stdio::from(file))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()?;
+    let output = child
+        .stdout
+        .take()
+        .ok_or_else(|| io::Error::other("missing ffmpeg output"))?;
+    let run = async {
+        let mut bytes = Vec::new();
+        output
+            .take((MAX_RESIZED_BYTES + 1) as u64)
+            .read_to_end(&mut bytes)
+            .await?;
+        let status = child.wait().await?;
+        if !status.success()
+            || bytes.len() > MAX_RESIZED_BYTES
+            || !bytes.starts_with(&[0xff, 0xd8, 0xff])
+        {
+            return Err(io::Error::other("photo resize failed"));
+        }
+        Ok(bytes)
+    };
+    tokio::time::timeout(Duration::from_secs(10), run)
+        .await
+        .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "photo resize timed out"))?
 }
 
 /// Cheap container-header duration probe via `ffprobe` on an open file descriptor.

@@ -2,6 +2,7 @@ import "i18next";
 import type zhCN from "./locales/zh-CN.json";
 import type broadcastZh from "@/modules/broadcast/locales/zh-CN.json";
 import type musicZh from "@/modules/music/locales/zh-CN.json";
+import type photosZh from "@/modules/photos/locales/zh-CN.json";
 import type videoZh from "@/modules/video/locales/zh-CN.json";
 
 declare module "i18next" {
@@ -9,7 +10,12 @@ declare module "i18next" {
     defaultNS: "translation";
     returnNull: false;
     resources: {
-      translation: typeof zhCN & { broadcast: typeof broadcastZh; musicApp: typeof musicZh; videoApp: typeof videoZh };
+      translation: typeof zhCN & {
+        broadcast: typeof broadcastZh;
+        musicApp: typeof musicZh;
+        photosApp: typeof photosZh;
+        videoApp: typeof videoZh;
+      };
     };
   }
 }

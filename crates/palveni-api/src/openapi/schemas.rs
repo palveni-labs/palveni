@@ -118,6 +118,12 @@ use palveni_core::personal::{
     MediaState, MediaView, PersonalItem, PersonalItemPage, PlaybackUpdate, Playlist, PlaylistPage,
     PlaylistSummary, PlaylistTrack, PlaylistTrackPage,
 };
+use palveni_core::photos::{
+    CreatePhotoAlbumRequest, PhotoAlbumItemsRequest, PhotoAlbumList, PhotoAlbumRef,
+    PhotoAlbumSummary, PhotoCameraBucket, PhotoInfo, PhotoMemories, PhotoMonthBucket,
+    PhotoPlaceCluster, PhotoTimelineItem, PhotoTimelinePage, PhotoUploadRequest,
+    UpdatePhotoAlbumRequest,
+};
 use palveni_core::spoken::{
     SpokenChapter, SpokenChapterList, SpokenEntry, SpokenPage, SpokenRecording,
 };
@@ -245,6 +251,20 @@ use utoipa::OpenApi;
     FavoriteUpdate,
     RatingUpdate,
     PlaylistUpdate,
+    PhotoTimelineItem,
+    PhotoMonthBucket,
+    PhotoTimelinePage,
+    PhotoPlaceCluster,
+    PhotoCameraBucket,
+    PhotoMemories,
+    PhotoAlbumRef,
+    PhotoInfo,
+    PhotoAlbumSummary,
+    PhotoAlbumList,
+    CreatePhotoAlbumRequest,
+    UpdatePhotoAlbumRequest,
+    PhotoAlbumItemsRequest,
+    PhotoUploadRequest,
     PlaybackInfo,
     PlaybackMode,
     MediaInfo,

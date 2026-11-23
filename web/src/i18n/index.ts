@@ -7,6 +7,8 @@ import broadcastEn from "@/modules/broadcast/locales/en.json";
 import broadcastZh from "@/modules/broadcast/locales/zh-CN.json";
 import musicEn from "@/modules/music/locales/en.json";
 import musicZh from "@/modules/music/locales/zh-CN.json";
+import photosEn from "@/modules/photos/locales/en.json";
+import photosZh from "@/modules/photos/locales/zh-CN.json";
 import videoEn from "@/modules/video/locales/en.json";
 import videoZh from "@/modules/video/locales/zh-CN.json";
 
@@ -38,8 +40,8 @@ void i18n
   .use(initReactI18next)
   .init({
     resources: {
-      "zh-CN": { translation: { ...zhCN, broadcast: broadcastZh, musicApp: musicZh, videoApp: videoZh } },
-      en: { translation: { ...en, broadcast: broadcastEn, musicApp: musicEn, videoApp: videoEn } },
+      "zh-CN": { translation: { ...zhCN, broadcast: broadcastZh, musicApp: musicZh, photosApp: photosZh, videoApp: videoZh } },
+      en: { translation: { ...en, broadcast: broadcastEn, musicApp: musicEn, photosApp: photosEn, videoApp: videoEn } },
     },
     supportedLngs: [...SUPPORTED_LANGUAGES],
     fallbackLng: "en",

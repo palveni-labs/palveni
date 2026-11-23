@@ -96,6 +96,11 @@ define_id!(
     PlaylistId
 );
 
+define_id!(
+    /// A personal photo album.
+    PhotoAlbumId
+);
+
 impl ItemId {
     pub const fn from_uuid_bytes(bytes: [u8; 16]) -> Self {
         Self(Uuid::from_bytes(bytes))

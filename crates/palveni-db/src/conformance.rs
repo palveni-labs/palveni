@@ -47,6 +47,7 @@ mod connections;
 mod loudness;
 mod music_catalog;
 mod music_search;
+mod photos;
 mod scan_reviews;
 mod video;
 
@@ -65,6 +66,9 @@ const PALVENI_TABLES: &[&str] = &[
     "broadcast_favorites",
     "broadcast_entries",
     "broadcast_sources",
+    "photo_album_items",
+    "photo_albums",
+    "photo_metadata",
     "video_favorites",
     "video_genres",
     "video_people",

@@ -474,6 +474,11 @@ impl Scanner {
                     |path| !scopes.held(path),
                 )
                 .await?;
+        } else if library.kind == LibraryKind::Photo {
+            crate::photos::index_library(&self.db, library_id, roots, observer, |path| {
+                !scopes.held(path)
+            })
+            .await?;
         }
         if !self
             .db

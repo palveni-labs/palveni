@@ -332,6 +332,77 @@ fn parameters(cap: &Capability) -> Vec<Value> {
             false,
             json!({"type":"integer","minimum":1,"maximum":3840}),
         )),
+        "getPhotoTimeline" => {
+            params.extend([
+                parameter(
+                    "libraryId",
+                    "query",
+                    false,
+                    json!({"type":"string","format":"uuid"}),
+                ),
+                parameter(
+                    "albumId",
+                    "query",
+                    false,
+                    json!({"type":"string","format":"uuid"}),
+                ),
+                parameter("favorite", "query", false, json!({"type":"boolean"})),
+                parameter("hasLocation", "query", false, json!({"type":"boolean"})),
+                parameter(
+                    "camera",
+                    "query",
+                    false,
+                    json!({"type":"string","maxLength":256}),
+                ),
+                parameter(
+                    "month",
+                    "query",
+                    false,
+                    json!({"type":"string","pattern":"^[0-9]{4}-[0-9]{2}$"}),
+                ),
+                parameter(
+                    "place",
+                    "query",
+                    false,
+                    json!({"type":"string","maxLength":64}),
+                ),
+                parameter(
+                    "q",
+                    "query",
+                    false,
+                    json!({"type":"string","maxLength":128}),
+                ),
+                parameter("cursor", "query", false, json!({"type":"string"})),
+                parameter(
+                    "limit",
+                    "query",
+                    false,
+                    json!({"type":"integer","minimum":1,"maximum":200,"default":60}),
+                ),
+            ]);
+        }
+        "getPhotoImage" => {
+            params.push(parameter(
+                "size",
+                "query",
+                false,
+                json!({"type":"integer","minimum":1,"maximum":3840}),
+            ));
+            params.push(parameter(
+                "original",
+                "query",
+                false,
+                json!({"type":"boolean","default":false}),
+            ));
+        }
+        "uploadPhoto" => {
+            params.push(parameter(
+                "fileName",
+                "query",
+                false,
+                json!({"type":"string","maxLength":255}),
+            ));
+        }
         "browseConnection" => {
             params.push(parameter(
                 "parent",
