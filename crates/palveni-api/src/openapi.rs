@@ -149,7 +149,7 @@ fn parameters(cap: &Capability) -> Vec<Value> {
     let mut params = Vec::new();
     for part in cap.path.split('/') {
         if let Some(name) = part.strip_prefix('{').and_then(|s| s.strip_suffix('}')) {
-            let schema = if name == "id" && cap.module != "skins" {
+            let schema = if name == "id" && !matches!(cap.module, "skins" | "storage" | "artwork") {
                 json!({"type":"string","format":"uuid"})
             } else if matches!(name, "page" | "index") {
                 json!({"type":"integer","minimum":0})

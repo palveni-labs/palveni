@@ -9,6 +9,7 @@ pub mod libraries;
 pub mod link;
 pub mod music;
 pub mod opds;
+pub mod overview;
 pub mod personal;
 pub mod photos;
 pub mod playback;

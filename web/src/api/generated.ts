@@ -1,4 +1,21 @@
 export interface paths {
+    "/api/v1/artwork/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read cover artwork bytes for a catalog work or item. */
+        get: operations["getArtwork"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -112,6 +129,23 @@ export interface paths {
         get?: never;
         /** @description Save or remove a channel or episode in your favorites. */
         put: operations["setBroadcastFavorite"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read recently added works and per-library cover mosaic IDs. */
+        get: operations["getCatalog"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -455,6 +489,109 @@ export interface paths {
         };
         /** @description Read a local artwork image for an indexed work, season or episode. */
         get: operations["getVideoPoster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{id}/reading-asset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read a validated package-internal image asset from an EPUB. */
+        get: operations["getReadingAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{id}/reading-chapter/{index}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read a sanitized chapter from an ebook or text document. */
+        get: operations["getReadingChapter"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{id}/reading-cover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read the cover image of a book or comic. */
+        get: operations["getReadingCover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{id}/reading-inline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Stream an indexed PDF inline with HTTP byte-range support. */
+        get: operations["streamReadingInline"];
+        put?: never;
+        /** @description Issue a short-lived inline PDF URL for browser rendering. */
+        post: operations["prepareReadingInline"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{id}/reading-manifest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read book or comic metadata, chapters, reading progress and bookmarks. */
+        get: operations["getReadingManifest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{id}/reading-page/{page}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read a 0-based page image from a comic archive. */
+        get: operations["getReadingPage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -826,6 +963,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/libraries/{id}/reading": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Browse books or comics in a library with filtering and sorting. */
+        get: operations["listReadingItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/libraries/{id}/scan": {
         parameters: {
             query?: never;
@@ -1083,6 +1237,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/bookmarks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description Delete one of your reading bookmarks. */
+        delete: operations["deleteReadingBookmark"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/items": {
         parameters: {
             query?: never;
@@ -1111,6 +1282,23 @@ export interface paths {
         get: operations["getPersonalItem"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/items/{id}/bookmarks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Create a personal bookmark on a book or comic. */
+        post: operations["createReadingBookmark"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1179,6 +1367,23 @@ export interface paths {
         get?: never;
         /** @description Rate a track or video from one to five stars, or clear its rating with zero. */
         put: operations["setRating"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/items/{id}/reading-progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Save reading page, locator and completion state. */
+        put: operations["saveReadingProgress"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1424,6 +1629,23 @@ export interface paths {
         };
         /** @description List installed plugins. */
         get: operations["listPlugins"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reading/home": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read continue-reading, recent books, recent comics and series shelves. */
+        get: operations["getReadingHome"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1704,6 +1926,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read live CPU load, memory usage and connected client session count. */
+        get: operations["getSystemMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/settings": {
         parameters: {
             query?: never;
@@ -1716,6 +1955,40 @@ export interface paths {
         /** @description Replace server name and performance tier overrides. */
         put: operations["updateRuntimeSettings"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read disk volumes, per-library byte totals and network mount reachability. */
+        get: operations["getStorageReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/storage/mounts/{id}/reconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Re-probe a storage mount and refresh its online state. */
+        post: operations["reconnectStorageMount"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1832,122 +2105,6 @@ export interface components {
          * @description A personal reading bookmark.
          */
         BookmarkId: string;
-        CreateBookmarkRequest: {
-            label: string;
-            locator?: string | null;
-            note?: string | null;
-            /** Format: int32 */
-            page: number;
-        };
-        ReadingBookmark: {
-            /** Format: date-time */
-            createdAt: string;
-            id: components["schemas"]["BookmarkId"];
-            itemId: components["schemas"]["ItemId"];
-            label: string;
-            locator: string | null;
-            note: string | null;
-            /** Format: int32 */
-            page: number;
-        };
-        ReadingChapter: {
-            html: string;
-            /** Format: int32 */
-            index: number;
-            plainText: string;
-            title: string;
-        };
-        ReadingChapterSummary: {
-            /** Format: int32 */
-            index: number;
-            title: string;
-        };
-        ReadingEntry: {
-            /** Format: date-time */
-            addedAt: string;
-            authors: string[];
-            format: string;
-            hasCover: boolean;
-            itemId: components["schemas"]["ItemId"];
-            kind: components["schemas"]["ReadingKind"];
-            language: string | null;
-            libraryId: components["schemas"]["LibraryId"];
-            /** Format: int32 */
-            pageCount: number | null;
-            publisher: string | null;
-            /** Format: double */
-            seriesIndex: number | null;
-            seriesKey: string | null;
-            seriesName: string | null;
-            /** Format: int64 */
-            sizeBytes: number | null;
-            state: components["schemas"]["ReadingUserState"];
-            summary: string | null;
-            tags: string[];
-            title: string;
-        };
-        ReadingHome: {
-            continueReading: components["schemas"]["ReadingEntry"][];
-            recentBooks: components["schemas"]["ReadingEntry"][];
-            recentComics: components["schemas"]["ReadingEntry"][];
-            series: components["schemas"]["ReadingSeries"][];
-        };
-        ReadingInline: {
-            /** Format: date-time */
-            expiresAt: string;
-            url: string;
-        };
-        /** @enum {string} */
-        ReadingKind: "book" | "comic";
-        ReadingManifest: {
-            bookmarks: components["schemas"]["ReadingBookmark"][];
-            chapters: components["schemas"]["ReadingChapterSummary"][];
-            entry: components["schemas"]["ReadingEntry"];
-            readerMode: components["schemas"]["ReadingReaderMode"];
-        };
-        ReadingPage: {
-            entries: components["schemas"]["ReadingEntry"][];
-            nextCursor: string | null;
-            /** Format: int64 */
-            total: number;
-        };
-        ReadingProgressUpdate: {
-            completed: boolean;
-            locator?: string | null;
-            /** Format: int32 */
-            page: number;
-            /** Format: int32 */
-            totalPages?: number | null;
-        };
-        /** @enum {string} */
-        ReadingReaderMode: "chapters" | "pages" | "pdf" | "download_only";
-        ReadingSeries: {
-            /** Format: int32 */
-            completedCount: number;
-            coverItemId: components["schemas"]["ItemId"];
-            hasCover: boolean;
-            /** Format: int32 */
-            itemCount: number;
-            kind: components["schemas"]["ReadingKind"];
-            libraryId: components["schemas"]["LibraryId"];
-            seriesKey: string;
-            seriesName: string;
-        };
-        /** @enum {string} */
-        ReadingSort: "added" | "title" | "series";
-        /** @enum {string} */
-        ReadingSortDir: "asc" | "desc";
-        ReadingUserState: {
-            completed: boolean;
-            favorite: boolean;
-            /** Format: date-time */
-            lastReadAt: string | null;
-            locator: string | null;
-            /** Format: int32 */
-            page: number;
-            /** Format: int32 */
-            totalPages: number | null;
-        };
         BroadcastEntry: {
             current?: null | components["schemas"]["BroadcastProgramme"];
             favorite: boolean;
@@ -2010,6 +2167,24 @@ export interface components {
             reversible: boolean;
             risk: components["schemas"]["Risk"];
         };
+        Catalog: {
+            libraryCovers: {
+                [key: string]: string[];
+            };
+            recent: components["schemas"]["CatalogWork"][];
+        };
+        CatalogWork: {
+            /** Format: date-time */
+            addedAt: string;
+            artworkId: string | null;
+            id: string;
+            kind: components["schemas"]["CatalogWorkKind"];
+            libraryId: string | null;
+            meta: string | null;
+            title: string;
+        };
+        /** @enum {string} */
+        CatalogWorkKind: "movie" | "series" | "album" | "book" | "photo";
         ChapterInfo: {
             /** Format: int64 */
             startMs: number;
@@ -2051,6 +2226,13 @@ export interface components {
             /** Format: int32 */
             cores: number;
             model: string;
+        };
+        CreateBookmarkRequest: {
+            label: string;
+            locator?: string | null;
+            note?: string | null;
+            /** Format: int32 */
+            page: number;
         };
         CreateConnection: {
             address: string;
@@ -2231,6 +2413,12 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        LibraryBytes: {
+            /** Format: int64 */
+            bytes: number;
+            libraryId: string;
+            name: string;
+        };
         /**
          * Format: uuid
          * @description A media library.
@@ -2331,6 +2519,8 @@ export interface components {
         };
         /** @enum {string} */
         MountProtocol: "smb" | "nfs" | "webdav" | "sshfs" | "rclone" | "network";
+        /** @enum {string} */
+        MountState: "online" | "offline";
         MountedDirectory: {
             path: string;
             protocol: components["schemas"]["MountProtocol"];
@@ -2736,6 +2926,115 @@ export interface components {
             /** Format: int32 */
             stars: number;
         };
+        ReadingBookmark: {
+            /** Format: date-time */
+            createdAt: string;
+            id: components["schemas"]["BookmarkId"];
+            itemId: components["schemas"]["ItemId"];
+            label: string;
+            locator: string | null;
+            note: string | null;
+            /** Format: int32 */
+            page: number;
+        };
+        ReadingChapter: {
+            html: string;
+            /** Format: int32 */
+            index: number;
+            plainText: string;
+            title: string;
+        };
+        ReadingChapterSummary: {
+            /** Format: int32 */
+            index: number;
+            title: string;
+        };
+        ReadingEntry: {
+            /** Format: date-time */
+            addedAt: string;
+            authors: string[];
+            format: string;
+            hasCover: boolean;
+            itemId: components["schemas"]["ItemId"];
+            kind: components["schemas"]["ReadingKind"];
+            language: string | null;
+            libraryId: components["schemas"]["LibraryId"];
+            /** Format: int32 */
+            pageCount: number | null;
+            publisher: string | null;
+            /** Format: double */
+            seriesIndex: number | null;
+            seriesKey: string | null;
+            seriesName: string | null;
+            /** Format: int64 */
+            sizeBytes: number | null;
+            state: components["schemas"]["ReadingUserState"];
+            summary: string | null;
+            tags: string[];
+            title: string;
+        };
+        ReadingHome: {
+            continueReading: components["schemas"]["ReadingEntry"][];
+            recentBooks: components["schemas"]["ReadingEntry"][];
+            recentComics: components["schemas"]["ReadingEntry"][];
+            series: components["schemas"]["ReadingSeries"][];
+        };
+        ReadingInline: {
+            /** Format: date-time */
+            expiresAt: string;
+            url: string;
+        };
+        /** @enum {string} */
+        ReadingKind: "book" | "comic";
+        ReadingManifest: {
+            bookmarks: components["schemas"]["ReadingBookmark"][];
+            chapters: components["schemas"]["ReadingChapterSummary"][];
+            entry: components["schemas"]["ReadingEntry"];
+            readerMode: components["schemas"]["ReadingReaderMode"];
+        };
+        ReadingPage: {
+            entries: components["schemas"]["ReadingEntry"][];
+            nextCursor: string | null;
+            /** Format: int64 */
+            total: number;
+        };
+        ReadingProgressUpdate: {
+            completed: boolean;
+            locator?: string | null;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            totalPages?: number | null;
+        };
+        /** @enum {string} */
+        ReadingReaderMode: "chapters" | "pages" | "pdf" | "download_only";
+        ReadingSeries: {
+            /** Format: int32 */
+            completedCount: number;
+            coverItemId: components["schemas"]["ItemId"];
+            hasCover: boolean;
+            /** Format: int32 */
+            itemCount: number;
+            kind: components["schemas"]["ReadingKind"];
+            libraryId: components["schemas"]["LibraryId"];
+            seriesKey: string;
+            seriesName: string;
+        };
+        /** @enum {string} */
+        ReadingSort: "added" | "title" | "series";
+        /** @enum {string} */
+        ReadingSortDir: "asc" | "desc";
+        ReadingUserState: {
+            completed: boolean;
+            favorite: boolean;
+            /** Format: date-time */
+            lastReadAt: string | null;
+            locator: string | null;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            totalPages: number | null;
+        };
         RegistrySkin: components["schemas"]["SkinInfo"] & {
             downloadUrl: string;
             installed: boolean;
@@ -2877,6 +3176,28 @@ export interface components {
             directories: string[];
             truncated: boolean;
         };
+        StorageMount: {
+            affectedLibraries: number;
+            id: string;
+            label: string;
+            /** Format: date-time */
+            since: string;
+            state: components["schemas"]["MountState"];
+        };
+        StorageReport: {
+            byLibrary: components["schemas"]["LibraryBytes"][];
+            mounts: components["schemas"]["StorageMount"][];
+            volumes: components["schemas"]["StorageVolume"][];
+        };
+        StorageVolume: {
+            id: string;
+            label: string;
+            path: string;
+            /** Format: int64 */
+            totalBytes: number;
+            /** Format: int64 */
+            usedBytes: number;
+        };
         SubsonicPassword: {
             password: string;
             username: string;
@@ -2916,6 +3237,15 @@ export interface components {
             serverId: components["schemas"]["ServerId"];
             setupCompleted: boolean;
             version: string;
+        };
+        SystemMetrics: {
+            /** Format: double */
+            cpu: number;
+            devicesOnline: number;
+            /** Format: int64 */
+            memoryTotalBytes: number;
+            /** Format: int64 */
+            memoryUsedBytes: number;
         };
         ToolInfo: {
             found: boolean;
@@ -3100,6 +3430,68 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getArtwork: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                    "image/png": string;
+                    "image/webp": string;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
     login: {
         parameters: {
             query?: never;
@@ -3661,6 +4053,55 @@ export interface operations {
             /** @description Conflict */
             409: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    getCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Catalog"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -5410,6 +5851,552 @@ export interface operations {
             405: {
                 headers: {
                     Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    getReadingAsset: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/avif": string;
+                    "image/gif": string;
+                    "image/jpeg": string;
+                    "image/png": string;
+                    "image/webp": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    getReadingChapter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadingChapter"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    getReadingCover: {
+        parameters: {
+            query?: {
+                size?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/avif": string;
+                    "image/gif": string;
+                    "image/jpeg": string;
+                    "image/png": string;
+                    "image/webp": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    streamReadingInline: {
+        parameters: {
+            query?: {
+                ticket?: string;
+            };
+            header?: {
+                Range?: string;
+                "If-Range"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    "Accept-Ranges"?: "bytes";
+                    "Cache-Control"?: "private, no-store";
+                    "Content-Disposition"?: "inline";
+                    "Content-Length"?: number;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Partial content */
+            206: {
+                headers: {
+                    "Accept-Ranges"?: "bytes";
+                    "Cache-Control"?: "private, no-store";
+                    "Content-Disposition"?: "inline";
+                    "Content-Length"?: number;
+                    "Content-Range"?: string;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unsatisfiable byte range */
+            416: {
+                headers: {
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    prepareReadingInline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadingInline"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    getReadingManifest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadingManifest"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    getReadingPage: {
+        parameters: {
+            query?: {
+                size?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+                page: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/avif": string;
+                    "image/gif": string;
+                    "image/jpeg": string;
+                    "image/png": string;
+                    "image/webp": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
                     [name: string]: unknown;
                 };
                 content: {
@@ -7366,6 +8353,87 @@ export interface operations {
             };
         };
     };
+    listReadingItems: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["ReadingKind"];
+                series?: string;
+                author?: string;
+                format?: string;
+                favorite?: boolean;
+                completed?: boolean;
+                q?: string;
+                sort?: components["schemas"]["ReadingSort"];
+                dir?: components["schemas"]["ReadingSortDir"];
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadingPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
     scanLibrary: {
         parameters: {
             query?: never;
@@ -8511,6 +9579,64 @@ export interface operations {
             };
         };
     };
+    deleteReadingBookmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
     listPersonalItems: {
         parameters: {
             query: {
@@ -8591,6 +9717,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MediaState"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    createReadingBookmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBookmarkRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadingBookmark"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
                 };
             };
             /** @description Unauthorized */
@@ -8926,6 +10125,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MediaState"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    saveReadingProgress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadingProgressUpdate"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadingUserState"];
                 };
             };
             /** @description Bad Request */
@@ -10354,6 +11626,75 @@ export interface operations {
             };
         };
     };
+    getReadingHome: {
+        parameters: {
+            query?: {
+                libraryId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadingHome"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
     createAdministrator: {
         parameters: {
             query?: never;
@@ -11358,6 +12699,55 @@ export interface operations {
             };
         };
     };
+    getSystemMetrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemMetrics"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
     getRuntimeSettings: {
         parameters: {
             query?: never;
@@ -11459,6 +12849,124 @@ export interface operations {
             };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    getStorageReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageReport"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    Allow?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+        };
+    };
+    reconnectStorageMount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageMount"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: "Bearer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -15,6 +15,7 @@ pub mod features;
 pub mod ids;
 pub mod model;
 pub mod music;
+pub mod overview;
 pub mod perf;
 pub mod personal;
 pub mod photos;

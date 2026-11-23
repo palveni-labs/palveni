@@ -115,6 +115,10 @@ use palveni_core::music::{
     MusicTrackLookupRequest, MusicTrackLookupResponse, MusicTrackPage, MusicTrackSort,
     MusicTrackState, TrackLoudness, TrackLyrics,
 };
+use palveni_core::overview::{
+    Catalog, CatalogWork, CatalogWorkKind, LibraryBytes, MountState, StorageMount, StorageReport,
+    StorageVolume, SystemMetrics,
+};
 use palveni_core::personal::{
     MediaState, MediaView, PersonalItem, PersonalItemPage, PlaybackUpdate, Playlist, PlaylistPage,
     PlaylistSummary, PlaylistTrack, PlaylistTrackPage,
@@ -311,6 +315,15 @@ use utoipa::OpenApi;
     PluginList,
     InstalledSkin,
     RegistrySkin,
+    Catalog,
+    CatalogWork,
+    CatalogWorkKind,
+    LibraryBytes,
+    MountState,
+    StorageMount,
+    StorageReport,
+    StorageVolume,
+    SystemMetrics,
     RuntimeSettings,
     Capability
 )))]
