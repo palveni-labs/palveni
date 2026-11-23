@@ -9,6 +9,8 @@ import musicEn from "@/modules/music/locales/en.json";
 import musicZh from "@/modules/music/locales/zh-CN.json";
 import photosEn from "@/modules/photos/locales/en.json";
 import photosZh from "@/modules/photos/locales/zh-CN.json";
+import readingEn from "@/modules/reading/locales/en.json";
+import readingZh from "@/modules/reading/locales/zh-CN.json";
 import videoEn from "@/modules/video/locales/en.json";
 import videoZh from "@/modules/video/locales/zh-CN.json";
 
@@ -40,8 +42,12 @@ void i18n
   .use(initReactI18next)
   .init({
     resources: {
-      "zh-CN": { translation: { ...zhCN, broadcast: broadcastZh, musicApp: musicZh, photosApp: photosZh, videoApp: videoZh } },
-      en: { translation: { ...en, broadcast: broadcastEn, musicApp: musicEn, photosApp: photosEn, videoApp: videoEn } },
+      "zh-CN": {
+        translation: { ...zhCN, broadcast: broadcastZh, musicApp: musicZh, photosApp: photosZh, readingApp: readingZh, videoApp: videoZh },
+      },
+      en: {
+        translation: { ...en, broadcast: broadcastEn, musicApp: musicEn, photosApp: photosEn, readingApp: readingEn, videoApp: videoEn },
+      },
     },
     supportedLngs: [...SUPPORTED_LANGUAGES],
     fallbackLng: "en",

@@ -46,7 +46,7 @@ async fn original(state: &AppState, id: ItemId) -> Result<(TrackFile, String), A
 }
 
 // The ASCII fallback retains the type for older readers. Modern clients use the UTF-8 name.
-fn attachment(name: &str) -> HeaderValue {
+pub(super) fn attachment(name: &str) -> HeaderValue {
     let clean: String = name.chars().map(|ch| {
         let directional = matches!(ch, '\u{061c}' | '\u{200e}' | '\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}');
         if ch.is_control() || directional || r#"/\:"<>|?*"#.contains(ch) {

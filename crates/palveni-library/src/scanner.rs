@@ -463,6 +463,9 @@ impl Scanner {
         if library.kind == LibraryKind::Music {
             self.db.music().refresh_albums(library_id).await?;
         }
+        if matches!(library.kind, LibraryKind::Book | LibraryKind::Comic) {
+            crate::reading::index_library(&self.db, library_id, observer).await?;
+        }
         if library.kind == LibraryKind::Video {
             video
                 .index(

@@ -37,6 +37,7 @@ pub mod personal;
 pub mod photos;
 pub mod playlists;
 pub mod plugin_kv;
+pub mod reading;
 pub mod scan_reviews;
 pub mod sessions;
 pub mod settings;
@@ -208,6 +209,10 @@ impl Db {
 
     pub fn video(&self) -> video::Videos<'_> {
         video::Videos { db: self }
+    }
+
+    pub fn reading(&self) -> reading::Reading<'_> {
+        reading::Reading { db: self }
     }
 
     pub fn scan_reviews(&self) -> scan_reviews::ScanReviews<'_> {

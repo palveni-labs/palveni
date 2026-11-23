@@ -38,6 +38,7 @@ export default function SidebarLibraries() {
   const itemColor = useSlot("itemColor");
   const musicEnabled = useFeature("music");
   const photosEnabled = useFeature("photos");
+  const readingEnabled = useFeature("reading");
   const scanning = useScanningLibraries();
   const libraries = useSortedLibraries();
   return (
@@ -69,6 +70,10 @@ export default function SidebarLibraries() {
               <Link to="/music" search={{ library: library.id }} className={linkClass}>
                 {content}
               </Link>
+            ) : readingEnabled && (library.kind === "book" || library.kind === "comic") ? (
+              <Link to="/reading" search={{ library: library.id }} className={linkClass}>
+                {content}
+              </Link>
             ) : photosEnabled && library.kind === "photo" ? (
               <Link to="/photos" search={{ libraryId: library.id }} className={linkClass}>
                 {content}
@@ -97,6 +102,7 @@ export function LibraryMenu({ children, className, active }: NavMenuProps) {
   const videoEnabled = useFeature("video");
   const musicEnabled = useFeature("music");
   const photosEnabled = useFeature("photos");
+  const readingEnabled = useFeature("reading");
   const libraries = useSortedLibraries();
 
   if (libraries.length === 0) {
@@ -123,6 +129,8 @@ export function LibraryMenu({ children, className, active }: NavMenuProps) {
               const target = libraries.find((entry) => entry.id === id);
               if (musicEnabled && target?.kind === "music") {
                 void navigate({ to: "/music", search: { library: id } });
+              } else if (readingEnabled && (target?.kind === "book" || target?.kind === "comic")) {
+                void navigate({ to: "/reading", search: { library: id } });
               } else if (photosEnabled && target?.kind === "photo") {
                 void navigate({ to: "/photos", search: { libraryId: id } });
               } else if (videoEnabled && target?.kind === "video") {

@@ -31,6 +31,8 @@ pub mod music_collection_favorites;
 pub mod photo_album_items;
 pub mod photo_albums;
 pub mod photo_metadata;
+pub mod reading_bookmarks;
+pub mod reading_metadata;
 pub mod scan_review_items;
 pub mod scan_reviews;
 pub mod sessions;

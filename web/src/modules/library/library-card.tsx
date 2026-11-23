@@ -30,9 +30,11 @@ export function LibraryRow({ library, covers, scanning }: { library: Library; co
   const scan = useScanLibrary();
   const musicEnabled = useFeature("music");
   const photosEnabled = useFeature("photos");
+  const readingEnabled = useFeature("reading");
   const openVideoApp = videoEnabled && library.kind === "video";
   const openMusicApp = musicEnabled && library.kind === "music";
   const openPhotosApp = photosEnabled && library.kind === "photo";
+  const openReadingApp = readingEnabled && (library.kind === "book" || library.kind === "comic");
   const Icon = LIBRARY_KIND_META[library.kind].icon;
   const unscanned = library.lastScanAt === null && library.itemCount === 0;
   const scanLabel = t("libraries.scanNamed", { name: library.name });
@@ -62,9 +64,9 @@ export function LibraryRow({ library, covers, scanning }: { library: Library; co
         )}
       >
         {lead}
-        {openMusicApp ? (
+        {openMusicApp || openReadingApp ? (
           <Link
-            to="/music"
+            to={openReadingApp ? "/reading" : "/music"}
             search={{ library: library.id }}
             className="grid min-w-0 flex-1 gap-0.5 outline-none after:absolute after:inset-0 after:rounded-[inherit] focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-(--pv-focus)"
           >
@@ -123,7 +125,7 @@ export function LibraryRow({ library, covers, scanning }: { library: Library; co
             ) : null}
           </Link>
         )}
-        {(openMusicApp || openVideoApp || openPhotosApp) && !unscanned ? (
+        {(openMusicApp || openVideoApp || openPhotosApp || openReadingApp) && !unscanned ? (
           <Link
             to="/library/$libraryId"
             params={{ libraryId: library.id }}

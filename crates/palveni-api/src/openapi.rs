@@ -102,6 +102,14 @@ fn success(output: Output) -> Value {
         Output::HlsPlaylist => content("application/vnd.apple.mpegurl", json!({"type":"string"})),
         Output::HlsSegment => binary(&["video/mp4", "video/mp2t"]),
         Output::Poster => binary(&["image/jpeg", "image/png", "image/webp"]),
+        Output::ReadingImage => binary(&[
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/gif",
+            "image/avif",
+        ]),
+        Output::Pdf => binary(&["application/pdf"]),
         Output::Document => json_content(json!({"type":"object","additionalProperties":true})),
         Output::SkinManifest => json_content(reference("SkinManifest")),
         Output::Events => content(
@@ -143,6 +151,8 @@ fn parameters(cap: &Capability) -> Vec<Value> {
         if let Some(name) = part.strip_prefix('{').and_then(|s| s.strip_suffix('}')) {
             let schema = if name == "id" && cap.module != "skins" {
                 json!({"type":"string","format":"uuid"})
+            } else if matches!(name, "page" | "index") {
+                json!({"type":"integer","minimum":0})
             } else {
                 json!({"type":"string"})
             };
@@ -158,6 +168,7 @@ fn parameters(cap: &Capability) -> Vec<Value> {
             | "headAudio"
             | "downloadBook"
             | "headBook"
+            | "streamReadingInline"
             | "getVideoMasterPlaylist"
             | "getVideoSegment"
     ) {
@@ -306,11 +317,55 @@ fn parameters(cap: &Capability) -> Vec<Value> {
                 json!({"type":"integer","minimum":1,"maximum":200}),
             ));
         }
-        "getVideoHome" => params.push(parameter(
+        "getVideoHome" | "getReadingHome" => params.push(parameter(
             "libraryId",
             "query",
             false,
             json!({"type":"string","format":"uuid"}),
+        )),
+        "listReadingItems" => params.extend([
+            parameter("kind", "query", false, reference("ReadingKind")),
+            parameter(
+                "series",
+                "query",
+                false,
+                json!({"type":"string","maxLength":255}),
+            ),
+            parameter(
+                "author",
+                "query",
+                false,
+                json!({"type":"string","maxLength":255}),
+            ),
+            parameter(
+                "format",
+                "query",
+                false,
+                json!({"type":"string","maxLength":16}),
+            ),
+            parameter("favorite", "query", false, json!({"type":"boolean"})),
+            parameter("completed", "query", false, json!({"type":"boolean"})),
+            parameter(
+                "q",
+                "query",
+                false,
+                json!({"type":"string","maxLength":128}),
+            ),
+            parameter("sort", "query", false, reference("ReadingSort")),
+            parameter("dir", "query", false, reference("ReadingSortDir")),
+            parameter("cursor", "query", false, json!({"type":"string"})),
+            parameter(
+                "limit",
+                "query",
+                false,
+                json!({"type":"integer","minimum":1,"maximum":200,"default":50}),
+            ),
+        ]),
+        "getReadingAsset" => params.push(parameter(
+            "path",
+            "query",
+            true,
+            json!({"type":"string"}),
         )),
         "getVideoPoster" => {
             params.push(parameter(
@@ -326,7 +381,11 @@ fn parameters(cap: &Capability) -> Vec<Value> {
                 json!({"type":"integer","minimum":1,"maximum":3840}),
             ));
         }
-        "getVideoBackdrop" | "getVideoThumb" | "getVideoPersonImage" => params.push(parameter(
+        "getVideoBackdrop"
+        | "getVideoThumb"
+        | "getVideoPersonImage"
+        | "getReadingCover"
+        | "getReadingPage" => params.push(parameter(
             "size",
             "query",
             false,
@@ -639,7 +698,7 @@ fn parameters(cap: &Capability) -> Vec<Value> {
             false,
             json!({"type":"string","pattern":"^[0-9]+$"}),
         )),
-        "streamTrack" | "downloadBook" => {
+        "streamTrack" | "downloadBook" | "streamReadingInline" => {
             params.push(parameter("Range", "header", false, json!({"type":"string","description":"One HTTP byte range, for example bytes=0-1."})));
             params.push(parameter("If-Range", "header", false, json!({"type":"string","description":"Returns the full representation because this endpoint supplies no entity validator."})));
         }
@@ -682,14 +741,19 @@ fn operation(endpoint: &Endpoint) -> Value {
     }
     if matches!(
         cap.id,
-        "createLinkChallenge" | "getOpdsAccess" | "listLinkDevices"
+        "createLinkChallenge" | "getOpdsAccess" | "listLinkDevices" | "prepareReadingInline"
     ) {
         op["responses"]["200"]["headers"]["Cache-Control"] =
             json!({"schema":{"type":"string","const":"private, no-store"}});
     }
     if matches!(
         cap.id,
-        "streamTrack" | "headTrack" | "streamConnection" | "downloadBook" | "headBook"
+        "streamTrack"
+            | "headTrack"
+            | "streamConnection"
+            | "downloadBook"
+            | "headBook"
+            | "streamReadingInline"
     ) {
         op["security"] = json!([{"bearerAuth":[]},{"mediaTicket":[]}]);
         let mut headers = json!({
@@ -700,10 +764,15 @@ fn operation(endpoint: &Endpoint) -> Value {
         });
         if matches!(cap.id, "downloadBook" | "headBook") {
             headers["Content-Disposition"] = json!({"description":"An attachment with the book's download filename.","schema":{"type":"string"}});
+        } else if cap.id == "streamReadingInline" {
+            headers["Content-Disposition"] = json!({"schema":{"type":"string","const":"inline"}});
         }
         let responses = &mut op["responses"];
         responses["200"]["headers"] = headers;
-        if matches!(cap.id, "streamTrack" | "streamConnection" | "downloadBook") {
+        if matches!(
+            cap.id,
+            "streamTrack" | "streamConnection" | "downloadBook" | "streamReadingInline"
+        ) {
             responses["206"] = responses["200"].clone();
             responses["206"]["description"] = json!("Partial content");
             let content_range = json!({"schema":{"type":"string"}});

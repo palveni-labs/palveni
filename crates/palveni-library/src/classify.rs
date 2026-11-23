@@ -18,9 +18,11 @@ const PHOTO_EXTENSIONS: &[&str] = &[
     "orf", "png", "raf", "rw2", "tif", "tiff", "webp",
 ];
 
-const BOOK_EXTENSIONS: &[&str] = &["azw", "azw3", "djvu", "epub", "fb2", "mobi", "pdf"];
+const BOOK_EXTENSIONS: &[&str] = &[
+    "azw", "azw3", "djvu", "epub", "fb2", "md", "mobi", "pdf", "txt",
+];
 
-const COMIC_EXTENSIONS: &[&str] = &["7z", "cb7", "cbr", "cbt", "cbz", "pdf", "rar", "zip"];
+const COMIC_EXTENSIONS: &[&str] = &["7z", "cb7", "cbr", "cbt", "cbz", "pdf", "rar", "tar", "zip"];
 
 /// Directory and file names that NAS systems and desktop OSes litter into
 /// shared folders.
@@ -130,11 +132,23 @@ mod tests {
             Some(ItemKind::Photo)
         );
         assert_eq!(
-            classify(LibraryKind::Book, "三体.epub"),
+            classify(LibraryKind::Book, "雾灯.epub"),
+            Some(ItemKind::Book)
+        );
+        assert_eq!(
+            classify(LibraryKind::Book, "读书笔记.md"),
+            Some(ItemKind::Book)
+        );
+        assert_eq!(
+            classify(LibraryKind::Book, "小说.TXT"),
             Some(ItemKind::Book)
         );
         assert_eq!(
             classify(LibraryKind::Comic, "Vol 01.cbz"),
+            Some(ItemKind::Comic)
+        );
+        assert_eq!(
+            classify(LibraryKind::Comic, "Vol 02.tar"),
             Some(ItemKind::Comic)
         );
         // Right file, wrong library.

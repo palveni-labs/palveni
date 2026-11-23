@@ -20,7 +20,7 @@ const routeFiles = import.meta.glob("./*/routes/*.tsx");
 describe("module registry", () => {
   it("discovers every module folder, ordered and with unique ids", () => {
     const ids = MODULES.map((module) => module.id);
-    expect(ids).toEqual(["overview", "music", "video", "library", "photos", "broadcast", "tasks", "apps", "system"]);
+    expect(ids).toEqual(["overview", "music", "video", "library", "reading", "photos", "broadcast", "tasks", "apps", "system"]);
     expect(new Set(ids).size).toBe(ids.length);
     const withRoutes = new Set(Object.keys(routeFiles).map((file) => file.split("/")[1]));
     expect([...withRoutes].sort()).toEqual([...ids].sort());

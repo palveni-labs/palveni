@@ -101,6 +101,11 @@ define_id!(
     PhotoAlbumId
 );
 
+define_id!(
+    /// A personal reading bookmark.
+    BookmarkId
+);
+
 impl ItemId {
     pub const fn from_uuid_bytes(bytes: [u8; 16]) -> Self {
         Self(Uuid::from_bytes(bytes))

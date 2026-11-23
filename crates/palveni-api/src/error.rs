@@ -107,6 +107,14 @@ impl ApiError {
         Self::new(StatusCode::CONFLICT, "conflict", message)
     }
 
+    pub fn unsupported_media_type(message: impl Into<String>) -> Self {
+        Self::new(
+            StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            "unsupported_media_type",
+            message,
+        )
+    }
+
     /// Logs the detail; the client only sees a generic message.
     pub fn internal(detail: impl fmt::Display) -> Self {
         tracing::error!(error = %detail, "internal error");

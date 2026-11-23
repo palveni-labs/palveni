@@ -48,6 +48,7 @@ mod loudness;
 mod music_catalog;
 mod music_search;
 mod photos;
+mod reading;
 mod scan_reviews;
 mod video;
 
@@ -63,6 +64,8 @@ const PALVENI_TABLES: &[&str] = &[
     "playlist_entries",
     "playlists",
     "user_item_state",
+    "reading_bookmarks",
+    "reading_metadata",
     "broadcast_favorites",
     "broadcast_entries",
     "broadcast_sources",

@@ -13,6 +13,7 @@ pub mod personal;
 pub mod photos;
 pub mod playback;
 pub mod plugins;
+pub mod reading;
 pub mod scan_reviews;
 pub mod settings;
 pub mod skins;

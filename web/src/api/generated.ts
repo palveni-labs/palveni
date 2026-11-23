@@ -1802,7 +1802,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "validation_failed" | "path_not_found" | "unauthorized" | "invalid_credentials" | "forbidden" | "not_found" | "setup_already_completed" | "conflict" | "method_not_allowed" | "internal" | "too_many_requests" | "payload_too_large" | "unavailable" | "busy";
+        ApiErrorCode: "validation_failed" | "path_not_found" | "unauthorized" | "invalid_credentials" | "forbidden" | "not_found" | "setup_already_completed" | "conflict" | "method_not_allowed" | "internal" | "too_many_requests" | "payload_too_large" | "unsupported_media_type" | "unavailable" | "busy";
         ApiErrorDetails: {
             field?: string;
             index?: number;
@@ -1826,6 +1826,127 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
             url: string;
+        };
+        /**
+         * Format: uuid
+         * @description A personal reading bookmark.
+         */
+        BookmarkId: string;
+        CreateBookmarkRequest: {
+            label: string;
+            locator?: string | null;
+            note?: string | null;
+            /** Format: int32 */
+            page: number;
+        };
+        ReadingBookmark: {
+            /** Format: date-time */
+            createdAt: string;
+            id: components["schemas"]["BookmarkId"];
+            itemId: components["schemas"]["ItemId"];
+            label: string;
+            locator: string | null;
+            note: string | null;
+            /** Format: int32 */
+            page: number;
+        };
+        ReadingChapter: {
+            html: string;
+            /** Format: int32 */
+            index: number;
+            plainText: string;
+            title: string;
+        };
+        ReadingChapterSummary: {
+            /** Format: int32 */
+            index: number;
+            title: string;
+        };
+        ReadingEntry: {
+            /** Format: date-time */
+            addedAt: string;
+            authors: string[];
+            format: string;
+            hasCover: boolean;
+            itemId: components["schemas"]["ItemId"];
+            kind: components["schemas"]["ReadingKind"];
+            language: string | null;
+            libraryId: components["schemas"]["LibraryId"];
+            /** Format: int32 */
+            pageCount: number | null;
+            publisher: string | null;
+            /** Format: double */
+            seriesIndex: number | null;
+            seriesKey: string | null;
+            seriesName: string | null;
+            /** Format: int64 */
+            sizeBytes: number | null;
+            state: components["schemas"]["ReadingUserState"];
+            summary: string | null;
+            tags: string[];
+            title: string;
+        };
+        ReadingHome: {
+            continueReading: components["schemas"]["ReadingEntry"][];
+            recentBooks: components["schemas"]["ReadingEntry"][];
+            recentComics: components["schemas"]["ReadingEntry"][];
+            series: components["schemas"]["ReadingSeries"][];
+        };
+        ReadingInline: {
+            /** Format: date-time */
+            expiresAt: string;
+            url: string;
+        };
+        /** @enum {string} */
+        ReadingKind: "book" | "comic";
+        ReadingManifest: {
+            bookmarks: components["schemas"]["ReadingBookmark"][];
+            chapters: components["schemas"]["ReadingChapterSummary"][];
+            entry: components["schemas"]["ReadingEntry"];
+            readerMode: components["schemas"]["ReadingReaderMode"];
+        };
+        ReadingPage: {
+            entries: components["schemas"]["ReadingEntry"][];
+            nextCursor: string | null;
+            /** Format: int64 */
+            total: number;
+        };
+        ReadingProgressUpdate: {
+            completed: boolean;
+            locator?: string | null;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            totalPages?: number | null;
+        };
+        /** @enum {string} */
+        ReadingReaderMode: "chapters" | "pages" | "pdf" | "download_only";
+        ReadingSeries: {
+            /** Format: int32 */
+            completedCount: number;
+            coverItemId: components["schemas"]["ItemId"];
+            hasCover: boolean;
+            /** Format: int32 */
+            itemCount: number;
+            kind: components["schemas"]["ReadingKind"];
+            libraryId: components["schemas"]["LibraryId"];
+            seriesKey: string;
+            seriesName: string;
+        };
+        /** @enum {string} */
+        ReadingSort: "added" | "title" | "series";
+        /** @enum {string} */
+        ReadingSortDir: "asc" | "desc";
+        ReadingUserState: {
+            completed: boolean;
+            favorite: boolean;
+            /** Format: date-time */
+            lastReadAt: string | null;
+            locator: string | null;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            totalPages: number | null;
         };
         BroadcastEntry: {
             current?: null | components["schemas"]["BroadcastProgramme"];

@@ -18,6 +18,7 @@ fn additional_schemas() -> Value {
         "internal",
         "too_many_requests",
         "payload_too_large",
+        "unsupported_media_type",
         "unavailable",
         "busy",
     ];
@@ -124,6 +125,11 @@ use palveni_core::photos::{
     PhotoPlaceCluster, PhotoTimelineItem, PhotoTimelinePage, PhotoUploadRequest,
     UpdatePhotoAlbumRequest,
 };
+use palveni_core::reading::{
+    CreateBookmarkRequest, ReadingBookmark, ReadingChapter, ReadingChapterSummary, ReadingEntry,
+    ReadingHome, ReadingInline, ReadingKind, ReadingManifest, ReadingPage, ReadingProgressUpdate,
+    ReadingReaderMode, ReadingSeries, ReadingSort, ReadingSortDir, ReadingUserState,
+};
 use palveni_core::spoken::{
     SpokenChapter, SpokenChapterList, SpokenEntry, SpokenPage, SpokenRecording,
 };
@@ -132,7 +138,7 @@ use palveni_core::video::{
     VideoHome, VideoKind, VideoPage, VideoPerson, VideoPersonKind, VideoUserState, VideoWorkDetail,
 };
 use palveni_core::{
-    Item, ItemKind, Job, Library, User, features::Capability, settings::RuntimeSettings,
+    BookmarkId, Item, ItemKind, Job, Library, User, features::Capability, settings::RuntimeSettings,
 };
 use palveni_media::HardwareReport;
 use palveni_media::video::{
@@ -154,6 +160,23 @@ use utoipa::OpenApi;
     ConnectionSummary,
     CreateConnection,
     BookDownload,
+    BookmarkId,
+    CreateBookmarkRequest,
+    ReadingBookmark,
+    ReadingChapter,
+    ReadingChapterSummary,
+    ReadingEntry,
+    ReadingHome,
+    ReadingInline,
+    ReadingKind,
+    ReadingManifest,
+    ReadingPage,
+    ReadingProgressUpdate,
+    ReadingReaderMode,
+    ReadingSeries,
+    ReadingSort,
+    ReadingSortDir,
+    ReadingUserState,
     SpokenChapter,
     SpokenChapterList,
     SpokenEntry,

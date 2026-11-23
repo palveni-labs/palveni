@@ -5,6 +5,7 @@ import { ITEM_KIND_ICON, LIBRARY_KINDS } from "@/lib/kinds";
 import type { MockDb } from "./db";
 import { createMusicHandlers } from "./music/handlers";
 import { createPhotosHandlers } from "./photos/handlers";
+import { createReadingHandlers } from "./reading/handlers";
 import { createVideoHandlers } from "./video/handlers";
 
 const BASE = "/api/v1";
@@ -377,6 +378,7 @@ export function createHandlers(db: MockDb, options: HandlerOptions = {}) {
         headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
       });
     }),
+    ...(db.features.includes("reading") ? createReadingHandlers(db, options) : []),
     ...(db.features.includes("photos") ? createPhotosHandlers(db, options) : []),
     ...(db.features.includes("music") ? createMusicHandlers(db, options) : []),
     ...(db.features.includes("video") ? createVideoHandlers(db, options) : []),
