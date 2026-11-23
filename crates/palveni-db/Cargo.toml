@@ -23,6 +23,7 @@ palveni-core.workspace = true
 chrono.workspace = true
 getrandom.workspace = true
 hex.workspace = true
+pinyin.workspace = true
 sea-orm.workspace = true
 sea-orm-migration.workspace = true
 serde.workspace = true

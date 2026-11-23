@@ -33,8 +33,8 @@ use super::{
     cache::{FileFingerprint, MediaInfoCache},
     decision::{Decision, DeliveryMode},
     encoder::{
-        HlsPlan, PLAYLIST_FILE, SelectedEncoder, build_hls_args, is_valid_segment_name,
-        select_h264_encoder,
+        HlsPlan, PLAYLIST_FILE, SelectedEncoder, TonemapSupport, build_hls_args,
+        detect_tonemap_support, is_valid_segment_name, select_h264_encoder,
     },
     info::{self, ProbeFailure, ProbedMedia},
 };
@@ -229,6 +229,7 @@ pub struct VideoService {
     sessions_root: PathBuf,
     probe_slots: Semaphore,
     supports_readrate_burst: OnceCell<bool>,
+    tonemap_support: OnceCell<TonemapSupport>,
     active_pool: Arc<ActivePool>,
     sessions: Arc<Mutex<HashMap<Uuid, Arc<SessionHandle>>>>,
     shutdown: CancellationToken,
@@ -275,6 +276,7 @@ impl VideoService {
             sessions_root,
             probe_slots: Semaphore::new(2),
             supports_readrate_burst: OnceCell::new(),
+            tonemap_support: OnceCell::new(),
             active_pool: Arc::default(),
             sessions: Arc::new(Mutex::new(HashMap::new())),
             shutdown: CancellationToken::new(),
@@ -358,6 +360,13 @@ impl VideoService {
         Ok(probed)
     }
 
+    /// Removes cached `ffprobe` media-info files for deleted items.
+    pub async fn forget_media_info(&self, items: &[ItemId]) {
+        for &item in items {
+            self.cache.remove(item).await;
+        }
+    }
+
     /// Ends any active HLS session owned by the same device session for the same item.
     pub async fn close_for_owner_item(&self, owner_session: SessionId, item: ItemId) {
         let existing: Vec<Arc<SessionHandle>> = {
@@ -426,6 +435,11 @@ impl VideoService {
         };
 
         let use_readrate_burst = self.supports_readrate_burst(ffmpeg).await;
+        let tonemap = if request.decision.mode == DeliveryMode::Transcode {
+            self.tonemap_support(ffmpeg).await
+        } else {
+            TonemapSupport::None
+        };
         let selected_encoder = if request.decision.mode == DeliveryMode::Transcode {
             select_h264_encoder(report)
         } else {
@@ -469,6 +483,8 @@ impl VideoService {
             encoder: selected_encoder.clone(),
             render_node,
             use_readrate_burst,
+            hdr: video_info.hdr,
+            tonemap,
         };
 
         let mut used_encoder = if plan.mode == DeliveryMode::Transcode {
@@ -744,6 +760,24 @@ impl VideoService {
                 )
                 .await
                 .is_ok_and(|out| out.success)
+            })
+            .await
+    }
+
+    async fn tonemap_support(&self, ffmpeg: &Path) -> TonemapSupport {
+        *self
+            .tonemap_support
+            .get_or_init(|| async {
+                match run(
+                    ffmpeg,
+                    &os_args(["-hide_banner", "-filters"]),
+                    Duration::from_secs(3),
+                )
+                .await
+                {
+                    Ok(out) if out.success => detect_tonemap_support(&out.stdout),
+                    _ => TonemapSupport::None,
+                }
             })
             .await
     }

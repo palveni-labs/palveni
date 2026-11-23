@@ -100,7 +100,13 @@ export function PosterCard({
   const played = Boolean(entry.state?.played);
   const unplayedCount = entry.kind === "series" ? (entry.state?.unplayedCount ?? null) : null;
   const favorite = Boolean(entry.state?.favorite);
-  const posterPath = entry.posterItemId ? imagePaths.poster(entry.posterItemId, "work", 480) : null;
+  const posterPath = entry.posterItemId
+    ? imagePaths.poster(entry.posterItemId, "work", 480)
+    : entry.thumbItemId
+      ? imagePaths.thumb(entry.thumbItemId, 480)
+      : entry.itemId
+        ? imagePaths.thumb(entry.itemId, 480)
+        : null;
   const Icon = entry.kind === "series" ? Tv : Clapperboard;
 
   const workId = entry.seriesId ?? entry.id;
@@ -258,7 +264,9 @@ export function VideoWideCard({
       ? imagePaths.backdrop(entry.backdropItemId, 640)
       : entry.posterItemId
         ? imagePaths.poster(entry.posterItemId, "work", 480)
-        : null;
+        : entry.itemId
+          ? imagePaths.thumb(entry.itemId, 640)
+          : null;
 
   const playNow = () => {
     if (entry.itemId) {

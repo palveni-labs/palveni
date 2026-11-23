@@ -1,6 +1,6 @@
 import { buttonVariants } from "@heroui/react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Clapperboard, Film, Heart, Info, Play, Star, Tv } from "lucide-react";
+import { Clapperboard, Film, Heart, Info, Play, Search, Star, Tv } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useIsAdmin } from "@/api/queries/auth";
@@ -37,7 +37,11 @@ function FeaturedHero({ items }: { items: VideoEntry[] }) {
     ? imagePaths.backdrop(entry.backdropItemId, 1920)
     : entry.posterItemId
       ? imagePaths.poster(entry.posterItemId, "work", 960)
-      : null;
+      : entry.thumbItemId
+        ? imagePaths.thumb(entry.thumbItemId, 960)
+        : entry.itemId
+          ? imagePaths.thumb(entry.itemId, 960)
+          : null;
 
   const playAction = () => {
     if (entry.itemId) {
@@ -69,6 +73,7 @@ function FeaturedHero({ items }: { items: VideoEntry[] }) {
         <VideoImage
           path={backdropPath}
           alt={title}
+          eager
           className="size-full bg-neutral-950"
           imgClassName="size-full object-cover object-center"
         />
@@ -211,7 +216,7 @@ function LibraryTiles({
   previewsByLibrary,
 }: {
   libraries: Library[];
-  previewsByLibrary: Map<string, string>;
+  previewsByLibrary: Map<string, { itemId: string; kind: "backdrop" | "thumb" }>;
 }) {
   const { t, i18n } = useTranslation();
   if (libraries.length === 0) return null;
@@ -222,8 +227,12 @@ function LibraryTiles({
       <h2 className="font-heading text-lg font-title text-heading">{t("videoApp.home.libraries")}</h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {libraries.map((lib) => {
-          const previewItemId = previewsByLibrary.get(lib.id);
-          const backdrop = previewItemId ? imagePaths.backdrop(previewItemId, 480) : null;
+          const preview = previewsByLibrary.get(lib.id);
+          const backdrop = preview
+            ? preview.kind === "backdrop"
+              ? imagePaths.backdrop(preview.itemId, 480)
+              : imagePaths.thumb(preview.itemId, 480)
+            : null;
           return (
             <Link
               key={lib.id}
@@ -281,14 +290,22 @@ export function VideoHomePage() {
 
   const home = homeQuery.data;
 
-  // Pick up to 5 featured works with backdrops (prioritizing latest movies, then continue watching)
+  // Pick up to 5 featured works (preferring backdrops/posters, falling back to grabbed video thumbs)
   const featured = useMemo(() => {
     if (!home) return [];
+    const candidates = [...home.latestMovies, ...home.continueWatching, ...home.nextUp];
     const seen = new Set<string>();
     const list: VideoEntry[] = [];
-    for (const candidate of [...home.latestMovies, ...home.continueWatching, ...home.nextUp]) {
+    for (const candidate of candidates) {
       const workKey = candidate.seriesId ?? candidate.id;
       if (seen.has(workKey) || (!candidate.backdropItemId && !candidate.posterItemId)) continue;
+      seen.add(workKey);
+      list.push(candidate);
+      if (list.length >= 5) return list;
+    }
+    for (const candidate of candidates) {
+      const workKey = candidate.seriesId ?? candidate.id;
+      if (seen.has(workKey) || (!candidate.thumbItemId && !candidate.itemId)) continue;
       seen.add(workKey);
       list.push(candidate);
       if (list.length >= 5) break;
@@ -297,11 +314,18 @@ export function VideoHomePage() {
   }, [home]);
 
   const previewsByLibrary = useMemo(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, { itemId: string; kind: "backdrop" | "thumb" }>();
     if (!home) return map;
-    for (const entry of [...home.latestMovies, ...home.latestEpisodes, ...home.continueWatching, ...home.nextUp]) {
+    const all = [...home.latestMovies, ...home.latestEpisodes, ...home.continueWatching, ...home.nextUp];
+    for (const entry of all) {
       if (!map.has(entry.libraryId) && entry.backdropItemId) {
-        map.set(entry.libraryId, entry.backdropItemId);
+        map.set(entry.libraryId, { itemId: entry.backdropItemId, kind: "backdrop" });
+      }
+    }
+    for (const entry of all) {
+      const thumbId = entry.thumbItemId ?? entry.itemId;
+      if (!map.has(entry.libraryId) && thumbId) {
+        map.set(entry.libraryId, { itemId: thumbId, kind: "thumb" });
       }
     }
     return map;
@@ -319,7 +343,20 @@ export function VideoHomePage() {
 
   return (
     <div className="pv-enter mx-auto flex w-full max-w-[88rem] flex-col gap-7 px-(--pv-gutter) pt-5 pb-14 max-md:gap-6 max-md:px-4 max-md:pt-4">
-      <PageHeader title={t("videoApp.title")} />
+      <PageHeader
+        title={t("videoApp.title")}
+        actions={
+          videoLibraries.length > 0 ? (
+            <Link
+              to="/video/search"
+              className="inline-flex h-(--pv-control-h-sm) items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-sm font-mid text-fg-muted transition-colors hover:bg-hover hover:text-fg"
+            >
+              <Search className="size-3.5" aria-hidden />
+              {t("videoApp.nav.search")}
+            </Link>
+          ) : undefined
+        }
+      />
 
       {librariesQuery.isPending || homeQuery.isPending ? (
         <LoadingRows rows={6} />

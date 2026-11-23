@@ -7,7 +7,9 @@ import {
   ArrowLeft,
   Check,
   Gauge,
+  Info,
   Languages,
+  ListOrdered,
   Maximize,
   Minimize,
   Pause,
@@ -34,7 +36,7 @@ import {
   type SubtitleTrack,
 } from "../api";
 import { VideoImage } from "../components/video-image";
-import { codecLabel, formatClock, formatEpisodeCode } from "../format";
+import { codecLabel, formatBitrate, formatClock, formatEpisodeCode, hdrLabel, resolutionLabel } from "../format";
 import { detectClientCapabilities } from "../player/capabilities";
 import { findNextSeasonNumber, resolveNextEpisode } from "../player/next-episode";
 import { createProgressReporter, type ProgressReporter } from "../player/progress-reporter";
@@ -51,7 +53,7 @@ export interface VideoPlaySearch {
 }
 
 type QualityChoice = "auto" | "original" | "1080" | "720" | "480";
-type ActiveMenu = null | "subtitles" | "audio" | "quality" | "speed";
+type ActiveMenu = null | "subtitles" | "audio" | "quality" | "speed" | "chapters";
 
 const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 const QUALITY_OPTIONS: Array<{ id: QualityChoice; labelKey?: string; label?: string }> = [
@@ -152,11 +154,24 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
   const [sessionError, setSessionError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
 
-  // Selected stream preferences
+  // Selected stream preferences (`subChoice === undefined` uses automatic forced/default selection)
   const [quality, setQuality] = useState<QualityChoice>("auto");
   const [audioIndex, setAudioIndex] = useState<number | undefined>(undefined);
-  const [selectedSubId, setSelectedSubId] = useState<string>("");
+  const [subChoice, setSubChoice] = useState<string | undefined>(undefined);
   const lastSubIdRef = useRef<string>("");
+  const [showInfo, setShowInfo] = useState(false);
+
+  const autoSubId = useMemo(() => {
+    const forced = subtitleTracks.find((tr) => tr.forced);
+    if (forced) return forced.id;
+    const defaultLang = mediaInfo?.subtitles.find((s) => s.default)?.language?.toLowerCase();
+    if (defaultLang) {
+      const matched = subtitleTracks.find((tr) => tr.language?.toLowerCase() === defaultLang);
+      if (matched) return matched.id;
+    }
+    return "";
+  }, [subtitleTracks, mediaInfo?.subtitles]);
+  const selectedSubId = subChoice !== undefined ? subChoice : autoSubId;
 
   // Player UI state
   const [playing, setPlaying] = useState(false);
@@ -556,10 +571,10 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
     if (subtitleTracks.length === 0) return;
     if (selectedSubId) {
       lastSubIdRef.current = selectedSubId;
-      setSelectedSubId("");
+      setSubChoice("");
     } else {
       const nextId = lastSubIdRef.current || subtitleTracks[0]!.id;
-      setSelectedSubId(nextId);
+      setSubChoice(nextId);
     }
     revealControls();
   }, [subtitleTracks, selectedSubId, revealControls]);
@@ -707,10 +722,19 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
             goNextEpisode();
           }
           break;
+        case "i":
+        case "I":
+          event.preventDefault();
+          setShowInfo((v) => !v);
+          revealControls();
+          break;
         case "Escape":
           if (activeMenu) {
             event.preventDefault();
             setActiveMenu(null);
+          } else if (showInfo) {
+            event.preventDefault();
+            setShowInfo(false);
           } else if (!document.fullscreenElement) {
             event.preventDefault();
             goBack();
@@ -728,6 +752,7 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
     goNextEpisode,
     nextEpisodeTarget,
     revealControls,
+    showInfo,
     skipBy,
     toggleFullscreen,
     toggleMute,
@@ -1044,7 +1069,102 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
             {modeBadgeLabel}
           </span>
         ) : null}
+
+        <button
+          type="button"
+          aria-pressed={showInfo}
+          aria-label={t("videoApp.player.info")}
+          onClick={() => setShowInfo((v) => !v)}
+          className={cn(
+            "grid size-9 shrink-0 place-items-center rounded-full text-white backdrop-blur-xs transition-colors focus-visible:outline-2 focus-visible:outline-white",
+            showInfo ? "bg-white/28" : "bg-white/12 hover:bg-white/24",
+          )}
+        >
+          <Info className="size-4" aria-hidden />
+        </button>
       </header>
+
+      {/* Emby-style Playback Info / Stats overlay (`I` shortcut) */}
+      {showInfo ? (
+        <aside
+          aria-label={t("videoApp.player.info")}
+          className="absolute top-16 right-4 z-20 w-[min(22rem,calc(100%-2rem))] rounded-panel border border-white/15 bg-neutral-950/90 p-3.5 text-xs text-white shadow-raised backdrop-blur-md sm:right-6"
+        >
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="font-strong text-white">{t("videoApp.player.info")}</span>
+            <button
+              type="button"
+              onClick={() => setShowInfo(false)}
+              aria-label={t("videoApp.player.cancel")}
+              className="grid size-6 place-items-center rounded-control text-white/70 hover:bg-white/15 hover:text-white"
+            >
+              <X className="size-3.5" aria-hidden />
+            </button>
+          </div>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+            <dt className="text-white/65">{t("videoApp.player.infoDelivery")}</dt>
+            <dd className="truncate font-mono text-white">
+              {modeBadgeLabel ?? "—"}
+              {session ? ` (${session.protocol.toUpperCase()})` : ""}
+            </dd>
+            {session?.reason ? (
+              <>
+                <dt className="text-white/65">{t("videoApp.player.infoReason")}</dt>
+                <dd className="truncate text-white/90">{session.reason}</dd>
+              </>
+            ) : null}
+            {mediaInfo?.container ? (
+              <>
+                <dt className="text-white/65">{t("videoApp.player.infoContainer")}</dt>
+                <dd className="truncate font-mono text-white/90">
+                  {[mediaInfo.container.toUpperCase(), formatBitrate(mediaInfo.bitrateKbps)].filter(Boolean).join(" · ")}
+                </dd>
+              </>
+            ) : null}
+            {mediaInfo?.video ? (
+              <>
+                <dt className="text-white/65">{t("videoApp.player.infoVideo")}</dt>
+                <dd className="truncate font-mono text-white/90">
+                  {[
+                    resolutionLabel(mediaInfo.video),
+                    codecLabel(mediaInfo.video.codec),
+                    hdrLabel(mediaInfo.video.hdr),
+                    mediaInfo.video.bitDepth && mediaInfo.video.bitDepth > 8 ? `${mediaInfo.video.bitDepth}-bit` : null,
+                    mediaInfo.video.frameRate ? `${Number(mediaInfo.video.frameRate.toFixed(2))}fps` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </dd>
+              </>
+            ) : null}
+            {audioTracks.length > 0 ? (
+              <>
+                <dt className="text-white/65">{t("videoApp.player.infoAudio")}</dt>
+                <dd className="truncate text-white/90">
+                  {(() => {
+                    const active = audioTracks.find((a) => a.index === audioIndex) ?? audioTracks.find((a) => a.default) ?? audioTracks[0];
+                    if (!active) return t("videoApp.player.infoNone");
+                    return [
+                      active.title ?? active.language?.toUpperCase(),
+                      codecLabel(active.codec),
+                      active.channelLayout ?? (active.channels ? `${active.channels}ch` : null),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ");
+                  })()}
+                </dd>
+              </>
+            ) : null}
+            <dt className="text-white/65">{t("videoApp.player.infoSubtitle")}</dt>
+            <dd className="truncate text-white/90">
+              {(() => {
+                const sub = subtitleTracks.find((tr) => tr.id === selectedSubId);
+                return sub ? subtitleTrackLabel(sub, locale, t) : t("videoApp.player.subtitlesOff");
+              })()}
+            </dd>
+          </dl>
+        </aside>
+      ) : null}
 
       {/* Bottom Controls Bar */}
       <div
@@ -1211,6 +1331,22 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
 
           {/* Right group */}
           <div className="relative flex items-center gap-0.5 sm:gap-1.5">
+            {/* Chapters */}
+            {chapters.length > 0 ? (
+              <button
+                type="button"
+                aria-expanded={activeMenu === "chapters"}
+                aria-label={t("videoApp.player.chapters")}
+                onClick={() => setActiveMenu((m) => (m === "chapters" ? null : "chapters"))}
+                className={cn(
+                  "grid size-8 place-items-center rounded-control text-white hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-white sm:size-9",
+                  activeMenu === "chapters" && "bg-white/20",
+                )}
+              >
+                <ListOrdered className="size-4" aria-hidden />
+              </button>
+            ) : null}
+
             {/* Subtitles */}
             {subtitleTracks.length > 0 ? (
               <button
@@ -1305,17 +1441,39 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
                       ? "videoApp.player.audioTrack"
                       : activeMenu === "quality"
                         ? "videoApp.player.quality"
-                        : "videoApp.player.speed",
+                        : activeMenu === "chapters"
+                          ? "videoApp.player.chapters"
+                          : "videoApp.player.speed",
                 )}
-                className="absolute right-0 bottom-12 z-30 min-w-52 rounded-panel border border-white/15 bg-neutral-950/95 p-1.5 shadow-raised backdrop-blur-md"
+                className="absolute right-0 bottom-12 z-30 max-h-72 min-w-52 overflow-y-auto rounded-panel border border-white/15 bg-neutral-950/95 p-1.5 shadow-raised backdrop-blur-md"
               >
+                {activeMenu === "chapters"
+                  ? chapters.map((ch, idx) => {
+                      const nextStart = chapters[idx + 1]?.startMs ?? Number.POSITIVE_INFINITY;
+                      const currentMs = currentTimeSec * 1000;
+                      const isCurrent = currentMs >= ch.startMs && currentMs < nextStart;
+                      const title = ch.title?.trim() || t("videoApp.player.chapterFallback", { index: idx + 1 });
+                      return (
+                        <MenuOption
+                          key={`${ch.startMs}-${idx}`}
+                          selected={isCurrent}
+                          label={`${formatClock(ch.startMs)} · ${title}`}
+                          onSelect={() => {
+                            seekTo(ch.startMs / 1000);
+                            setActiveMenu(null);
+                          }}
+                        />
+                      );
+                    })
+                  : null}
+
                 {activeMenu === "subtitles" ? (
                   <>
                     <MenuOption
                       selected={!selectedSubId}
                       label={t("videoApp.player.subtitlesOff")}
                       onSelect={() => {
-                        setSelectedSubId("");
+                        setSubChoice("");
                         setActiveMenu(null);
                       }}
                     />
@@ -1325,7 +1483,7 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
                         selected={selectedSubId === track.id}
                         label={subtitleTrackLabel(track, locale, t)}
                         onSelect={() => {
-                          setSelectedSubId(track.id);
+                          setSubChoice(track.id);
                           lastSubIdRef.current = track.id;
                           setActiveMenu(null);
                         }}

@@ -156,35 +156,119 @@ impl Inventory {
         }
     }
 
+    fn bdmv_work(
+        &self,
+        folder_path: &Path,
+        root: &Path,
+    ) -> Option<(PathBuf, PathBuf, Option<String>)> {
+        let is_stream = folder_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .is_some_and(|n| n.eq_ignore_ascii_case("stream"));
+        if !is_stream {
+            return None;
+        }
+        let bdmv_dir = folder_path.parent()?;
+        let is_bdmv = bdmv_dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .is_some_and(|n| n.eq_ignore_ascii_case("bdmv"));
+        if !is_bdmv {
+            return None;
+        }
+        let disc_root = bdmv_dir.parent()?;
+        if disc_root == root || !disc_root.starts_with(root) {
+            return None;
+        }
+        if let Some(disc_name) = disc_root.file_name().and_then(|n| n.to_str())
+            && recognition::disc_folder(disc_name)
+            && let Some(parent) = disc_root.parent()
+            && parent != root
+            && parent.starts_with(root)
+            && self.folders.get(parent).is_none_or(|f| f.films == 0)
+            && parent
+                .file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| !recognition::is_generic_category_dir(n))
+        {
+            return Some((
+                parent.to_owned(),
+                disc_root.to_owned(),
+                Some(disc_name.to_owned()),
+            ));
+        }
+        Some((disc_root.to_owned(), disc_root.to_owned(), None))
+    }
+
     fn candidate(&self, path: &Path, root: &Path) -> Option<Candidate> {
         let folder_path = path.parent()?;
         let folder = self.folders.get(folder_path)?;
         let file_name = path.file_name()?.to_str()?;
         let stem = path.file_stem()?.to_str()?;
+        let bdmv = self.bdmv_work(folder_path, root);
+        let bdmv_work_dir = bdmv.as_ref().map(|(w, _, _)| w.as_path());
+        let bdmv_disc_root = bdmv.as_ref().map(|(_, d, _)| d.as_path());
+        let bdmv_work_folder = bdmv_work_dir.and_then(|d| self.folders.get(d));
+        let bdmv_disc_folder = bdmv_disc_root
+            .filter(|d| Some(*d) != bdmv_work_dir)
+            .and_then(|d| self.folders.get(d));
         let named_nfo = folder.file(&format!("{stem}.nfo"));
+        let bdmv_nfo = bdmv_work_dir.and_then(|dir| {
+            let dir_stem = dir.file_name().and_then(|n| n.to_str());
+            bdmv_work_folder
+                .and_then(|f| {
+                    dir_stem
+                        .and_then(|name| f.file(&format!("{name}.nfo")))
+                        .or_else(|| f.file("movie.nfo"))
+                })
+                .or_else(|| bdmv_disc_folder.and_then(|f| f.file("movie.nfo")))
+        });
         let file_nfo = named_nfo
+            .or(bdmv_nfo)
             .or_else(|| {
                 (folder.films == 1)
                     .then(|| folder.file("movie.nfo"))
                     .flatten()
             })
             .filter(|s| s.bytes <= MAX_NFO);
-        let season_folder = folder_path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .and_then(recognition::season_folder);
-        let show_dir = if season_folder.is_some() && folder_path != root {
+        let season_folder = if bdmv.is_some() {
+            None
+        } else {
+            folder_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .and_then(recognition::season_folder)
+        };
+        let show_dir = if let Some(dir) = bdmv_work_dir {
+            dir
+        } else if season_folder.is_some() && folder_path != root {
             folder_path.parent()?
         } else {
             folder_path
         };
         let show_folder = self.folders.get(show_dir);
-        let show_nfo = show_folder
-            .and_then(|d| d.file("tvshow.nfo"))
-            .filter(|s| s.bytes <= MAX_NFO);
-        let mark = recognition::episode_marker(stem);
+        let show_nfo = if bdmv.is_some() {
+            None
+        } else {
+            show_folder
+                .and_then(|d| d.file("tvshow.nfo"))
+                .filter(|s| s.bytes <= MAX_NFO)
+        };
+        let mark = if bdmv.is_some() {
+            None
+        } else {
+            recognition::episode_marker(stem)
+        };
         let movie_poster = folder
             .poster(&[&format!("{stem}-poster"), &format!("{stem}-cover"), stem])
+            .or_else(|| {
+                bdmv_work_folder
+                    .and_then(|f| f.poster(&["poster", "movie-poster", "folder", "cover"]))
+                    .or_else(|| {
+                        bdmv_disc_folder
+                            .and_then(|f| f.poster(&["poster", "movie-poster", "folder", "cover"]))
+                    })
+            })
             .or_else(|| {
                 (folder.films == 1)
                     .then(|| folder.poster(&["poster", "movie-poster", "folder", "cover"]))
@@ -196,6 +280,18 @@ impl Inventory {
                 &format!("{stem}-backdrop"),
                 &format!("{stem}-landscape"),
             ])
+            .or_else(|| {
+                let stems = [
+                    "fanart",
+                    "backdrop",
+                    "landscape",
+                    "movie-fanart",
+                    "movie-backdrop",
+                ];
+                bdmv_work_folder
+                    .and_then(|f| f.poster(&stems))
+                    .or_else(|| bdmv_disc_folder.and_then(|f| f.poster(&stems)))
+            })
             .or_else(|| {
                 (folder.films == 1)
                     .then(|| {
@@ -263,6 +359,12 @@ impl Inventory {
                 actor_sig.push((k.as_str(), v));
             }
         }
+        if let Some(disc_folder) = bdmv_disc_folder {
+            for (k, v) in &disc_folder.actors {
+                actors.insert(k.clone(), v.path.clone());
+                actor_sig.push((k.as_str(), v));
+            }
+        }
         for (k, v) in &folder.actors {
             actors.insert(k.clone(), v.path.clone());
             actor_sig.push((k.as_str(), v));
@@ -276,6 +378,17 @@ impl Inventory {
             .copied()
             .unwrap_or((0, 0));
         let mut signature = format!("video-sidecars-2/{owns_folder}/{v_bytes}:{v_mod}");
+        if let Some((ref work_dir, _, ref disc_label)) = bdmv {
+            let _ = write!(
+                signature,
+                "/v3-bdmv:{}:{}",
+                work_dir.display(),
+                disc_label.as_deref().unwrap_or("")
+            );
+        }
+        if season_folder.is_some_and(|s| s >= 1000) || mark.is_some_and(|m| m.season >= 1000) {
+            signature.push_str("/v3-s4");
+        }
         for file in [
             file_nfo,
             show_nfo,
@@ -311,10 +424,17 @@ impl Inventory {
                 );
             }
         }
+        let show_dir_owned = show_dir.to_owned();
+        let (bdmv_work_dir, disc_label) = match bdmv {
+            Some((work_dir, _, label)) => (Some(work_dir), label),
+            None => (None, None),
+        };
         Some(Candidate {
             path: path.to_owned(),
             folder_path: folder_path.to_owned(),
-            show_dir: show_dir.to_owned(),
+            show_dir: show_dir_owned,
+            bdmv_work_dir,
+            disc_label,
             file_nfo: file_nfo.map(|s| s.path.clone()),
             show_nfo: show_nfo.map(|s| s.path.clone()),
             movie_poster: movie_poster.map(|s| s.path.clone()),
@@ -453,6 +573,8 @@ struct Candidate {
     path: PathBuf,
     folder_path: PathBuf,
     show_dir: PathBuf,
+    bdmv_work_dir: Option<PathBuf>,
+    disc_label: Option<String>,
     file_nfo: Option<PathBuf>,
     show_nfo: Option<PathBuf>,
     movie_poster: Option<PathBuf>,
@@ -585,14 +707,20 @@ impl Candidate {
             .filter(|s| s.root == "tvshow")
             .unwrap_or_default();
         let stem = self.path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-        let marker = recognition::episode_marker(stem);
-        let episode_only = recognition::episode_only(stem);
-        let series = file.root == "episodedetails"
-            || (file.root != "movie"
-                && (marker.is_some()
-                    || episode_only.is_some()
-                    || self.season_folder.is_some()
-                    || show.root == "tvshow"));
+        let is_bdmv = self.bdmv_work_dir.is_some();
+        let marker = (!is_bdmv)
+            .then(|| recognition::episode_marker(stem))
+            .flatten();
+        let episode_only = (!is_bdmv)
+            .then(|| recognition::episode_only(stem))
+            .flatten();
+        let series = !is_bdmv
+            && (file.root == "episodedetails"
+                || (file.root != "movie"
+                    && (marker.is_some()
+                        || episode_only.is_some()
+                        || self.season_folder.is_some()
+                        || show.root == "tvshow")));
         let name = self
             .show_dir
             .file_name()
@@ -691,6 +819,26 @@ impl Candidate {
                 path_string(self.episode_thumb.as_ref()),
                 show.runtime_ms,
             )
+        } else if let Some(ref bdmv_dir) = self.bdmv_work_dir {
+            let people = map_people(root, bdmv_dir, &file.people, &self.actors);
+            (
+                format!("movie\n{}", bdmv_dir.display()),
+                metadata_title.clone().unwrap_or(folder_title.0),
+                file.year.or(folder_title.1),
+                file.plot.clone(),
+                path_string(self.movie_poster.as_ref()),
+                file.original_title,
+                file.tagline,
+                rating_tenths(file.rating),
+                file.official_rating,
+                file.premiered.clone(),
+                file.studios,
+                path_string(self.movie_backdrop.as_ref()),
+                file.genres,
+                people,
+                path_string(self.movie_thumb.as_ref()),
+                None,
+            )
         } else {
             let fallback = if self.owns_folder && folder_title.1.is_some() {
                 folder_title.clone()
@@ -717,6 +865,14 @@ impl Candidate {
                 None,
             )
         };
+        let item_title = if is_bdmv {
+            match self.disc_label {
+                Some(ref label) => format!("{label} · {stem}"),
+                None => stem.to_owned(),
+            }
+        } else {
+            metadata_title.unwrap_or(film_title.0)
+        };
         let season_poster =
             path_string(self.season_poster.as_ref()).or_else(|| work_poster.clone());
         let episode_poster =
@@ -739,7 +895,7 @@ impl Candidate {
             season,
             season_poster,
             episode,
-            title: metadata_title.unwrap_or(film_title.0),
+            title: item_title,
             overview: file.plot,
             episode_poster,
             runtime_ms: file.runtime_ms,

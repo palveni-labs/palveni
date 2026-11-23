@@ -56,8 +56,10 @@ fn credentials(headers: &HeaderMap) -> Option<(SessionId, [u8; 64])> {
     let mut decoded = [0_u8; 165];
     for (src, dst) in encoded
         .as_bytes()
-        .chunks_exact(4)
-        .zip(decoded.chunks_exact_mut(3))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(decoded.as_chunks_mut::<3>().0.iter_mut())
     {
         let (a, b, c, d) = (
             digit(src[0])?,

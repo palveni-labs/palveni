@@ -1,9 +1,10 @@
-import { Button, buttonVariants } from "@heroui/react";
+import { Button, buttonVariants, toast } from "@heroui/react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Check,
   Clapperboard,
+  Download,
   Film,
   Heart,
   Play,
@@ -15,10 +16,11 @@ import {
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
+import { errorText } from "@/lib/errors";
 import { formatBytes } from "@/lib/format";
 import { ToolbarTitle } from "@/ui/page";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
-import { imagePaths, type MediaInfo, type VideoEntry, type VideoPerson } from "../api";
+import { downloadOriginalVideo, imagePaths, type MediaInfo, type VideoEntry, type VideoPerson } from "../api";
 import { MediaRail } from "../components/media-rail";
 import { PosterCard } from "../components/poster-card";
 import { VideoImage } from "../components/video-image";
@@ -146,7 +148,9 @@ function EpisodeRow({
     ? imagePaths.thumb(episode.thumbItemId, 480)
     : episode.backdropItemId
       ? imagePaths.backdrop(episode.backdropItemId, 480)
-      : null;
+      : episode.itemId
+        ? imagePaths.thumb(episode.itemId, 480)
+        : null;
 
   const playEpisode = () => {
     if (!episode.itemId) return;
@@ -252,7 +256,7 @@ function EpisodeRow({
   );
 }
 
-function CastRail({ people }: { people: VideoPerson[] }) {
+function CastRail({ libraryId, people }: { libraryId: string; people: VideoPerson[] }) {
   const { t } = useTranslation();
   if (people.length === 0) return null;
 
@@ -267,24 +271,30 @@ function CastRail({ people }: { people: VideoPerson[] }) {
   return (
     <MediaRail title={t("videoApp.detail.castAndCrew")}>
       {people.map((person, index) => (
-        <div
+        <Link
           key={`${person.kind}-${person.name}-${index}`}
-          className="flex w-28 shrink-0 snap-start flex-col gap-2 sm:w-32"
+          to="/video/$libraryId"
+          params={{ libraryId }}
+          search={{ person: person.name }}
+          className="group flex w-28 shrink-0 snap-start flex-col gap-2 rounded-tile outline-none focus-visible:ring-2 focus-visible:ring-(--pv-focus) sm:w-32"
         >
           <VideoImage
             path={person.imageUrl ? imagePaths.person(person.imageUrl, 240) : null}
             alt={person.name}
             fallbackIcon={User}
             fallbackText={personInitials(person.name)}
-            className="aspect-[5/6] w-full rounded-tile ring-1 ring-line/70"
+            className="aspect-[5/6] w-full rounded-tile ring-1 ring-line/70 transition-shadow group-hover:shadow-raised"
+            imgClassName="transition-transform duration-300 group-hover:scale-[1.04]"
           />
           <div className="grid min-w-0 gap-0.5 px-0.5">
-            <span className="truncate text-sm font-strong text-fg">{person.name}</span>
+            <span className="truncate text-sm font-strong text-fg group-hover:text-heading group-hover:underline">
+              {person.name}
+            </span>
             {roleText(person) ? (
               <span className="truncate text-xs text-fg-muted">{roleText(person)}</span>
             ) : null}
           </div>
-        </div>
+        </Link>
       ))}
     </MediaRail>
   );
@@ -327,6 +337,7 @@ function VideoDetailView({
 
   const [pickedSeason, setPickedSeason] = useState<number | null>(null);
   const [pickedFileId, setPickedFileId] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
   const selectedSeason = pickedSeason ?? defaultSeason;
   const selectedFileId = pickedFileId ?? files[0]?.itemId ?? work?.itemId ?? null;
 
@@ -383,8 +394,17 @@ function VideoDetailView({
 
   const played = Boolean(work.state?.played);
   const favorite = Boolean(work.state?.favorite);
-  const backdropPath = work.backdropItemId ? imagePaths.backdrop(work.backdropItemId, 1920) : null;
-  const posterPath = work.posterItemId ? imagePaths.poster(work.posterItemId, "work", 480) : null;
+  const fallbackThumbId = work.thumbItemId ?? primaryItemId;
+  const backdropPath = work.backdropItemId
+    ? imagePaths.backdrop(work.backdropItemId, 1920)
+    : fallbackThumbId
+      ? imagePaths.thumb(fallbackThumbId, 960)
+      : null;
+  const posterPath = work.posterItemId
+    ? imagePaths.poster(work.posterItemId, "work", 480)
+    : fallbackThumbId
+      ? imagePaths.thumb(fallbackThumbId, 480)
+      : null;
 
   const isSeries = work.kind === "series";
   const nextUp = detail.nextUp;
@@ -428,6 +448,7 @@ function VideoDetailView({
           <VideoImage
             path={backdropPath}
             alt={work.title}
+            eager
             className="size-full bg-neutral-950"
             imgClassName="size-full object-cover object-center"
           />
@@ -457,6 +478,7 @@ function VideoDetailView({
                 <VideoImage
                   path={posterPath}
                   alt={work.title}
+                  eager
                   fallbackIcon={isSeries ? Tv : Clapperboard}
                   className="aspect-[2/3] w-full bg-neutral-900"
                 />
@@ -603,6 +625,24 @@ function VideoDetailView({
                     <Heart className={cn("size-4", favorite && "fill-current")} aria-hidden />
                     {t(favorite ? "videoApp.detail.favorite" : "videoApp.detail.addFavorite")}
                   </button>
+
+                  {!isSeries && primaryItemId ? (
+                    <button
+                      type="button"
+                      disabled={downloading}
+                      onClick={() => {
+                        if (downloading) return;
+                        setDownloading(true);
+                        void downloadOriginalVideo(primaryItemId)
+                          .catch((err) => toast.danger(errorText(t, err)))
+                          .finally(() => setDownloading(false));
+                      }}
+                      className="inline-flex h-10 items-center gap-1.5 rounded-control border border-white/25 bg-white/14 px-3.5 text-sm font-mid text-white backdrop-blur-xs transition-colors hover:bg-white/24 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-60"
+                    >
+                      <Download className="size-4" aria-hidden />
+                      {t("videoApp.detail.download")}
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -682,7 +722,7 @@ function VideoDetailView({
         ) : null}
 
         {/* Cast & Crew */}
-        <CastRail people={detail.people} />
+        <CastRail libraryId={libraryId} people={detail.people} />
 
         {/* Similar Titles */}
         {detail.similar.length > 0 ? (

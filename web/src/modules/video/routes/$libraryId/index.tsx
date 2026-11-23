@@ -20,6 +20,7 @@ export const Route = createFileRoute("/_app/video/$libraryId/")({
     const favorite = search.favorite === true || search.favorite === "true" ? true : undefined;
     const q = typeof search.q === "string" && search.q.trim() ? search.q.trim().slice(0, 128) : undefined;
     const genre = typeof search.genre === "string" && search.genre.trim() ? search.genre.trim().slice(0, 64) : undefined;
+    const person = typeof search.person === "string" && search.person.trim() ? search.person.trim().slice(0, 256) : undefined;
     const startsWith =
       typeof search.startsWith === "string" && (/^[A-Z]$/.test(search.startsWith.toUpperCase()) || search.startsWith === "#")
         ? search.startsWith.toUpperCase()
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/_app/video/$libraryId/")({
     const yearFrom = parseIntOpt(search.yearFrom);
     const yearTo = parseIntOpt(search.yearTo);
     const seed = parseIntOpt(search.seed);
-    return { tab, order, dir, q, genre, yearFrom, yearTo, played, favorite, startsWith, seed };
+    return { tab, order, dir, q, genre, person, yearFrom, yearTo, played, favorite, startsWith, seed };
   },
   component: VideoLibraryPage,
 });

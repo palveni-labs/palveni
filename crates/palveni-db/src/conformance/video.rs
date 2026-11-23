@@ -356,7 +356,7 @@ async fn conformance_video_filters_orders_detail_and_home() {
         ..minimal_meta(odyssey_id, "movie/2001", "2001 Odyssey")
     });
 
-    // 3) Movie "流浪地球" (2019, no rating, runtime 125m, Sci-Fi) -> startsWith=#
+    // 3) Movie "流浪地球" (2019, no rating, runtime 125m, Sci-Fi) -> startsWith=L (pinyin liu)
     let m_cjk = ItemUpsert {
         kind: ItemKind::Video,
         ..track("wandering", "/cinema/cjk/film.mkv", None, 3_000)
@@ -434,7 +434,7 @@ async fn conformance_video_filters_orders_detail_and_home() {
         .collect();
     assert_eq!(counts, [("Drama", 2), ("Mystery", 2), ("Sci-Fi", 3)]);
 
-    // startsWith A, B, # (index range on work_sort).
+    // startsWith A, L (Chinese pinyin), # (indexed on work_initial).
     let sw_a = repo
         .browse_for(
             Some(alice),
@@ -453,6 +453,24 @@ async fn conformance_video_filters_orders_detail_and_home() {
     assert_eq!(sw_a.total, 1);
     assert_eq!(sw_a.entries[0].title, "Alpha");
 
+    let sw_l = repo
+        .browse_for(
+            Some(alice),
+            lib,
+            None,
+            None,
+            VideoFilters {
+                starts_with: StartsWith::parse("L"),
+                ..Default::default()
+            },
+            20,
+            None,
+        )
+        .await
+        .unwrap();
+    assert_eq!(sw_l.total, 1);
+    assert_eq!(sw_l.entries[0].title, "流浪地球");
+
     let sw_hash = repo
         .browse_for(
             Some(alice),
@@ -468,9 +486,9 @@ async fn conformance_video_filters_orders_detail_and_home() {
         )
         .await
         .unwrap();
-    assert_eq!(sw_hash.total, 2);
+    assert_eq!(sw_hash.total, 1);
     let hash_titles: Vec<&str> = sw_hash.entries.iter().map(|e| e.title.as_str()).collect();
-    assert_eq!(hash_titles, ["2001 Odyssey", "流浪地球"]);
+    assert_eq!(hash_titles, ["2001 Odyssey"]);
 
     // Year range & genre filter.
     let filtered = repo
@@ -819,4 +837,58 @@ async fn conformance_video_filters_orders_detail_and_home() {
     );
 
     h.finish().await;
+}
+
+#[cfg(feature = "sqlite")]
+#[tokio::test]
+async fn video_initials_upgrade_previously_migrated_catalog() {
+    use crate::entities::video_metadata::{Column, Entity};
+    use sea_orm::{EntityTrait, QuerySelect};
+
+    let dir = tempfile::tempdir().unwrap();
+    let uri = |name: &str| format!("sqlite://{}?mode=rwc", dir.path().join(name).display());
+    let opts = options(uri("main.db"), uri("ops.db"));
+    let db = Db::open(&opts).await.unwrap();
+    let library = db
+        .libraries()
+        .create(NewLibrary {
+            name: "Films".into(),
+            kind: LibraryKind::Video,
+            paths: vec!["/films".into()],
+        })
+        .await
+        .unwrap()
+        .id;
+    let item = ItemUpsert {
+        kind: ItemKind::Video,
+        ..track("Light", "/films/light.mp4", None, 10)
+    };
+    let metadata = minimal_meta(item.id, "light", "灯塔");
+    db.items()
+        .apply_scan_batch(library, &[item], &[])
+        .await
+        .unwrap();
+    db.video()
+        .save_batch(library, vec![metadata])
+        .await
+        .unwrap();
+
+    // Recreate the released schema with its completed video-library migration.
+    for statement in [
+        "DROP INDEX idx_video_work_initial",
+        "ALTER TABLE video_metadata DROP COLUMN work_initial",
+        "DELETE FROM palveni_main_migrations WHERE version = 'm20261122_000021a_video_work_initial'",
+    ] {
+        db.main.execute_unprepared(statement).await.unwrap();
+    }
+    db.close().await.unwrap();
+    let upgraded = Db::open(&opts).await.unwrap();
+    let initial: Option<String> = Entity::find()
+        .select_only()
+        .column(Column::WorkInitial)
+        .into_tuple()
+        .one(upgraded.main.as_ref())
+        .await
+        .unwrap();
+    assert_eq!(initial.as_deref(), Some("D"));
 }

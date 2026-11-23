@@ -183,4 +183,67 @@ describe("video module", () => {
     await waitFor(() => expect(endedSessions).toContain("sess-2"));
     window.removeEventListener("palveni:media-exclusive", onExclusive);
   });
+
+  it("navigates from cast member to person-filtered filmography and renders search and favorites", async () => {
+    vi.spyOn(Element.prototype, "clientHeight", "get").mockReturnValue(800);
+    vi.spyOn(Element.prototype, "clientWidth", "get").mockReturnValue(1100);
+    const db = installMockDb({ features: [...M0_FEATURES, "video", "videoSubtitles"] });
+    signIn(db, MOCK_ACCOUNTS.user.username);
+    const user = userEvent.setup();
+
+    // Person filter via CastRail link
+    const first = await renderLoadedApp(`/video/${SERIES_LIBRARY_ID}`);
+    await user.click(await screen.findByRole("link", { name: "港口" }, { timeout: 5000 }));
+    const castRegion = await screen.findByRole("region", { name: "演职员" }, { timeout: 5000 });
+    const firstActor = within(castRegion).getAllByRole("link")[0]!;
+    await user.click(firstActor);
+    expect(await screen.findByRole("button", { name: /演职员：/ })).toBeInTheDocument();
+    first.unmount();
+
+    // Cross-library search page
+    const second = await renderLoadedApp("/video/search?q=%E6%B8%AF%E5%8F%A3");
+    expect(await screen.findByRole("link", { name: "港口" }, { timeout: 5000 })).toBeInTheDocument();
+    second.unmount();
+
+    // Cross-library favorites page
+    const third = await renderLoadedApp("/video/favorites");
+    expect(await screen.findByRole("heading", { level: 1, name: "我的收藏" }, { timeout: 5000 })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "港口" })).toBeInTheDocument();
+    third.unmount();
+  });
+
+  it("toggles Emby playback info overlay and chapter list in fullscreen player", async () => {
+    const db = installMockDb({ features: [...M0_FEATURES, "video", "videoSubtitles"] });
+    signIn(db, MOCK_ACCOUNTS.user.username);
+    const user = userEvent.setup();
+
+    const itemId = "23587a91-9e35-4821-8a48-3aeddba77d11";
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+    server.use(
+      http.get(`/api/v1/items/${itemId}/media-info`, () =>
+        HttpResponse.json({
+          container: "mkv",
+          durationMs: 1_200_000,
+          sizeBytes: 2_000_000_000,
+          bitrateKbps: 14_500,
+          video: { codec: "hevc", profile: "Main 10", width: 3840, height: 2160, frameRate: 23.976, bitDepth: 10, hdr: "hdr10" },
+          audio: [{ index: 1, codec: "eac3", language: "zh", title: "国语 5.1", channels: 6, channelLayout: "5.1", default: true }],
+          subtitles: [],
+          chapters: [
+            { startMs: 0, title: "序幕" },
+            { startMs: 300_000, title: "深海信号" },
+          ],
+        }),
+      ),
+    );
+
+    const { unmount } = await renderLoadedApp(`/video/play/${itemId}?fromStart=1&title=ChapterTest`);
+    await user.click(await screen.findByRole("button", { name: "播放信息" }, { timeout: 5000 }));
+    const infoPanel = await screen.findByRole("complementary", { name: "播放信息" });
+    expect(within(infoPanel).getByText(/4K · HEVC · HDR10/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "章节" }));
+    expect(await screen.findByRole("menuitemradio", { name: /深海信号/ })).toBeInTheDocument();
+    unmount();
+  });
 });

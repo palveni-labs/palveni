@@ -1097,6 +1097,7 @@ export class VideoMockState {
       season?: string | null;
       q?: string | null;
       genre?: string | null;
+      person?: string | null;
       yearFrom?: string | null;
       yearTo?: string | null;
       played?: string | null;
@@ -1148,6 +1149,10 @@ export class VideoMockState {
     if (params.genre?.trim()) {
       const g = params.genre.trim();
       items = items.filter((w) => w.genres.includes(g));
+    }
+    if (params.person?.trim()) {
+      const needle = params.person.trim().toLowerCase();
+      items = items.filter((w) => w.cast.some((p) => p.name.trim().toLowerCase() === needle));
     }
     if (params.yearFrom) {
       const y = Number(params.yearFrom);

@@ -11,6 +11,7 @@ import {
   Shuffle,
   SlidersHorizontal,
   Tag,
+  User,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -33,6 +34,7 @@ export interface VideoLibrarySearch {
   dir?: "asc" | "desc";
   q?: string;
   genre?: string;
+  person?: string;
   yearFrom?: number;
   yearTo?: number;
   played?: "played" | "unplayed";
@@ -223,6 +225,7 @@ export function VideoLibraryPage() {
         if (next.tab === "all") delete next.tab;
         if (!next.q) delete next.q;
         if (!next.genre) delete next.genre;
+        if (!next.person) delete next.person;
         if (!next.played) delete next.played;
         if (!next.favorite) delete next.favorite;
         if (!next.startsWith) delete next.startsWith;
@@ -240,6 +243,7 @@ export function VideoLibraryPage() {
       kind: tab === "movie" || tab === "series" ? tab : undefined,
       q: search.q,
       genre: search.genre,
+      person: search.person,
       yearFrom: search.yearFrom,
       yearTo: search.yearTo,
       played: search.played === "played" ? true : search.played === "unplayed" ? false : undefined,
@@ -249,7 +253,7 @@ export function VideoLibraryPage() {
       seed: order === "random" ? (search.seed ?? 42) : undefined,
       startsWith: search.startsWith,
     }),
-    [tab, search.q, search.genre, search.yearFrom, search.yearTo, search.played, search.favorite, order, dir, search.seed, search.startsWith],
+    [tab, search.q, search.genre, search.person, search.yearFrom, search.yearTo, search.played, search.favorite, order, dir, search.seed, search.startsWith],
   );
 
   const listQuery = useVideoList(libraryId, listQueryParams, tab !== "genres");
@@ -263,7 +267,7 @@ export function VideoLibraryPage() {
   const genres = genresQuery.data?.genres ?? [];
 
   const hasFilters = Boolean(
-    search.q || search.genre || search.played || search.favorite || search.startsWith || search.yearFrom || search.yearTo,
+    search.q || search.genre || search.person || search.played || search.favorite || search.startsWith || search.yearFrom || search.yearTo,
   );
 
   const library = libraryQuery.data;
@@ -520,6 +524,18 @@ export function VideoLibraryPage() {
               </div>
             ) : null}
 
+            {search.person ? (
+              <button
+                type="button"
+                onClick={() => updateSearch({ person: undefined })}
+                className="inline-flex h-(--pv-control-h-sm) items-center gap-1.5 rounded-control border border-action bg-action px-2.5 text-xs font-strong text-action-fg transition-colors hover:opacity-90"
+              >
+                <User className="size-3.5" aria-hidden />
+                <span>{t("videoApp.library.filter.person", { name: search.person })}</span>
+                <X className="size-3.5" aria-hidden />
+              </button>
+            ) : null}
+
             {hasFilters ? (
               <button
                 type="button"
@@ -527,6 +543,7 @@ export function VideoLibraryPage() {
                   updateSearch({
                     q: undefined,
                     genre: undefined,
+                    person: undefined,
                     played: undefined,
                     favorite: undefined,
                     startsWith: undefined,
@@ -599,6 +616,7 @@ export function VideoLibraryPage() {
                           updateSearch({
                             q: undefined,
                             genre: undefined,
+                            person: undefined,
                             played: undefined,
                             favorite: undefined,
                             startsWith: undefined,

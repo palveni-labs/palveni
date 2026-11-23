@@ -163,10 +163,14 @@ pub async fn delete(
 ) -> Result<StatusCode, ApiError> {
     let Path(raw) = path?;
     let id: LibraryId = path_id(&raw, "Library")?;
+    let video_items = state.db.video().item_ids(id).await.unwrap_or_default();
     if !state.db.libraries().delete(id).await? {
         return Err(ApiError::not_found("Library not found"));
     }
     state.music_search.forget(id).await;
+    if !video_items.is_empty() {
+        state.hardware.video.forget_media_info(&video_items).await;
+    }
     state.bus.publish(ServerEvent::LibraryDeleted { id });
     audit(
         &state,

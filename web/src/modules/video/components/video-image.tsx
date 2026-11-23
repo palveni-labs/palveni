@@ -1,14 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
 import { Film } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { videoApi } from "../api";
 import { videoKeys } from "../queries";
 
+const HAS_IO = typeof IntersectionObserver !== "undefined";
+
 /**
  * Loads an authenticated video artwork image (poster, backdrop, thumb or person portrait)
- * via Bearer fetch + object URL with proper cleanup and graceful fallback.
+ * via Bearer fetch + object URL with viewport lazy-gating, proper cleanup and graceful fallback.
  */
 export function VideoImage({
   path,
@@ -16,6 +18,7 @@ export function VideoImage({
   decorative = true,
   fallbackIcon: FallbackIcon = Film,
   fallbackText,
+  eager = false,
   className,
   imgClassName,
 }: {
@@ -24,14 +27,35 @@ export function VideoImage({
   decorative?: boolean;
   fallbackIcon?: LucideIcon;
   fallbackText?: string;
+  eager?: boolean;
   className?: string;
   imgClassName?: string;
 }) {
+  const hostRef = useRef<HTMLSpanElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const [visible, setVisible] = useState(!HAS_IO || eager);
+
+  useEffect(() => {
+    if (visible || !HAS_IO || !path) return;
+    const node = hostRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [visible, path]);
+
   const query = useQuery({
     queryKey: videoKeys.image(path ?? ""),
     queryFn: ({ signal }) => videoApi.image(path!, signal),
-    enabled: Boolean(path),
+    enabled: Boolean(path) && (visible || eager),
     staleTime: 5 * 60_000,
     gcTime: 5 * 60_000,
     retry: false,
@@ -52,6 +76,7 @@ export function VideoImage({
 
   return (
     <span
+      ref={hostRef}
       role={decorative ? undefined : "img"}
       aria-label={decorative ? undefined : alt}
       aria-hidden={decorative || undefined}

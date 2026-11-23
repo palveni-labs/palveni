@@ -585,6 +585,9 @@ impl Music<'_> {
                 return Ok(());
             }
             let txn = self.db.main().begin().await?;
+            // Acquire the SQLite write lock up front via `busy_timeout` before reading,
+            // avoiding SQLITE_BUSY on read-to-write upgrade during concurrent scans.
+            crate::revision::next_revision(&txn).await?;
             let pair_cond = |artist_col: C, album_col: C, pairs: &[(String, String)]| {
                 pairs.iter().fold(Condition::any(), |cond, (ak, bk)| {
                     cond.add(

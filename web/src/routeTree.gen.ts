@@ -32,6 +32,8 @@ import { Route as SystemLibrariesRouteImport } from "./modules/system/routes/lib
 import { Route as SystemSettingsRouteImport } from "./modules/system/routes/settings"
 import { Route as TasksIndexRouteImport } from "./modules/tasks/routes/index"
 import { Route as VideoIndexRouteImport } from "./modules/video/routes/index"
+import { Route as VideoFavoritesRouteImport } from "./modules/video/routes/favorites"
+import { Route as VideoSearchRouteImport } from "./modules/video/routes/search"
 import { Route as MusicAlbumsIndexRouteImport } from "./modules/music/routes/albums/index"
 import { Route as MusicArtistsIndexRouteImport } from "./modules/music/routes/artists/index"
 import { Route as MusicPlaylistsIndexRouteImport } from "./modules/music/routes/playlists/index"
@@ -156,6 +158,16 @@ const VideoIndexRoute = VideoIndexRouteImport.update({
   path: "/video/",
   getParentRoute: () => shellRoutesAppRoute,
 } as any)
+const VideoFavoritesRoute = VideoFavoritesRouteImport.update({
+  id: "/video/favorites",
+  path: "/video/favorites",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
+const VideoSearchRoute = VideoSearchRouteImport.update({
+  id: "/video/search",
+  path: "/video/search",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
 const MusicAlbumsIndexRoute = MusicAlbumsIndexRouteImport.update({
   id: "/music/albums/",
   path: "/music/albums/",
@@ -222,6 +234,8 @@ export interface FileRoutesByFullPath {
   "/system/hardware": typeof SystemHardwareRoute
   "/system/libraries": typeof SystemLibrariesRoute
   "/system/settings": typeof SystemSettingsRoute
+  "/video/favorites": typeof VideoFavoritesRoute
+  "/video/search": typeof VideoSearchRoute
   "/apps/": typeof AppsIndexRoute
   "/broadcast/": typeof BroadcastIndexRoute
   "/library/": typeof LibraryIndexRoute
@@ -255,6 +269,8 @@ export interface FileRoutesByTo {
   "/system/hardware": typeof SystemHardwareRoute
   "/system/libraries": typeof SystemLibrariesRoute
   "/system/settings": typeof SystemSettingsRoute
+  "/video/favorites": typeof VideoFavoritesRoute
+  "/video/search": typeof VideoSearchRoute
   "/apps": typeof AppsIndexRoute
   "/broadcast": typeof BroadcastIndexRoute
   "/library": typeof LibraryIndexRoute
@@ -290,6 +306,8 @@ export interface FileRoutesById {
   "/_app/system/hardware": typeof SystemHardwareRoute
   "/_app/system/libraries": typeof SystemLibrariesRoute
   "/_app/system/settings": typeof SystemSettingsRoute
+  "/_app/video/favorites": typeof VideoFavoritesRoute
+  "/_app/video/search": typeof VideoSearchRoute
   "/_app/apps/": typeof AppsIndexRoute
   "/_app/broadcast/": typeof BroadcastIndexRoute
   "/_app/library/": typeof LibraryIndexRoute
@@ -325,6 +343,8 @@ export interface FileRouteTypes {
     | "/system/hardware"
     | "/system/libraries"
     | "/system/settings"
+    | "/video/favorites"
+    | "/video/search"
     | "/apps/"
     | "/broadcast/"
     | "/library/"
@@ -358,6 +378,8 @@ export interface FileRouteTypes {
     | "/system/hardware"
     | "/system/libraries"
     | "/system/settings"
+    | "/video/favorites"
+    | "/video/search"
     | "/apps"
     | "/broadcast"
     | "/library"
@@ -392,6 +414,8 @@ export interface FileRouteTypes {
     | "/_app/system/hardware"
     | "/_app/system/libraries"
     | "/_app/system/settings"
+    | "/_app/video/favorites"
+    | "/_app/video/search"
     | "/_app/apps/"
     | "/_app/broadcast/"
     | "/_app/library/"
@@ -579,6 +603,20 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof VideoIndexRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
+    "/_app/video/favorites": {
+      id: "/_app/video/favorites"
+      path: "/video/favorites"
+      fullPath: "/video/favorites"
+      preLoaderRoute: typeof VideoFavoritesRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
+    "/_app/video/search": {
+      id: "/_app/video/search"
+      path: "/video/search"
+      fullPath: "/video/search"
+      preLoaderRoute: typeof VideoSearchRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
     "/_app/music/albums/": {
       id: "/_app/music/albums/"
       path: "/music/albums"
@@ -659,6 +697,8 @@ interface shellRoutesAppRouteChildren {
   SystemHardwareRoute: typeof SystemHardwareRoute
   SystemLibrariesRoute: typeof SystemLibrariesRoute
   SystemSettingsRoute: typeof SystemSettingsRoute
+  VideoFavoritesRoute: typeof VideoFavoritesRoute
+  VideoSearchRoute: typeof VideoSearchRoute
   AppsIndexRoute: typeof AppsIndexRoute
   BroadcastIndexRoute: typeof BroadcastIndexRoute
   LibraryIndexRoute: typeof LibraryIndexRoute
@@ -691,6 +731,8 @@ const shellRoutesAppRouteChildren: shellRoutesAppRouteChildren = {
   SystemHardwareRoute: SystemHardwareRoute,
   SystemLibrariesRoute: SystemLibrariesRoute,
   SystemSettingsRoute: SystemSettingsRoute,
+  VideoFavoritesRoute: VideoFavoritesRoute,
+  VideoSearchRoute: VideoSearchRoute,
   AppsIndexRoute: AppsIndexRoute,
   BroadcastIndexRoute: BroadcastIndexRoute,
   LibraryIndexRoute: LibraryIndexRoute,

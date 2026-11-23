@@ -91,22 +91,41 @@ pub fn person_key(name: &str) -> String {
     sha256_hex(&name.trim().to_lowercase())
 }
 
+use pinyin::ToPinyin;
+
 pub(crate) fn sort_key(value: &str) -> String {
     let lower = value.to_lowercase();
     let buf = lower.as_bytes();
     hex::encode(&buf[..buf.len().min(80)])
 }
 
+/// First-letter index bucket (`'A'..='Z'` for Latin letters or Chinese pinyin initials, else `'#'`).
+pub(crate) fn work_initial(title: &str) -> String {
+    let Some(ch) = title.trim().chars().next() else {
+        return "#".into();
+    };
+    if ch.is_ascii_alphabetic() {
+        return ch.to_ascii_uppercase().to_string();
+    }
+    if let Some(py) = ch.to_pinyin()
+        && let Some(first) = py.plain().bytes().next()
+        && first.is_ascii_alphabetic()
+    {
+        return (first.to_ascii_uppercase() as char).to_string();
+    }
+    "#".into()
+}
+
 pub(crate) fn rating_from_tenths(tenths: Option<i32>) -> Option<f64> {
     tenths.map(|r| f64::from(r) / 10.0)
 }
 
-/// First-letter filter matching the hex-encoded `work_sort` index.
+/// First-letter filter matching the indexed `work_initial` column (Latin or Chinese pinyin A–Z, else `#`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StartsWith {
-    /// Lowercase ASCII letter `'a'..='z'`.
+    /// Uppercase ASCII letter `'A'..='Z'`.
     Letter(char),
-    /// Anything not starting with a Latin letter (digits, CJK, symbols).
+    /// Anything not mapping to A–Z (digits, symbols, non-Latin/non-Han scripts).
     Other,
 }
 
@@ -120,7 +139,7 @@ impl StartsWith {
         if ch == '#' {
             Some(Self::Other)
         } else if ch.is_ascii_alphabetic() {
-            Some(Self::Letter(ch.to_ascii_lowercase()))
+            Some(Self::Letter(ch.to_ascii_uppercase()))
         } else {
             None
         }
@@ -134,19 +153,7 @@ impl StartsWith {
     }
 
     fn condition(self) -> Condition {
-        match self {
-            Self::Letter(ch) => {
-                let byte = ch as u8;
-                let lo = format!("{byte:02x}");
-                let hi = format!("{:02x}", byte + 1);
-                Condition::all()
-                    .add(C::WorkSort.gte(lo))
-                    .add(C::WorkSort.lt(hi))
-            }
-            Self::Other => Condition::any()
-                .add(C::WorkSort.lt("61"))
-                .add(C::WorkSort.gte("7b")),
-        }
+        Condition::all().add(C::WorkInitial.eq(self.token()))
     }
 }
 
@@ -169,6 +176,7 @@ pub struct VideoFilters<'a> {
     pub title: &'a str,
     pub kind: Option<WorkKind>,
     pub genre: Option<&'a str>,
+    pub person: Option<&'a str>,
     pub year_from: Option<i32>,
     pub year_to: Option<i32>,
     pub played: Option<bool>,
@@ -183,6 +191,7 @@ impl VideoFilters<'_> {
 
     pub fn has_extended_filters(self) -> bool {
         self.genre.is_some()
+            || self.person.is_some()
             || self.year_from.is_some()
             || self.year_to.is_some()
             || self.played.is_some()
@@ -245,9 +254,10 @@ impl VideoFilters<'_> {
             ""
         };
         let raw = format!(
-            "{base}|o={order}|d={dir}|s={seed}|k={kind}|q={}|g={}|yf={:?}|yt={:?}|p={:?}|f={:?}|sw={}",
+            "{base}|o={order}|d={dir}|s={seed}|k={kind}|q={}|g={}|pr={}|yf={:?}|yt={:?}|p={:?}|f={:?}|sw={}",
             self.title.to_lowercase(),
             self.genre.map(str::to_lowercase).unwrap_or_default(),
+            self.person.map(person_key).unwrap_or_default(),
             self.year_from,
             self.year_to,
             self.played,
@@ -591,6 +601,14 @@ fn apply_work_filters(
             .to_owned();
         query = query.filter(C::ItemId.in_subquery(sub));
     }
+    if let Some(person) = filters.person {
+        let sub = Query::select()
+            .column(video_people::Column::ItemId)
+            .from(video_people::Entity)
+            .and_where(video_people::Column::PersonKey.eq(person_key(person)))
+            .to_owned();
+        query = query.filter(C::ItemId.in_subquery(sub));
+    }
     if let Some(fav) = filters.favorite {
         if let Some(uid) = user {
             let sub = Query::select()
@@ -725,6 +743,7 @@ impl Videos<'_> {
                 stamp: Set(entry.stamp),
                 work_key: Set(sha256_hex(&entry.work_group)),
                 work_sort: Set(sort_key(&entry.work_title)),
+                work_initial: Set(work_initial(&entry.work_title)),
                 work_title: Set(entry.work_title),
                 work_year: Set(entry.year),
                 work_overview: Set(entry.work_overview),
@@ -790,6 +809,7 @@ impl Videos<'_> {
                         C::Stamp,
                         C::WorkKey,
                         C::WorkSort,
+                        C::WorkInitial,
                         C::WorkTitle,
                         C::WorkYear,
                         C::WorkOverview,
@@ -952,6 +972,17 @@ impl Videos<'_> {
             }
         }
         Ok(None)
+    }
+
+    pub async fn item_ids(&self, library: LibraryId) -> Result<Vec<ItemId>, DbError> {
+        let rows: Vec<String> = video::Entity::find()
+            .filter(C::LibraryId.eq(library.to_string()))
+            .select_only()
+            .column(C::ItemId)
+            .into_tuple()
+            .all(self.db.main())
+            .await?;
+        rows.iter().map(|id| parse_id(id, "item_id")).collect()
     }
 
     pub async fn genres(&self, library: LibraryId) -> Result<VideoGenreList, DbError> {
@@ -1893,6 +1924,40 @@ impl Videos<'_> {
             None => HashMap::new(),
         };
 
+        // For multi-file movies (e.g. Blu-ray BDMV streams), prefer the largest file as playable itemId.
+        let multi_movie_keys: Vec<String> = summaries
+            .iter()
+            .filter(|s| {
+                s.files > 1
+                    && samples
+                        .get(&s.sample_id)
+                        .is_some_and(|row| row.season.is_none())
+            })
+            .map(|s| s.key.clone())
+            .collect();
+        let mut primary_movie_items: HashMap<String, ItemId> = HashMap::new();
+        if !multi_movie_keys.is_empty() {
+            let file_rows = active(library)
+                .filter(C::WorkKey.is_in(multi_movie_keys))
+                .filter(C::Season.is_null())
+                .select_only()
+                .column(C::WorkKey)
+                .column(C::ItemId)
+                .column(items::Column::SizeBytes)
+                .order_by_desc(items::Column::SizeBytes)
+                .order_by_asc(C::ItemId)
+                .into_tuple::<(String, String, Option<i64>)>()
+                .all(self.db.main())
+                .await?;
+            for (wk, iid, _) in file_rows {
+                if let std::collections::hash_map::Entry::Vacant(slot) =
+                    primary_movie_items.entry(wk)
+                {
+                    slot.insert(parse_id(&iid, "movie item id")?);
+                }
+            }
+        }
+
         let mut entries = Vec::with_capacity(summaries.len());
         for summary in summaries {
             let Some(row) = samples.remove(&summary.sample_id) else {
@@ -1910,7 +1975,7 @@ impl Videos<'_> {
             };
             let genres = genres_map.remove(&summary.sample_id).unwrap_or_default();
             let state = states_map.remove(&summary.key);
-            entries.push(build_work_entry(
+            let mut entry = build_work_entry(
                 library,
                 summary.key.clone(),
                 row,
@@ -1921,7 +1986,11 @@ impl Videos<'_> {
                 ts(summary.max_created_at)?,
                 genres,
                 state,
-            )?);
+            )?;
+            if let Some(primary) = primary_movie_items.remove(&summary.key) {
+                entry.item_id = Some(primary);
+            }
+            entries.push(entry);
         }
         Ok(entries)
     }

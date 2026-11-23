@@ -29,6 +29,7 @@ export interface VideoListQuery {
   season?: number;
   q?: string;
   genre?: string;
+  person?: string;
   yearFrom?: number;
   yearTo?: number;
   played?: boolean;
@@ -90,3 +91,21 @@ export const videoApi = {
     requestBlob(`/items/${enc(itemId)}/subtitles/${enc(track)}`, { signal }),
   image: (path: string, signal?: AbortSignal) => requestBlob(path, { signal }),
 };
+
+export async function downloadOriginalVideo(itemId: ItemId) {
+  const session = await videoApi.startPlayback(itemId, {
+    mode: "direct",
+    client: { containers: [], videoCodecs: [], audioCodecs: [], hls: "none" },
+  });
+  const url = new URL(session.url, window.location.origin);
+  if (url.origin !== window.location.origin || !url.pathname.startsWith(API_BASE + "/")) {
+    throw new Error("Invalid download URL");
+  }
+  const link = document.createElement("a");
+  link.href = url.href;
+  link.download = "";
+  link.referrerPolicy = "no-referrer";
+  document.body.append(link);
+  link.click();
+  link.remove();
+}

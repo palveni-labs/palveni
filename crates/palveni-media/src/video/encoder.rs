@@ -12,11 +12,65 @@ use crate::{
     report::HardwareReport,
 };
 
-use super::{decision::DeliveryMode, info::VIDEO_DEMUXERS};
+use super::{
+    decision::DeliveryMode,
+    info::{HdrFormat, VIDEO_DEMUXERS},
+};
 
 pub const SEGMENT_SECONDS: u32 = 4;
 pub const PLAYLIST_FILE: &str = "index.m3u8";
 pub const INIT_SEGMENT_FILE: &str = "init.mp4";
+
+/// Highest-quality HDR→SDR tone-mapping pipeline supported by the installed FFmpeg build.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TonemapSupport {
+    /// Neither `zscale`+`tonemap` nor `colorspace` is available; fall back to bit-depth drop only.
+    #[default]
+    None,
+    /// `colorspace` filter is compiled in (e.g. default Homebrew FFmpeg without libzimg).
+    Colorspace,
+    /// `zscale` + `tonemap` are both compiled in (e.g. jellyfin-ffmpeg).
+    ZscaleHable,
+}
+
+/// Parses `ffmpeg -hide_banner -filters` output to determine HDR→SDR filter availability.
+pub fn detect_tonemap_support(filters_stdout: &str) -> TonemapSupport {
+    let mut has_zscale = false;
+    let mut has_tonemap = false;
+    let mut has_colorspace = false;
+    for line in filters_stdout.lines() {
+        let mut parts = line.split_whitespace();
+        let Some(flags) = parts.next() else {
+            continue;
+        };
+        if !flags
+            .bytes()
+            .all(|b| matches!(b, b'.' | b'T' | b'S' | b'C'))
+        {
+            continue;
+        }
+        match parts.next() {
+            Some("zscale") => has_zscale = true,
+            Some("tonemap") => has_tonemap = true,
+            Some("colorspace") => has_colorspace = true,
+            _ => {}
+        }
+    }
+    if has_zscale && has_tonemap {
+        TonemapSupport::ZscaleHable
+    } else if has_colorspace {
+        TonemapSupport::Colorspace
+    } else {
+        TonemapSupport::None
+    }
+}
+
+fn is_hdr(hdr: Option<HdrFormat>) -> bool {
+    matches!(
+        hdr,
+        Some(HdrFormat::Hdr10 | HdrFormat::Hlg | HdrFormat::DolbyVision)
+    )
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SelectedEncoder {
@@ -84,6 +138,8 @@ pub(crate) struct HlsPlan {
     pub encoder: SelectedEncoder,
     pub render_node: Option<PathBuf>,
     pub use_readrate_burst: bool,
+    pub hdr: Option<HdrFormat>,
+    pub tonemap: TonemapSupport,
 }
 
 fn tier_threads(tier: PerfTier) -> u32 {
@@ -207,6 +263,21 @@ pub(crate) fn build_hls_args(plan: &HlsPlan, output_dir: &Path) -> Vec<OsString>
         }
         DeliveryMode::Transcode => {
             let mut filters = Vec::new();
+            let tonemapping = is_hdr(plan.hdr);
+            if tonemapping {
+                match plan.tonemap {
+                    TonemapSupport::ZscaleHable => {
+                        filters.push(
+                            "zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv"
+                                .to_owned(),
+                        );
+                    }
+                    TonemapSupport::Colorspace => {
+                        filters.push("colorspace=all=bt709:iall=bt2020:fast=1".to_owned());
+                    }
+                    TonemapSupport::None => {}
+                }
+            }
             if let Some(max_h) = plan.scale_to {
                 filters.push(format!("scale=-2:{max_h}"));
             } else if !plan.video_width.is_multiple_of(2) || !plan.video_height.is_multiple_of(2) {
@@ -224,6 +295,16 @@ pub(crate) fn build_hls_args(plan: &HlsPlan, output_dir: &Path) -> Vec<OsString>
             };
             filters.push(pix_filter.to_owned());
             args.extend(os_args(["-vf".to_owned(), filters.join(",")]));
+            if tonemapping && plan.tonemap != TonemapSupport::None {
+                args.extend(os_args([
+                    "-color_primaries",
+                    "bt709",
+                    "-color_trc",
+                    "bt709",
+                    "-colorspace",
+                    "bt709",
+                ]));
+            }
 
             let effective_height = plan.scale_to.unwrap_or(plan.video_height);
             let video_max_kbps = match plan.max_bitrate_kbps {
@@ -557,6 +638,8 @@ mod tests {
                 encoder: SelectedEncoder::software(),
                 render_node: None,
                 use_readrate_burst: true,
+                hdr: None,
+                tonemap: TonemapSupport::None,
             },
             dir,
         );
@@ -592,6 +675,8 @@ mod tests {
                 },
                 render_node: Some(PathBuf::from("/dev/dri/renderD128")),
                 use_readrate_burst: false,
+                hdr: None,
+                tonemap: TonemapSupport::ZscaleHable,
             },
             dir,
         );
@@ -602,8 +687,59 @@ mod tests {
         let line = joined.join(" ");
         assert!(line.contains("-init_hw_device vaapi=va:/dev/dri/renderD128"));
         assert!(line.contains("-vf scale=-2:720,format=nv12,hwupload"));
+        assert!(!line.contains("tonemap"));
         assert!(line.contains("-c:v h264_vaapi"));
         assert!(line.contains("-maxrate 2308k"));
         assert!(line.contains("-c:a copy"));
+    }
+
+    #[test]
+    fn applies_hdr_tonemapping_when_transcoding_hdr_sources() {
+        let dir = Path::new("/tmp/session");
+        let zscale_line = build_hls_args(
+            &HlsPlan {
+                mode: DeliveryMode::Transcode,
+                video_index: 0,
+                video_codec: Some("hevc".into()),
+                video_width: 3840,
+                video_height: 2160,
+                frame_rate: Some(24.0),
+                container: Some("mkv".into()),
+                audio_index: Some(1),
+                copy_audio: false,
+                scale_to: Some(1080),
+                max_bitrate_kbps: None,
+                start_ms: 0,
+                tier: PerfTier::Standard,
+                encoder: SelectedEncoder {
+                    id: "h264_qsv".into(),
+                    method: EncodeMethod::Qsv,
+                },
+                render_node: None,
+                use_readrate_burst: false,
+                hdr: Some(HdrFormat::Hdr10),
+                tonemap: TonemapSupport::ZscaleHable,
+            },
+            dir,
+        )
+        .into_iter()
+        .map(|s| s.into_string().unwrap())
+        .collect::<Vec<_>>()
+        .join(" ");
+        assert!(zscale_line.contains("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,scale=-2:1080,format=nv12"));
+        assert!(zscale_line.contains("-color_primaries bt709 -color_trc bt709 -colorspace bt709"));
+
+        assert_eq!(
+            detect_tonemap_support(" .S zscale V->V\n .S tonemap V->V\n TS colorspace V->V\n"),
+            TonemapSupport::ZscaleHable
+        );
+        assert_eq!(
+            detect_tonemap_support(" TS colorspace V->V\n .S tonemap V->V\n"),
+            TonemapSupport::Colorspace
+        );
+        assert_eq!(
+            detect_tonemap_support(" .. scale V->V\n"),
+            TonemapSupport::None
+        );
     }
 }

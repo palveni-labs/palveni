@@ -372,18 +372,41 @@ impl Videos<'_> {
                 )?);
             }
         } else {
-            for row in &rows {
+            let mut movie_rows: Vec<&VideoWithItem> = rows.iter().collect();
+            movie_rows.sort_by(|a, b| {
+                b.size_bytes
+                    .unwrap_or(-1)
+                    .cmp(&a.size_bytes.unwrap_or(-1))
+                    .then_with(|| a.meta.item_id.cmp(&b.meta.item_id))
+            });
+            for row in movie_rows {
                 let item_id: ItemId = parse_id(&row.meta.item_id, "movie file id")?;
+                let title = if rows.len() > 1
+                    && !row.meta.title.is_empty()
+                    && row.meta.title != meta_row.meta.work_title
+                {
+                    row.meta.title.clone()
+                } else {
+                    row.item_title.clone()
+                };
                 files.push(VideoFile {
                     item_id,
-                    title: row.item_title.clone(),
+                    title,
                     size_bytes: row.size_bytes,
                 });
             }
         }
 
+        let primary_item_id = if !is_series {
+            files
+                .first()
+                .map(|f| f.item_id.to_string())
+                .unwrap_or_else(|| poster_row.meta.item_id.clone())
+        } else {
+            poster_row.meta.item_id.clone()
+        };
         let sample_for_work = video::Model {
-            item_id: poster_row.meta.item_id.clone(),
+            item_id: primary_item_id,
             ..meta_row.meta.clone()
         };
         let work = build_work_entry(

@@ -102,6 +102,10 @@ impl MediaInfoCache {
             let _ = tokio::fs::remove_file(&tmp).await;
         }
     }
+
+    pub(crate) async fn remove(&self, item: ItemId) {
+        let _ = tokio::fs::remove_file(self.path(item)).await;
+    }
 }
 
 async fn write_atomic(tmp: &Path, target: &Path, payload: &[u8]) -> std::io::Result<()> {

@@ -25,7 +25,7 @@ pub(super) fn episode_marker(name: &str) -> Option<EpisodeMarker> {
         let Some((season, mid)) = digits(
             bytes,
             start + usize::from(marked),
-            if marked { 3 } else { 2 },
+            if marked { 4 } else { 2 },
         ) else {
             continue;
         };
@@ -86,10 +86,51 @@ pub(super) fn season_folder(name: &str) -> Option<i32> {
         .or_else(|| name.strip_prefix('s'))
         .or_else(|| name.strip_prefix('第')?.strip_suffix('季'))?
         .trim_matches([' ', '.', '_', '-']);
-    if n.len() > 3 {
+    if n.len() > 4 {
         return None;
     }
     super::nfo::number(n)
+}
+
+pub(super) fn disc_folder(name: &str) -> bool {
+    let lower = name.trim().to_ascii_lowercase();
+    let Some(rest) = lower
+        .strip_prefix("disc")
+        .or_else(|| lower.strip_prefix("disk"))
+        .or_else(|| lower.strip_prefix("cd"))
+        .or_else(|| lower.strip_prefix("bd"))
+    else {
+        return false;
+    };
+    let rest = rest.trim_matches([' ', '.', '_', '-']);
+    !rest.is_empty() && rest.len() <= 3 && rest.bytes().all(|b| b.is_ascii_digit())
+}
+
+pub(super) fn is_generic_category_dir(name: &str) -> bool {
+    matches!(
+        name.trim().to_ascii_lowercase().as_str(),
+        "电影"
+            | "剧集"
+            | "电视剧"
+            | "动漫"
+            | "动画"
+            | "动画电影"
+            | "纪录片"
+            | "综艺"
+            | "其他"
+            | "movies"
+            | "movie"
+            | "films"
+            | "film"
+            | "tv"
+            | "shows"
+            | "series"
+            | "video"
+            | "videos"
+            | "download"
+            | "downloads"
+            | "other"
+    )
 }
 
 pub(super) fn clean_title(name: &str) -> String {
@@ -157,7 +198,17 @@ mod tests {
         assert_eq!(episode_only("电视剧.第18集").map(|(_, n)| n), Some(18));
         assert_eq!(episode_only("Show - EP07").map(|(_, n)| n), Some(7));
         assert_eq!(season_folder("Season 01"), Some(1));
+        assert_eq!(season_folder("Season 2021"), Some(2021));
         assert_eq!(season_folder("第2季"), Some(2));
+        assert_eq!(season_folder("第2021季"), Some(2021));
+        assert_eq!(
+            episode_marker("不疯不狂不爱你 - S2021E01 - Mad for Each Other 2021")
+                .map(|m| (m.season, m.episode)),
+            Some((2021, 1))
+        );
+        assert!(disc_folder("DISC1"));
+        assert!(disc_folder("Disk 2"));
+        assert!(!disc_folder("Discovery"));
         assert_eq!(title_year("电影名字 (2020)").1, Some(2020));
         assert_eq!(
             title_year("A.Movie.2021.2160p.HEVC"),

@@ -1,5 +1,27 @@
 {
   "title": "Video",
+  "nav": {
+    "home": "Home",
+    "favorites": "Favorites",
+    "search": "Search"
+  },
+  "search": {
+    "title": "Search Video",
+    "placeholder": "Search titles or original names across all video libraries…",
+    "commandLabel": "Search video",
+    "commandQuery": "Search video for “{{query}}”",
+    "prompt": "Search movies and series",
+    "promptDetail": "Matches titles and original titles across all video libraries.",
+    "empty": "No matching titles found",
+    "allLibraries": "All video libraries",
+    "resultsCount": "{{count}} results"
+  },
+  "favorites": {
+    "title": "Favorites",
+    "empty": "No favorite titles yet",
+    "emptyDetail": "Favorite any movie or series to keep it here.",
+    "count": "{{count}} favorites"
+  },
   "home": {
     "allLibraries": "All video libraries",
     "continueWatching": "Continue Watching",
@@ -51,6 +73,7 @@
       "year": "Year",
       "yearFrom": "From",
       "yearTo": "To",
+      "person": "Person: {{name}}",
       "clear": "Clear filters"
     },
     "alphabet": "Jump by letter",
@@ -89,6 +112,7 @@
     "markPlayed": "Mark played",
     "favorite": "Favorited",
     "addFavorite": "Favorite",
+    "download": "Download",
     "seasons": "Seasons & Episodes",
     "season": "Season {{number}}",
     "specials": "Specials",
@@ -125,6 +149,16 @@
     "qualityAuto": "Auto",
     "qualityOriginal": "Original",
     "speed": "Speed",
+    "chapters": "Chapters",
+    "chapterFallback": "Chapter {{index}}",
+    "info": "Playback info",
+    "infoDelivery": "Delivery",
+    "infoReason": "Reason",
+    "infoContainer": "Container",
+    "infoVideo": "Video",
+    "infoAudio": "Audio",
+    "infoSubtitle": "Subtitles",
+    "infoNone": "None",
     "pip": "Picture in Picture",
     "exitPip": "Exit Picture in Picture",
     "fullscreen": "Fullscreen",

@@ -263,7 +263,13 @@ fn parameters(cap: &Capability) -> Vec<Value> {
                     "startsWith",
                     "query",
                     false,
-                    json!({"type":"string","pattern":"^([A-Za-z]|#)$","description":"Single Latin letter A-Z (case-insensitive) or # for titles not starting with a Latin letter."}),
+                    json!({"type":"string","pattern":"^([A-Za-z]|#)$","description":"Single letter A-Z (matching Latin letters or Chinese pinyin initials) or # for other titles."}),
+                ));
+                params.push(parameter(
+                    "person",
+                    "query",
+                    false,
+                    json!({"type":"string","maxLength":256,"description":"Case-insensitive exact match on a cast or crew person name."}),
                 ));
                 params.push(parameter(
                     "order",

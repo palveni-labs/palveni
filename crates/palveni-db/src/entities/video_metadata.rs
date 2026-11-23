@@ -9,6 +9,7 @@ pub struct Model {
     pub stamp: String,
     pub work_key: String,
     pub work_sort: String,
+    pub work_initial: String,
     pub work_title: String,
     pub work_year: Option<i32>,
     pub work_overview: Option<String>,

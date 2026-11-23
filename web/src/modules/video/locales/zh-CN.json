@@ -1,5 +1,27 @@
 {
   "title": "影视",
+  "nav": {
+    "home": "首页",
+    "favorites": "收藏",
+    "search": "搜索"
+  },
+  "search": {
+    "title": "搜索影视",
+    "placeholder": "搜索全部影视库的片名或原名…",
+    "commandLabel": "搜索影视",
+    "commandQuery": "搜索影视「{{query}}」",
+    "prompt": "输入关键词搜索电影与剧集",
+    "promptDetail": "支持跨影视库同时检索片名与原名。",
+    "empty": "没有找到匹配的作品",
+    "allLibraries": "全部影视库",
+    "resultsCount": "共 {{count}} 部"
+  },
+  "favorites": {
+    "title": "我的收藏",
+    "empty": "还没有收藏的作品",
+    "emptyDetail": "在电影或剧集卡片上点击收藏后，会集中显示在这里。",
+    "count": "共 {{count}} 部收藏"
+  },
   "home": {
     "allLibraries": "全部影视库",
     "continueWatching": "继续观看",
@@ -51,6 +73,7 @@
       "year": "年份",
       "yearFrom": "起始年",
       "yearTo": "截止年",
+      "person": "演职员：{{name}}",
       "clear": "清除筛选"
     },
     "alphabet": "按字母跳转",
@@ -89,6 +112,7 @@
     "markPlayed": "标为已看",
     "favorite": "已收藏",
     "addFavorite": "收藏",
+    "download": "下载原片",
     "seasons": "分季与剧集",
     "season": "第 {{number}} 季",
     "specials": "特别篇",
@@ -125,6 +149,16 @@
     "qualityAuto": "自动",
     "qualityOriginal": "原画直放",
     "speed": "倍速",
+    "chapters": "章节",
+    "chapterFallback": "第 {{index}} 章",
+    "info": "播放信息",
+    "infoDelivery": "传输方式",
+    "infoReason": "原因",
+    "infoContainer": "容器",
+    "infoVideo": "视频流",
+    "infoAudio": "音轨",
+    "infoSubtitle": "字幕",
+    "infoNone": "无",
     "pip": "画中画",
     "exitPip": "退出画中画",
     "fullscreen": "全屏",

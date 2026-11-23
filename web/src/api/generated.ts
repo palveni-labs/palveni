@@ -7132,6 +7132,7 @@ export interface operations {
                 played?: boolean;
                 favorite?: boolean;
                 startsWith?: string;
+                person?: string;
                 order?: "title" | "poster" | "year" | "added" | "rating" | "runtime" | "random";
                 dir?: "asc" | "desc";
                 seed?: string;

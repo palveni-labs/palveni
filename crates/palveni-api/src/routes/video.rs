@@ -81,6 +81,7 @@ pub struct Browse {
     dir: Option<SortDir>,
     seed: Option<String>,
     genre: Option<String>,
+    person: Option<String>,
     year_from: Option<i32>,
     year_to: Option<i32>,
     played: Option<bool>,
@@ -101,6 +102,14 @@ impl Browse {
             .filter(|s| !s.is_empty());
         if genre.is_some_and(|g| g.chars().count() > 128 || g.chars().any(char::is_control)) {
             return Err(ApiError::validation("Invalid genre filter").field("genre"));
+        }
+        let person = self
+            .person
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty());
+        if person.is_some_and(|p| p.chars().count() > 256 || p.chars().any(char::is_control)) {
+            return Err(ApiError::validation("Invalid person filter").field("person"));
         }
         let seed = self
             .seed
@@ -143,6 +152,11 @@ impl Browse {
                     ApiError::validation("Genre filter applies only to works").field("genre")
                 );
             }
+            if person.is_some() {
+                return Err(
+                    ApiError::validation("Person filter applies only to works").field("person")
+                );
+            }
             if self.year_from.is_some() {
                 return Err(
                     ApiError::validation("Year filter applies only to works").field("yearFrom")
@@ -181,6 +195,7 @@ impl Browse {
             title,
             kind: self.kind,
             genre,
+            person,
             year_from: self.year_from,
             year_to: self.year_to,
             played: self.played,
@@ -540,7 +555,7 @@ mod tests {
         assert_eq!(filters.year_to, Some(2024));
         assert_eq!(filters.played, Some(false));
         assert_eq!(filters.favorite, Some(true));
-        assert_eq!(filters.starts_with, Some(StartsWith::Letter('s')));
+        assert_eq!(filters.starts_with, Some(StartsWith::Letter('S')));
         assert_eq!(filters.order, VideoOrder::Rating);
         assert_eq!(filters.dir, Some(SortDir::Desc));
 

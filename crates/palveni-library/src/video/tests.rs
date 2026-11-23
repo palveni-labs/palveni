@@ -290,4 +290,148 @@ async fn indexes_extended_nfo_backdrops_thumbs_and_local_actors() {
         .unwrap()
         .unwrap();
     assert!(thumb_loc.local_thumb.is_some());
+
+    // Filter works by cast/crew person name (case-insensitive).
+    let by_person = db
+        .video()
+        .browse_for(
+            Some(user),
+            id,
+            None,
+            None,
+            palveni_db::video::VideoFilters {
+                person: Some("ana ruiz"),
+                ..Default::default()
+            },
+            20,
+            None,
+        )
+        .await
+        .unwrap();
+    assert_eq!(by_person.total, 1);
+    assert_eq!(by_person.entries[0].id, movie_entry.id);
+}
+
+#[tokio::test]
+async fn groups_bdmv_discs_by_largest_stream_and_parses_year_seasons() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("media");
+    let jpeg = &[0xff, 0xd8, 0xff, 0xe0];
+
+    // 1. Multi-stream Blu-ray under DISC1 with movie folder poster + NFO
+    let conan_dir = root.join("电影/动画电影/名侦探柯南：独眼的残像 (2025)");
+    let conan_stream = conan_dir.join("DISC1/BDMV/STREAM");
+    fs::create_dir_all(&conan_stream).unwrap();
+    fs::write(conan_dir.join("poster.jpg"), jpeg).unwrap();
+    fs::write(conan_stream.join("00000.m2ts"), vec![0u8; 32]).unwrap();
+    fs::write(conan_stream.join("00001.m2ts"), vec![0u8; 4096]).unwrap();
+
+    // 2. BDMV disc directly under generic category folder (`电影/DISC2/BDMV/STREAM`)
+    let disc2_stream = root.join("电影/DISC2/BDMV/STREAM");
+    fs::create_dir_all(&disc2_stream).unwrap();
+    fs::write(disc2_stream.join("00011.m2ts"), vec![0u8; 128]).unwrap();
+    fs::write(disc2_stream.join("00017.m2ts"), vec![0u8; 1024]).unwrap();
+
+    // 3. 4-digit year season folder (`Season 2021`)
+    let youth_season = root.join("剧集/五月的青春 (2021)/Season 2021");
+    fs::create_dir_all(&youth_season).unwrap();
+    fs::write(youth_season.join("Youth.of.May.2021.EP01.mp4"), b"ep1").unwrap();
+    fs::write(youth_season.join("Youth.of.May.2021.EP02.mp4"), b"ep2").unwrap();
+
+    // 4. Flat folder with 4-digit `S2021E01` markers
+    let flat_show = root.join("剧集/韩剧");
+    fs::create_dir_all(&flat_show).unwrap();
+    fs::write(
+        flat_show.join("不疯不狂不爱你 - S2021E01 - Mad for Each Other 2021.mkv"),
+        b"ep1",
+    )
+    .unwrap();
+    fs::write(
+        flat_show.join("不疯不狂不爱你 - S2021E02 - Mad for Each Other 2021.mkv"),
+        b"ep2",
+    )
+    .unwrap();
+
+    let opts = DbOptions {
+        main_url: format!("sqlite://{}?mode=rwc", tmp.path().join("m.db").display()),
+        ops_url: format!("sqlite://{}?mode=rwc", tmp.path().join("o.db").display()),
+        max_connections: Some(4),
+        min_connections: None,
+    };
+    let db = Db::open(&opts).await.unwrap();
+    let user = db
+        .users()
+        .create("viewer", "hash", palveni_core::Role::User)
+        .await
+        .unwrap()
+        .id;
+    let id = db
+        .libraries()
+        .create(NewLibrary {
+            name: "NAS Video".into(),
+            kind: LibraryKind::Video,
+            paths: vec![fs::canonicalize(&root).unwrap().to_str().unwrap().into()],
+        })
+        .await
+        .unwrap()
+        .id;
+    let seq = Arc::new(AtomicI64::new(0));
+    let events = EventBus::new(32, 0, move || {
+        let n = seq.fetch_add(1, Ordering::Relaxed) + 1;
+        async move { Ok::<_, std::io::Error>(n) }
+    });
+    let scanner = crate::Scanner::new(db.clone(), events);
+    scanner.scan(id, &Observer).await.unwrap();
+
+    let page = db.video().browse(id, None, None, 20, None).await.unwrap();
+    let mut titles: Vec<&str> = page.entries.iter().map(|e| e.title.as_str()).collect();
+    titles.sort_unstable();
+    assert_eq!(
+        titles,
+        [
+            "DISC2",
+            "不疯不狂不爱你",
+            "五月的青春",
+            "名侦探柯南：独眼的残像"
+        ]
+    );
+
+    let conan = page
+        .entries
+        .iter()
+        .find(|e| e.title == "名侦探柯南：独眼的残像")
+        .unwrap();
+    assert_eq!(conan.kind, VideoKind::Movie);
+    assert_eq!(conan.year, Some(2025));
+    assert_eq!(conan.file_count, 2);
+    assert!(conan.poster_item_id.is_some());
+
+    let detail = db
+        .video()
+        .work_detail(user, id, &conan.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(detail.files.len(), 2);
+    // Largest `.m2ts` (4096 bytes) is first and selected as playable work itemId.
+    assert_eq!(detail.files[0].title, "DISC1 · 00001");
+    assert_eq!(detail.files[0].size_bytes, Some(4096));
+    assert_eq!(detail.work.item_id, Some(detail.files[0].item_id));
+    assert_eq!(conan.item_id, Some(detail.files[0].item_id));
+
+    let youth = page
+        .entries
+        .iter()
+        .find(|e| e.title == "五月的青春")
+        .unwrap();
+    assert_eq!(youth.kind, VideoKind::Series);
+    assert_eq!(youth.file_count, 2);
+
+    let mad = page
+        .entries
+        .iter()
+        .find(|e| e.title == "不疯不狂不爱你")
+        .unwrap();
+    assert_eq!(mad.kind, VideoKind::Series);
+    assert_eq!(mad.file_count, 2);
 }

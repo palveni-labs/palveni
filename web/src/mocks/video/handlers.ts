@@ -73,6 +73,7 @@ export function createVideoHandlers(db: MockDb, options: HandlerOptions = {}) {
           season: q.get("season"),
           q: q.get("q"),
           genre: q.get("genre"),
+          person: q.get("person"),
           yearFrom: q.get("yearFrom"),
           yearTo: q.get("yearTo"),
           played: q.get("played"),
