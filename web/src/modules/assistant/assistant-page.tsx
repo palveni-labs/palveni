@@ -49,9 +49,10 @@ export function AssistantPage() {
   };
 
   return (
-    <div className="pv-enter grid min-h-0 flex-1 lg:h-[calc(100svh-var(--pv-shell-h))] lg:flex-none lg:grid-cols-[var(--pv-conversation-w)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
+    <div className="pv-enter pv-page-frame mx-auto flex min-h-0 w-full max-w-(--pv-layout-max) flex-1 flex-col px-(--pv-layout-gutter) pt-(--pv-layout-top) pb-5 lg:h-[calc(100svh-var(--pv-shell-h)-1.25rem)] lg:flex-none">
+      <div className="pv-glass-panel grid min-h-0 flex-1 overflow-hidden rounded-panel border lg:grid-cols-[clamp(22rem,36%,30rem)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
       <section aria-label={t("assistant.views.chat")} className="flex min-h-0 flex-col border-line lg:border-e">
-        <header className="flex items-center gap-2 px-6 pt-4 pb-3 max-md:px-4">
+        <header className="flex items-center gap-2 border-b border-line/60 px-5 pt-4 pb-3 max-md:px-4">
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-lg font-title text-heading">{run?.title ?? t("assistant.title")}</h1>
             {startedAt ? <p className="text-xs text-fg-muted">{when(startedAt)}</p> : null}
@@ -66,7 +67,7 @@ export function AssistantPage() {
             </Button>
           ) : null}
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-4 max-md:px-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-3 pb-4 max-md:px-4">
           {assistant.isPending ? (
             <div className="grid gap-3">
               <Skeleton className="h-12 rounded-tile" />
@@ -93,7 +94,7 @@ export function AssistantPage() {
             />
           )}
         </div>
-        <div className="px-6 pb-5 max-lg:hidden">
+        <div className="px-5 pb-4 max-lg:hidden">
           <Composer
             key={handoff?.prompt ?? "composer"}
             initial={handoff?.prompt}
@@ -107,11 +108,12 @@ export function AssistantPage() {
       <section
         id="assistant-result"
         aria-label={t("assistant.views.canvas")}
-        className={cn("min-h-0 max-lg:border-t max-lg:border-line", section === "panel" ? "p-4 max-md:p-3 lg:ps-5" : "")}
+        className={cn("min-h-0 bg-sunken/30 max-lg:border-t max-lg:border-line", section === "panel" ? "p-4 max-md:p-3 lg:p-5" : "")}
       >
         <RunResult run={run} onAction={assistant.onRunAction} onBackground={assistant.toBackground} deciding={assistant.deciding} />
       </section>
-      <div className="sticky bottom-0 z-10 border-t border-line bg-page p-3 lg:hidden">
+      </div>
+      <div className="sticky bottom-0 z-10 mt-3 border-t border-line bg-page p-3 lg:hidden">
         <Composer key={handoff?.prompt ?? "composer-phone"} initial={handoff?.prompt} onSend={send} disabled={assistant.sending} contextLabel={handoff?.label || null} onClearContext={() => shell.clearHandoff()} />
       </div>
       <AssistantSettingsDrawer open={settingsOpen} onOpenChange={setSettingsOpen} />

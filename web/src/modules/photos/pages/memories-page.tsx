@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Camera, Play, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PageFrame } from "@/ui/frame";
 import { PageHeader, SummaryFacts } from "@/ui/page";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import type { PhotoTimelineItem } from "../api";
@@ -20,28 +21,36 @@ export function PhotoMemoriesPage() {
   } | null>(null);
 
   if (memoriesQuery.isLoading) {
-    return <LoadingRows rows={4} />;
+    return (
+      <PageFrame>
+        <LoadingRows rows={4} />
+      </PageFrame>
+    );
   }
   if (memoriesQuery.isError) {
-    return <ErrorState error={memoriesQuery.error} onRetry={() => void memoriesQuery.refetch()} />;
+    return (
+      <PageFrame>
+        <ErrorState error={memoriesQuery.error} onRetry={() => void memoriesQuery.refetch()} />
+      </PageFrame>
+    );
   }
 
   const data = memoriesQuery.data;
   if (!data || data.totalPhotos === 0) {
     return (
-      <div className="grid gap-5">
+      <PageFrame className="gap-5">
         <PageHeader title={t("photosApp.memories.title")} />
         <EmptyState
           icon={Sparkles}
           title={t("photosApp.timeline.emptyTitle")}
           detail={t("photosApp.timeline.emptyDetail")}
         />
-      </div>
+      </PageFrame>
     );
   }
 
   return (
-    <div className="grid gap-6">
+    <PageFrame className="gap-6">
       <PageHeader
         title={t("photosApp.memories.title")}
         actions={
@@ -142,6 +151,6 @@ export function PhotoMemoriesPage() {
         }
         onClose={() => setViewer(null)}
       />
-    </div>
+    </PageFrame>
   );
 }

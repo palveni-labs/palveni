@@ -18,6 +18,7 @@ import { useLibraries } from "@/api/queries/libraries";
 import { currentLanguage } from "@/i18n";
 import { cn } from "@/lib/cn";
 import { errorText } from "@/lib/errors";
+import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import type { PhotoQueryFilter } from "../api";
@@ -236,7 +237,7 @@ export function PhotosTimelinePage() {
   const selectedArray = useMemo(() => [...selectedIds], [selectedIds]);
 
   return (
-    <div className="grid gap-5">
+    <PageFrame className="gap-5">
       <PageHeader
         title={t("photosApp.timeline.title")}
         summary={
@@ -614,6 +615,6 @@ export function PhotosTimelinePage() {
           setSelectMode(false);
         }}
       />
-    </div>
+    </PageFrame>
   );
 }

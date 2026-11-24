@@ -40,6 +40,7 @@ import { Section, SectionRows, useRowInset } from "@/ui/section";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 
 const IMPORT_SOURCES: ExternalImportSource[] = ["auto", "jellyfin", "emby", "navidrome", "m3u"];
+const ONLINE_IMPORT_SOURCES: ExternalImportSource[] = ["auto", "jellyfin", "emby", "navidrome"];
 const AUDIT_FILTERS = ["", "auth.", "user.", "library.", "system.", "metadata."] as const;
 const LOG_LEVEL_FILTERS = ["all", "info", "warn", "error"] as const;
 const METADATA_LANGUAGES = ["zh-CN", "zh-TW", "en-US", "ja-JP"] as const;
@@ -688,19 +689,43 @@ function ImporterSection() {
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement | null>(null);
 
+  const [mode, setMode] = useState<"file" | "online">("file");
   const [source, setSource] = useState<ExternalImportSource>("auto");
   const [playlistName, setPlaylistName] = useState("");
   const [content, setContent] = useState("");
+  const [serverUrl, setServerUrl] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [apiKey, setApiKey] = useState("");
   const [result, setResult] = useState<ExternalImportResult | null>(null);
+
+  const availableSources = mode === "online" ? ONLINE_IMPORT_SOURCES : IMPORT_SOURCES;
+  const effectiveSource = mode === "online" && source === "m3u" ? "auto" : source;
+  const canRun =
+    mode === "online"
+      ? Boolean(serverUrl.trim()) &&
+        (effectiveSource === "navidrome"
+          ? Boolean(username.trim() && (password || apiKey.trim()))
+          : Boolean(apiKey.trim() || username.trim()))
+      : Boolean(content.trim());
 
   const runImport = useMutation({
     mutationFn: (dryRun: boolean) =>
-      api.maintenance.importExternal({
-        source,
-        content,
-        playlistName: playlistName.trim() || undefined,
-        dryRun,
-      }),
+      mode === "online"
+        ? api.maintenance.importExternal({
+            source: effectiveSource,
+            serverUrl: serverUrl.trim(),
+            username: username.trim() || undefined,
+            password: password || undefined,
+            apiKey: apiKey.trim() || undefined,
+            dryRun,
+          })
+        : api.maintenance.importExternal({
+            source: effectiveSource,
+            content,
+            playlistName: playlistName.trim() || undefined,
+            dryRun,
+          }),
     onSuccess: (res) => {
       setResult(res);
       if (!res.dryRun) {
@@ -724,7 +749,34 @@ function ImporterSection() {
   };
 
   return (
-    <Section title={t("maintenance.importer.title")}>
+    <Section
+      title={t("maintenance.importer.title")}
+      actions={
+        <div className="flex items-center gap-1 rounded-control border border-line bg-sunken p-0.5">
+          <Button
+            size="sm"
+            variant={mode === "file" ? "primary" : "ghost"}
+            onPress={() => {
+              setMode("file");
+              setResult(null);
+            }}
+          >
+            {t("maintenance.importer.modes.file")}
+          </Button>
+          <Button
+            size="sm"
+            variant={mode === "online" ? "primary" : "ghost"}
+            onPress={() => {
+              setMode("online");
+              if (source === "m3u") setSource("auto");
+              setResult(null);
+            }}
+          >
+            {t("maintenance.importer.modes.online")}
+          </Button>
+        </div>
+      }
+    >
       <div className={cn("grid gap-3.5 pb-4", inset)}>
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-sm text-fg">
@@ -732,16 +784,16 @@ function ImporterSection() {
             <select
               aria-label={t("maintenance.importer.source")}
               className="rounded-control border border-line bg-surface px-3 py-1.5 text-sm text-fg"
-              value={source}
+              value={effectiveSource}
               onChange={(event) => {
-                const picked = IMPORT_SOURCES.find((item) => item === event.target.value);
+                const picked = availableSources.find((item) => item === event.target.value);
                 if (picked) {
                   setSource(picked);
                   setResult(null);
                 }
               }}
             >
-              {IMPORT_SOURCES.map((item) => (
+              {availableSources.map((item) => (
                 <option key={item} value={item}>
                   {t(`maintenance.importer.sources.${item}`)}
                 </option>
@@ -749,45 +801,98 @@ function ImporterSection() {
             </select>
           </label>
 
-          <Input
-            aria-label={t("maintenance.importer.playlistName")}
-            placeholder={t("maintenance.importer.playlistName")}
-            maxLength={128}
-            value={playlistName}
-            onChange={(event) => setPlaylistName(event.target.value)}
-            className="min-w-48 flex-1"
-          />
+          {mode === "file" ? (
+            <>
+              <Input
+                aria-label={t("maintenance.importer.playlistName")}
+                placeholder={t("maintenance.importer.playlistName")}
+                maxLength={128}
+                value={playlistName}
+                onChange={(event) => setPlaylistName(event.target.value)}
+                className="min-w-48 flex-1"
+              />
 
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".json,.m3u,.m3u8,.txt"
-            className="sr-only"
-            onChange={(event) => void handleFileChange(event)}
-          />
-          <Button variant="outline" size="sm" onPress={() => fileRef.current?.click()}>
-            <FileUp aria-hidden />
-            {t("maintenance.importer.uploadFile")}
-          </Button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".json,.m3u,.m3u8,.txt"
+                className="sr-only"
+                onChange={(event) => void handleFileChange(event)}
+              />
+              <Button variant="outline" size="sm" onPress={() => fileRef.current?.click()}>
+                <FileUp aria-hidden />
+                {t("maintenance.importer.uploadFile")}
+              </Button>
+            </>
+          ) : null}
         </div>
 
-        <textarea
-          aria-label={t("maintenance.importer.contentLabel")}
-          placeholder={t("maintenance.importer.contentPlaceholder")}
-          rows={5}
-          value={content}
-          onChange={(event) => {
-            setContent(event.target.value);
-            setResult(null);
-          }}
-          className="w-full rounded-control border border-line bg-surface p-3 font-mono text-sm text-fg placeholder:text-fg-subtle focus:outline-none"
-        />
+        {mode === "online" ? (
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            <Input
+              aria-label={t("maintenance.importer.serverUrl")}
+              placeholder={t("maintenance.importer.serverUrlPlaceholder")}
+              maxLength={512}
+              value={serverUrl}
+              onChange={(event) => {
+                setServerUrl(event.target.value);
+                setResult(null);
+              }}
+            />
+            <Input
+              aria-label={t("maintenance.importer.username")}
+              placeholder={t("maintenance.importer.username")}
+              maxLength={128}
+              value={username}
+              onChange={(event) => {
+                setUsername(event.target.value);
+                setResult(null);
+              }}
+            />
+            <Input
+              type="password"
+              aria-label={t("maintenance.importer.password")}
+              placeholder={t("maintenance.importer.password")}
+              maxLength={256}
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setResult(null);
+              }}
+            />
+            {effectiveSource !== "navidrome" ? (
+              <Input
+                type="password"
+                aria-label={t("maintenance.importer.apiKey")}
+                placeholder={t("maintenance.importer.apiKeyPlaceholder")}
+                maxLength={256}
+                value={apiKey}
+                onChange={(event) => {
+                  setApiKey(event.target.value);
+                  setResult(null);
+                }}
+              />
+            ) : null}
+          </div>
+        ) : (
+          <textarea
+            aria-label={t("maintenance.importer.contentLabel")}
+            placeholder={t("maintenance.importer.contentPlaceholder")}
+            rows={5}
+            value={content}
+            onChange={(event) => {
+              setContent(event.target.value);
+              setResult(null);
+            }}
+            className="w-full rounded-control border border-line bg-surface p-3 font-mono text-sm text-fg placeholder:text-fg-subtle focus:outline-none"
+          />
+        )}
 
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Button
             variant="outline"
             size="sm"
-            isDisabled={!content.trim() || runImport.isPending}
+            isDisabled={!canRun || runImport.isPending}
             onPress={() => runImport.mutate(true)}
           >
             <History aria-hidden />
@@ -796,7 +901,7 @@ function ImporterSection() {
           <Button
             variant="primary"
             size="sm"
-            isDisabled={!content.trim() || runImport.isPending}
+            isDisabled={!canRun || runImport.isPending}
             onPress={() => runImport.mutate(false)}
           >
             {runImport.isPending ? <Spinner size="sm" color="current" /> : <Upload aria-hidden />}

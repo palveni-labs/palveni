@@ -218,7 +218,7 @@ function OverviewMetricsStrip() {
 }
 
 /**
- * 概览. The order is fixed by "what needs me first": the main column holds the
+ * 概览. The order is fixed by "what needs me first" ( §3): the main column holds the
  * work (needs you → running → libraries → recently added), the side column the state of the
  * house (server → home → assistant suggestions). Modules contribute the sections; the user may
  * hide them or move them within their column.
@@ -266,7 +266,7 @@ export function OverviewPage() {
 
   if (!pane) {
     return (
-      <div className="pv-enter mx-auto flex min-h-full w-full max-w-[77.5rem] flex-col gap-(--pv-gap-section) px-(--pv-gutter) pt-6 pb-14 max-md:px-4 max-md:pt-5">
+      <div className="pv-enter pv-page-frame mx-auto flex min-h-full w-full max-w-(--pv-layout-max) flex-col gap-(--pv-gap-section) px-(--pv-layout-gutter) pt-(--pv-layout-top) pb-(--pv-layout-bottom)">
         <PageHeader title={t("modules.overview.title")} summary={summary} actions={actions} />
         <OverviewMetricsStrip />
         <PluginWidgetsRow />
@@ -285,8 +285,8 @@ export function OverviewPage() {
   }
 
   return (
-    <div className="pv-enter grid min-h-full w-full xl:grid-cols-[minmax(0,1fr)_var(--pv-aside-w)]">
-      <div className="mx-auto flex w-full max-w-[60rem] min-w-0 flex-col gap-(--pv-gap-section) px-(--pv-gutter) pt-7 pb-14 max-md:px-4 max-md:pt-5 xl:pe-(--pv-gap-section)">
+    <div className="pv-enter pv-page-frame mx-auto grid min-h-full w-full max-w-(--pv-layout-max) xl:grid-cols-[minmax(0,1fr)_var(--pv-aside-w)]">
+      <div className="flex w-full min-w-0 flex-col gap-(--pv-gap-section) px-(--pv-layout-gutter) pt-(--pv-layout-top) pb-(--pv-layout-bottom) xl:pe-(--pv-gap-section)">
         <PageHeader title={t("modules.overview.title")} summary={summary} actions={actions} />
         <PluginWidgetsRow />
         <Region widgets={main} editing={editing} onMove={moveWithin(main)} onHide={hide} />
@@ -294,7 +294,7 @@ export function OverviewPage() {
       {aside.length > 0 ? (
         <aside
           aria-label={t("overview.aside")}
-          className="grid content-start gap-(--pv-gap-section) border-line bg-aside px-(--pv-gutter) pb-14 max-xl:border-t max-md:px-4 md:grid-cols-2 xl:grid-cols-1 xl:border-s xl:px-5 xl:pt-7"
+          className="grid content-start gap-(--pv-gap-section) border-line bg-aside px-(--pv-layout-gutter) pb-(--pv-layout-bottom) max-xl:border-t md:grid-cols-2 xl:grid-cols-1 xl:border-s xl:px-5 xl:pt-(--pv-layout-top)"
         >
           <Region widgets={aside} editing={editing} onMove={moveWithin(aside)} onHide={hide} />
         </aside>

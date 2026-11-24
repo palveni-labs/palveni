@@ -380,7 +380,7 @@ function VideoDetailView({
 
   if (detailQuery.isPending) {
     return (
-      <div className="mx-auto w-full max-w-[88rem] px-(--pv-gutter) pt-6 pb-12 max-md:px-4">
+      <div className="pv-page-frame mx-auto w-full max-w-(--pv-layout-max) px-(--pv-layout-gutter) pt-(--pv-layout-top) pb-(--pv-layout-bottom)">
         <LoadingRows rows={6} />
       </div>
     );
@@ -388,7 +388,7 @@ function VideoDetailView({
 
   if (detailQuery.isError) {
     return (
-      <div className="mx-auto w-full max-w-[88rem] px-(--pv-gutter) pt-6 pb-12 max-md:px-4">
+      <div className="pv-page-frame mx-auto w-full max-w-(--pv-layout-max) px-(--pv-layout-gutter) pt-(--pv-layout-top) pb-(--pv-layout-bottom)">
         <ErrorState error={detailQuery.error} onRetry={() => void detailQuery.refetch()} />
       </div>
     );
@@ -396,7 +396,7 @@ function VideoDetailView({
 
   if (!detail || !work) {
     return (
-      <div className="mx-auto w-full max-w-[88rem] px-(--pv-gutter) pt-6 pb-12 max-md:px-4">
+      <div className="pv-page-frame mx-auto w-full max-w-(--pv-layout-max) px-(--pv-layout-gutter) pt-(--pv-layout-top) pb-(--pv-layout-bottom)">
         <EmptyState
           icon={Film}
           title={t("videoApp.detail.notFound")}
@@ -483,7 +483,7 @@ function VideoDetailView({
               "linear-gradient(90deg, rgba(6,8,12,0.92) 0%, rgba(6,8,12,0.78) 54%, rgba(6,8,12,0.45) 100%), linear-gradient(0deg, rgba(6,8,12,0.95) 0%, rgba(6,8,12,0.45) 55%, rgba(6,8,12,0.35) 100%)",
           }}
         >
-          <div className="mx-auto flex w-full max-w-[88rem] flex-col gap-6 px-(--pv-gutter) pt-5 pb-8 max-md:px-4 sm:pt-7 sm:pb-10">
+          <div className="mx-auto flex w-full max-w-(--pv-layout-max) flex-col gap-6 px-(--pv-layout-gutter) pt-5 pb-8 sm:pt-7 sm:pb-10">
             <div>
               <Link
                 to="/video/$libraryId"
@@ -707,7 +707,7 @@ function VideoDetailView({
       </section>
 
       {/* Main Content below Hero */}
-      <div className="mx-auto flex w-full max-w-[88rem] flex-col gap-8 px-(--pv-gutter) pt-7 max-md:gap-6 max-md:px-4">
+      <div className="pv-page-frame mx-auto flex w-full max-w-(--pv-layout-max) flex-col gap-8 px-(--pv-layout-gutter) pt-7 max-md:gap-6">
         {mediaInfoQuery.data ? <MediaSpecsStrip info={mediaInfoQuery.data} /> : null}
 
         {/* Seasons & Episodes */}

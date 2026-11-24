@@ -442,9 +442,10 @@ pub struct SnapshotMemory {
 // External history & playlist importer
 // ---------------------------------------------------------------------------
 
-#[derive(utoipa::ToSchema, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(utoipa::ToSchema, Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ExternalImportSource {
+    #[default]
     Auto,
     Jellyfin,
     Emby,
@@ -452,16 +453,25 @@ pub enum ExternalImportSource {
     M3u,
 }
 
-#[derive(utoipa::ToSchema, Clone, Debug, Serialize, Deserialize)]
+#[derive(utoipa::ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ExternalImportRequest {
     #[serde(default = "default_auto_source")]
     pub source: ExternalImportSource,
+    #[serde(default)]
     pub content: String,
     #[serde(default)]
     pub playlist_name: Option<String>,
     #[serde(default = "default_true")]
     pub dry_run: bool,
+    #[serde(default)]
+    pub server_url: Option<String>,
+    #[serde(default)]
+    pub username: Option<String>,
+    #[serde(default)]
+    pub password: Option<String>,
+    #[serde(default)]
+    pub api_key: Option<String>,
 }
 
 #[derive(utoipa::ToSchema, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

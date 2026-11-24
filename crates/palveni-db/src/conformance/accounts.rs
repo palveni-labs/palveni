@@ -334,6 +334,7 @@ async fn conformance_accounts_acl_sessions_audit_backups_and_import() {
                     content: jellyfin_payload.clone(),
                     playlist_name: None,
                     dry_run: true,
+                    ..Default::default()
                 },
             )
             .await
@@ -363,6 +364,7 @@ async fn conformance_accounts_acl_sessions_audit_backups_and_import() {
                     content: jellyfin_payload,
                     playlist_name: None,
                     dry_run: false,
+                    ..Default::default()
                 },
             )
             .await
@@ -390,6 +392,7 @@ async fn conformance_accounts_acl_sessions_audit_backups_and_import() {
                     content: navidrome_payload,
                     playlist_name: None,
                     dry_run: false,
+                    ..Default::default()
                 },
             )
             .await
@@ -411,6 +414,7 @@ async fn conformance_accounts_acl_sessions_audit_backups_and_import() {
                     content: m3u_text.into(),
                     playlist_name: None,
                     dry_run: false,
+                    ..Default::default()
                 },
             )
             .await

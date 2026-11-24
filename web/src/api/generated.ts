@@ -4622,10 +4622,14 @@ export interface components {
             verified: boolean;
         };
         ExternalImportRequest: {
-            content: string;
+            apiKey?: string | null;
+            content?: string;
             dryRun?: boolean;
+            password?: string | null;
             playlistName?: string | null;
+            serverUrl?: string | null;
             source?: components["schemas"]["ExternalImportSource"];
+            username?: string | null;
         };
         ExternalImportResult: {
             detectedSource: components["schemas"]["ExternalImportSource"];
@@ -4951,7 +4955,7 @@ export interface components {
         /** @enum {string} */
         LyricsFormat: "lrc" | "plain";
         /** @enum {string} */
-        LyricsSource: "sidecar" | "embedded";
+        LyricsSource: "sidecar" | "embedded" | "online";
         /** @description Administrator view of an account including its policy, allowed libraries and active sessions. */
         ManagedUser: {
             /** Format: int64 */

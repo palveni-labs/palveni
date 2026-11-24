@@ -46,7 +46,7 @@ To use an OpenSubsonic player, open **System → Settings → Account → OpenSu
 
 After the first scan, Palveni watches each library for file additions, edits, renames and deletions. Libraries are also checked on startup and periodically, including network mounts that do not deliver filesystem notifications.
 
-Clients can play a scanned track in its original format via `GET /api/v1/items/{id}/stream` (with HTTP byte ranges) or short-lived signed links from `POST /api/v1/items/{id}/playback`. When needed, Palveni transcodes on the fly to MP3, AAC or Opus at 32–320 kbit/s, splits UTF-8 CUE sheets into individual playable tracks, runs background loudness analysis (LUFS / LU / dBTP) and serves `.lrc` / embedded lyrics.
+Clients can play a scanned track in its original format via `GET /api/v1/items/{id}/stream` (with HTTP byte ranges) or short-lived signed links from `POST /api/v1/items/{id}/playback`. When needed, Palveni transcodes on the fly to MP3, AAC or Opus at 32–320 kbit/s, splits UTF-8 CUE sheets into individual playable tracks, runs background loudness analysis (LUFS / LU / dBTP) and serves `.lrc` / embedded lyrics—falling back to online synced/plain lyrics via the official LRCLIB recipe plugin when installed and permitted.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/music-library-dark.png">
@@ -82,19 +82,19 @@ Members can create **cross-media collections** combining films, soundtracks, boo
 
 ## Smart home, AI assistant and MCP
 
-Under **Smart Home**, connect Home Assistant bridges or pure-Rust MQTT 3.1.1 brokers to monitor and control lights, switches, thermostats, sensors and media players, activate multi-device scenes, bind playback-driven lighting automations, and sync ambient lamp colors to playing album artwork.
+Under **Smart Home**, connect Home Assistant bridges or pure-Rust MQTT 3.1.1 brokers to monitor and control lights, switches, thermostats, sensors and media players, activate multi-device scenes, trigger playback-driven lighting automations across play, pause and stop transitions (using host local timezone for late-night rules), and sync ambient lamp colors to playing album artwork.
 
 The built-in **AI Visual Assistant** works both offline (via a deterministic local planner) and with user-configured OpenAI-compatible or Anthropic-compatible models. It renders structured interactive UI blocks, enforces server-side confirmation gates on write actions, applies configurable cloud path redaction and data-egress policies, and respects per-user daily quotas. External AI tools (such as Claude, Cursor or OpenClaw) can connect via the standard **Model Context Protocol** endpoint at `/api/v1/mcp` using the same permissions and audit trail.
 
 ## Downloads, media organizer and notifications
 
-Under **Tasks**, bridge external **qBittorrent**, **Transmission** or **aria2** clients to monitor live transfers, submit Magnet/HTTP links, monitor RSS/Atom media subscriptions with quality rules and one-click downloader submission, and run the **Media Organizer** for dry-run template renaming or hardlinking with 1-click batch undo.
+Under **Tasks**, bridge external **qBittorrent**, **Transmission** or **aria2** clients to monitor live transfers, submit Magnet/HTTP links, automatically poll RSS/Atom media subscriptions in the background with deduplicated downloader submission and notifications, and run the **Media Organizer** for dry-run template renaming or hardlinking with 1-click batch undo.
 
 Under **Notifications & routines**, configure outbound push channels (Webhook, Telegram, WeCom, Bark), manage inbound webhook tokens for Sonarr/Radarr/MoviePilot, and schedule recurring automation routines.
 
 ## Sync, remote cast, observability and maintenance
 
-Clients can consume incremental state changes via `/api/v1/sync/changes`, report active playback sessions and remotely control playback across devices from the topbar cast popover. Under **System → Observability & Maintenance**, inspect Prometheus metrics (`/api/v1/metrics`), live server logs, health diagnostics (`doctor`), audit logs, one-click SQLite backups, and the migration importer for Emby, Jellyfin and Navidrome libraries.
+Clients can consume incremental state changes via `/api/v1/sync/changes`, report active playback sessions and remotely control playback across devices from the topbar cast popover. Under **System → Observability & Maintenance**, inspect Prometheus metrics (`/api/v1/metrics`), live server logs, health diagnostics (`doctor`), audit logs, one-click SQLite backups, and the migration importer for Emby, Jellyfin, Navidrome and M3U (supporting both file/JSON upload and direct online pull from legacy servers).
 
 ## Network sources
 
@@ -102,9 +102,9 @@ To index media on a NAS, mount its share on the host and expose it read-only to 
 
 ## Skins and plugins
 
-The default **Work Colour** skin pairs frosted-glass surfaces and cover-derived media accents with a 4-group sidebar on desktop and bottom navigation on phones. Under **System → Settings**, you can reposition the navigation bar, reorder entries and choose light, dark or system mode.
+The default **Work Colour** skin pairs frosted-glass surfaces, cover-derived media accents, resolution-adaptive fluid typography and container-aware card grids with a 4-group sidebar on desktop and bottom navigation on phones. Under **System → Settings**, you can reposition the navigation bar, reorder entries and choose light, dark or system mode.
 
-Open **Apps → Plugin store** to browse official skins, declarative metadata/lyrics/subtitle recipes and overview dashboard widgets (such as the live clock/storage badge and daily quote card). Recipe and widget plugins enforce explicit permission review before installation, schema-validated configuration drawers and one-click version rollback. Find official skin packages and contribution guidelines in the [plugins repository](https://github.com/palveni-labs/plugins).
+Open **Apps → Plugin store** to browse official skins, live-executed declarative metadata/lyrics/subtitle recipes (such as LRCLIB lyrics fallback, TMDB language/content filters and Bangumi title preferences) and overview dashboard widgets (such as the live clock/storage badge and daily quote card). Recipe and widget plugins enforce explicit permission review before installation, schema-validated configuration drawers and one-click version rollback. Find official skin packages and contribution guidelines in the [plugins repository](https://github.com/palveni-labs/plugins).
 
 ## License
 

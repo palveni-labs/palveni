@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowDownAZ, ArrowUpAZ, BookOpen, FolderOpen, Heart, Layers, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import type { ReadingKind, ReadingListQuery, ReadingSort, ReadingSortDir } from "../api";
@@ -114,7 +115,7 @@ export function ReadingShelfPage({
           : t("readingApp.search.title");
 
   return (
-    <div className="grid gap-5 pb-8">
+    <PageFrame className="gap-5">
       <PageHeader
         title={title}
         summary={shouldRunSearch && !isLoading ? t("readingApp.shelf.totalCount", { count: total }) : undefined}
@@ -277,7 +278,7 @@ export function ReadingShelfPage({
         />
       ) : (
         <div className="grid gap-6">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+          <div className="pv-grid-poster">
             {entries.map((entry) => (
               <ReadingCard key={entry.itemId} entry={entry} />
             ))}
@@ -296,6 +297,6 @@ export function ReadingShelfPage({
           ) : null}
         </div>
       )}
-    </div>
+    </PageFrame>
   );
 }

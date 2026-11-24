@@ -26,6 +26,7 @@ import { useIsAdmin } from "@/api/queries/auth";
 import { cn } from "@/lib/cn";
 import { useFeature } from "@/modules/access";
 import { AddToCollectionDialog } from "@/ui/add-to-collection-dialog";
+import { PageFrame } from "@/ui/frame";
 import { MetadataEditModal } from "@/ui/metadata-edit-modal";
 import { ToolbarTitle } from "@/ui/page";
 import { ShareDialog } from "@/ui/share-dialog";
@@ -205,10 +206,18 @@ export function ComicReaderPage({ itemId }: { itemId: string }) {
   });
 
   if (manifestQuery.isLoading) {
-    return <LoadingRows rows={6} />;
+    return (
+      <PageFrame>
+        <LoadingRows rows={6} />
+      </PageFrame>
+    );
   }
   if (manifestQuery.error || !manifest) {
-    return <ErrorState error={manifestQuery.error} onRetry={() => void manifestQuery.refetch()} />;
+    return (
+      <PageFrame>
+        <ErrorState error={manifestQuery.error} onRetry={() => void manifestQuery.refetch()} />
+      </PageFrame>
+    );
   }
 
   const { entry, bookmarks } = manifest;
@@ -228,16 +237,17 @@ export function ComicReaderPage({ itemId }: { itemId: string }) {
   const orderedSpreadPages = prefs.direction === "rtl" ? [...spreadPair].reverse() : spreadPair;
 
   return (
-    <div
-      ref={stageRef}
-      data-testid="comic-reader-stage"
-      data-direction={prefs.direction}
-      data-view-mode={prefs.mode}
-      className="flex min-h-[84vh] flex-col justify-between overflow-hidden rounded-panel bg-neutral-950 text-neutral-100 shadow-raised ring-1 ring-white/12"
-    >
+    <PageFrame className="gap-0">
+      <div
+        ref={stageRef}
+        data-testid="comic-reader-stage"
+        data-direction={prefs.direction}
+        data-view-mode={prefs.mode}
+        className="flex min-h-[82vh] flex-col justify-between overflow-hidden rounded-panel bg-neutral-950 text-neutral-100 shadow-raised ring-1 ring-white/12"
+      >
       <ToolbarTitle title={entry.title} />
 
-      {/* Top Dark Control Bar */}
+      {/* Top Dark Control Bar (fixed dark chrome) */}
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-neutral-900/90 px-3.5 py-2.5 backdrop-blur-xs">
         <div className="flex min-w-0 items-center gap-2.5">
           <Link
@@ -660,6 +670,7 @@ export function ComicReaderPage({ itemId }: { itemId: string }) {
           }}
         />
       ) : null}
-    </div>
+      </div>
+    </PageFrame>
   );
 }

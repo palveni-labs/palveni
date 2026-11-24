@@ -153,7 +153,7 @@ export function PhotoGrid({
   }
 
   return (
-    <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+    <div className="pv-grid-photo">
       {items.map((photo, index) => {
         const selected = Boolean(selectedIds?.has(photo.id));
         return (

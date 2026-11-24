@@ -238,13 +238,25 @@ pub async fn search(
                 .field("provider"));
             };
             let api_key = decrypt_secret(&state.identity, METADATA_SECRET_SCOPE, "tmdb", cipher)?;
+            let recipe_settings = state
+                .db
+                .plugins_photo_ai()
+                .get_installed_plugin("palveni.recipe.tmdb")
+                .await
+                .ok()
+                .flatten()
+                .filter(|rec| rec.enabled)
+                .map(|rec| rec.settings);
+            let (effective_lang, include_adult) =
+                resolve_tmdb_recipe_options(&stored.preferred_language, recipe_settings.as_ref());
             search_tmdb(
                 &client,
                 &api_key,
                 query,
                 req.media_type,
                 req.year,
-                &stored.preferred_language,
+                &effective_lang,
+                include_adult,
             )
             .await?
         }
@@ -262,7 +274,28 @@ pub async fn search(
                 )?),
                 None => None,
             };
-            search_bangumi(&client, token.as_deref(), query, req.media_type).await?
+            let prefer_chinese_title = state
+                .db
+                .plugins_photo_ai()
+                .get_installed_plugin("palveni.recipe.bangumi")
+                .await
+                .ok()
+                .flatten()
+                .filter(|rec| rec.enabled)
+                .and_then(|rec| {
+                    rec.settings
+                        .get("preferChineseTitle")
+                        .and_then(Value::as_bool)
+                })
+                .unwrap_or(true);
+            search_bangumi(
+                &client,
+                token.as_deref(),
+                query,
+                req.media_type,
+                prefer_chinese_title,
+            )
+            .await?
         }
         MetadataProvider::Openlibrary => search_openlibrary(&client, query, req.year).await?,
         MetadataProvider::Manual => unreachable!(),
@@ -286,6 +319,30 @@ pub async fn search(
     }))
 }
 
+fn resolve_tmdb_recipe_options(
+    default_language: &str,
+    recipe_settings: Option<&Value>,
+) -> (String, bool) {
+    let language = recipe_settings
+        .and_then(|v| v.get("language"))
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|lang| {
+            !lang.is_empty()
+                && lang.len() <= 16
+                && lang
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+        })
+        .unwrap_or(default_language)
+        .to_owned();
+    let include_adult = recipe_settings
+        .and_then(|v| v.get("includeAdult"))
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    (language, include_adult)
+}
+
 async fn search_tmdb(
     client: &reqwest::Client,
     api_key: &str,
@@ -293,6 +350,7 @@ async fn search_tmdb(
     media_type: Option<MetadataSearchMediaType>,
     year: Option<i32>,
     language: &str,
+    include_adult: bool,
 ) -> Result<Vec<MetadataSearchCandidate>, ApiError> {
     let endpoint = match media_type {
         Some(MetadataSearchMediaType::Movie) => "https://api.themoviedb.org/3/search/movie",
@@ -305,7 +363,10 @@ async fn search_tmdb(
     let mut params: Vec<(&str, String)> = vec![
         ("query", query.to_owned()),
         ("language", language.to_owned()),
-        ("include_adult", "false".to_owned()),
+        (
+            "include_adult",
+            if include_adult { "true" } else { "false" }.to_owned(),
+        ),
     ];
     if let Some(yr) = year {
         let year_param = match media_type {
@@ -479,6 +540,7 @@ async fn search_bangumi(
     token: Option<&str>,
     query: &str,
     media_type: Option<MetadataSearchMediaType>,
+    prefer_chinese_title: bool,
 ) -> Result<Vec<MetadataSearchCandidate>, ApiError> {
     let type_filter: Vec<i32> = match media_type {
         Some(MetadataSearchMediaType::Book) => vec![1],
@@ -517,10 +579,13 @@ async fn search_bangumi(
         .json()
         .await
         .map_err(|err| upstream_error("Bangumi", err))?;
-    Ok(parse_bangumi_results(&payload))
+    Ok(parse_bangumi_results(&payload, prefer_chinese_title))
 }
 
-fn parse_bangumi_results(payload: &Value) -> Vec<MetadataSearchCandidate> {
+fn parse_bangumi_results(
+    payload: &Value,
+    prefer_chinese_title: bool,
+) -> Vec<MetadataSearchCandidate> {
     let Some(items) = payload.get("data").and_then(Value::as_array) else {
         return Vec::new();
     };
@@ -539,11 +604,21 @@ fn parse_bangumi_results(payload: &Value) -> Vec<MetadataSearchCandidate> {
             .and_then(Value::as_str)
             .map(str::trim)
             .unwrap_or("");
-        let title = if !name_cn.is_empty() { name_cn } else { name };
+        let title = if prefer_chinese_title {
+            if !name_cn.is_empty() { name_cn } else { name }
+        } else if !name.is_empty() {
+            name
+        } else {
+            name_cn
+        };
         if title.is_empty() {
             continue;
         }
-        let original_title = (!name.is_empty() && name != title).then(|| name.to_owned());
+        let original_title = if prefer_chinese_title {
+            (!name.is_empty() && name != title).then(|| name.to_owned())
+        } else {
+            (!name_cn.is_empty() && name_cn != title).then(|| name_cn.to_owned())
+        };
 
         let year = item
             .get("date")
@@ -1061,7 +1136,7 @@ mod tests {
             Some("https://image.tmdb.org/t/p/w500/dune.jpg")
         );
 
-        let bgm = parse_bangumi_results(&json!({
+        let bgm_payload = json!({
             "data": [{
                 "id": 253,
                 "type": 2,
@@ -1073,7 +1148,8 @@ mod tests {
                 "meta_tags": ["科幻", "赏金猎人"],
                 "images": { "large": "http://lain.bgm.tv/pic/cover/l/a.jpg" }
             }]
-        }));
+        });
+        let bgm = parse_bangumi_results(&bgm_payload, true);
         assert_eq!(bgm.len(), 1);
         assert_eq!(bgm[0].title, "星际牛仔");
         assert_eq!(bgm[0].original_title.as_deref(), Some("Cowboy Bebop"));
@@ -1081,6 +1157,22 @@ mod tests {
         assert_eq!(
             bgm[0].poster_url.as_deref(),
             Some("https://lain.bgm.tv/pic/cover/l/a.jpg")
+        );
+
+        let bgm_orig = parse_bangumi_results(&bgm_payload, false);
+        assert_eq!(bgm_orig[0].title, "Cowboy Bebop");
+        assert_eq!(bgm_orig[0].original_title.as_deref(), Some("星际牛仔"));
+
+        assert_eq!(
+            resolve_tmdb_recipe_options(
+                "zh-CN",
+                Some(&json!({ "language": "ja-JP", "includeAdult": true })),
+            ),
+            ("ja-JP".to_owned(), true)
+        );
+        assert_eq!(
+            resolve_tmdb_recipe_options("zh-CN", Some(&json!({ "language": "bad lang!" }))),
+            ("zh-CN".to_owned(), false)
         );
 
         let ol = parse_openlibrary_results(&json!({

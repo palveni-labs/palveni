@@ -8,7 +8,7 @@ use axum::http::StatusCode;
 use palveni_core::ServerEvent;
 use palveni_core::sync_cast::{
     PlaybackCommandAck, PlaybackCommandKind, PlaybackCommandRequest, PlaybackHeartbeatRequest,
-    PlaybackSession, PlaybackSessionList,
+    PlaybackMediaKind, PlaybackSession, PlaybackSessionList, PlaybackSessionState,
 };
 use palveni_db::sync_cast::{
     ACTIVE_SESSION_WINDOW_MS, UpsertPlaybackSession, UpsertSessionOutcome,
@@ -108,6 +108,13 @@ pub async fn heartbeat(
     let subtitle = clean_opt(req.subtitle, 255, "subtitle")?;
     let artwork_id = clean_opt(req.artwork_id, 80, "artworkId")?;
 
+    let previous_state = state
+        .db
+        .sync_cast()
+        .get_playback_session(session_id)
+        .await?
+        .map(|s| s.state);
+
     let outcome = state
         .db
         .sync_cast()
@@ -142,6 +149,42 @@ pub async fn heartbeat(
             ));
         }
     };
+
+    // Fire smart-home media automation on real state transitions (play / pause / stop).
+    if previous_state != Some(session.state) {
+        let was_active = matches!(
+            previous_state,
+            Some(PlaybackSessionState::Playing | PlaybackSessionState::Paused)
+        );
+        let home_event = match (session.media_kind, session.state) {
+            (PlaybackMediaKind::Video, PlaybackSessionState::Playing) => Some("video.play"),
+            (PlaybackMediaKind::Video, PlaybackSessionState::Paused) => Some("video.pause"),
+            (PlaybackMediaKind::Video, PlaybackSessionState::Stopped) => Some("video.stop"),
+            (PlaybackMediaKind::Video, PlaybackSessionState::Idle) if was_active => {
+                Some("video.stop")
+            }
+            (
+                PlaybackMediaKind::Audio | PlaybackMediaKind::Audiobook,
+                PlaybackSessionState::Playing,
+            ) => Some("music.play"),
+            (
+                PlaybackMediaKind::Audio | PlaybackMediaKind::Audiobook,
+                PlaybackSessionState::Paused,
+            ) => Some("music.pause"),
+            (
+                PlaybackMediaKind::Audio | PlaybackMediaKind::Audiobook,
+                PlaybackSessionState::Stopped,
+            ) => Some("music.stop"),
+            (
+                PlaybackMediaKind::Audio | PlaybackMediaKind::Audiobook,
+                PlaybackSessionState::Idle,
+            ) if was_active => Some("music.stop"),
+            _ => None,
+        };
+        if let Some(event_kind) = home_event {
+            crate::routes::home::trigger_media_event(&state, event_kind);
+        }
+    }
 
     state.bus.publish(ServerEvent::PlaybackSessionUpdated {
         user_id: current.user.id,

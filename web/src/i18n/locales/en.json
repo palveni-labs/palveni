@@ -1093,8 +1093,10 @@
       "ruleAdded": "Added playback automation rule",
       "events": {
         "videoPlay": "Video playback starts",
-        "videoPause": "Video playback pauses",
+        "videoPause": "Video playback pauses (restore lights)",
+        "videoStop": "Video playback stops (restore lights)",
         "musicPlay": "Music playback starts",
+        "musicPause": "Music playback pauses or stops",
         "nightPlay": "Playback starts after 23:30"
       },
       "mqttSection": "MQTT bridge & ambient light",
@@ -1488,14 +1490,24 @@
     },
     "importer": {
       "title": "Emby / Jellyfin / Navidrome / M3U importer",
+      "modes": {
+        "file": "File / JSON",
+        "online": "Connect server"
+      },
       "source": "Source format",
       "sources": {
         "auto": "Auto-detect",
-        "jellyfin": "Jellyfin JSON",
-        "emby": "Emby JSON",
-        "navidrome": "Navidrome / Subsonic JSON",
+        "jellyfin": "Jellyfin",
+        "emby": "Emby",
+        "navidrome": "Navidrome / Subsonic",
         "m3u": "M3U / M3U8 playlist"
       },
+      "serverUrl": "Server URL",
+      "serverUrlPlaceholder": "Server URL (e.g. http://192.168.0.10:8096)",
+      "username": "Username",
+      "password": "Password",
+      "apiKey": "API key",
+      "apiKeyPlaceholder": "API key (Jellyfin / Emby alternative to password)",
       "playlistName": "Playlist name (optional)",
       "uploadFile": "Choose file",
       "contentLabel": "Import payload",

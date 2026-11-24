@@ -119,6 +119,7 @@ pub struct MusicPage {
 pub enum LyricsSource {
     Sidecar,
     Embedded,
+    Online,
 }
 
 #[derive(utoipa::ToSchema, Debug, PartialEq, Eq, Serialize)]

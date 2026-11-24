@@ -99,7 +99,7 @@ function Scenes({ scenes }: { scenes: Scene[] }) {
           if (id !== undefined) run(String(id));
         }}
         isDisabled={activate.isPending}
-        className="grid w-full grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-3"
+        className="grid w-full grid-cols-[repeat(auto-fill,minmax(min(100%,clamp(9.75rem,14cqi,12.25rem)),1fr))] gap-3"
       >
         {scenes.map((scene) => {
           const Icon = SCENE_ICONS[scene.icon];

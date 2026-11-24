@@ -47,9 +47,9 @@ const ALPHABET = ["#", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"] as const;
 const SORT_ORDERS: VideoOrder[] = ["added", "title", "year", "rating", "runtime", "poster", "random"];
 
 function posterGridMetrics(width: number) {
-  const gap = width < 640 ? 12 : 16;
-  const columns =
-    width < 440 ? 2 : width < 640 ? 3 : width < 860 ? 4 : width < 1120 ? 5 : width < 1360 ? 6 : 7;
+  const gap = width < 640 ? 14 : 18;
+  const minTile = width < 480 ? 146 : 166;
+  const columns = Math.max(2, Math.floor((width + gap) / (minTile + gap)));
   const cellWidth = Math.max(120, (width - gap * (columns - 1)) / columns);
   const posterHeight = Math.round(cellWidth * 1.5);
   const footerHeight = 52;
@@ -303,7 +303,7 @@ export function VideoLibraryPage() {
   );
 
   return (
-    <div className="pv-enter mx-auto flex w-full max-w-[88rem] flex-col gap-5 px-(--pv-gutter) pt-5 pb-14 max-md:px-4 max-md:pt-4">
+    <div className="pv-enter pv-page-frame mx-auto flex w-full max-w-(--pv-layout-max) flex-col gap-5 px-(--pv-layout-gutter) pt-(--pv-layout-top) pb-(--pv-layout-bottom)">
       <PageHeader
         title={library?.name ?? t("videoApp.title")}
         summary={
@@ -570,7 +570,7 @@ export function VideoLibraryPage() {
         ) : genres.length === 0 ? (
           <EmptyState icon={Tag} title={t("videoApp.library.emptyLibrary")} />
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <div className="pv-grid-poster">
             {genres.map((genre) => (
               <button
                 key={genre.name}

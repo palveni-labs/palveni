@@ -4,6 +4,7 @@ import { MapPin, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
+import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import { PhotoGrid, PhotoImage } from "../components/photo-image";
@@ -39,7 +40,7 @@ export function PhotoPlacesPage() {
   };
 
   return (
-    <div className="grid gap-5">
+    <PageFrame className="gap-5">
       <PageHeader
         title={t("photosApp.places.title")}
         summary={t("photosApp.places.summary", {
@@ -132,6 +133,6 @@ export function PhotoPlacesPage() {
         onIndexChange={setLightboxIndex}
         onClose={() => setLightboxIndex(null)}
       />
-    </div>
+    </PageFrame>
   );
 }

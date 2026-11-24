@@ -1466,6 +1466,7 @@ pub fn spawn_background_services(state: AppState) -> tokio::task::JoinHandle<()>
                 }
                 _ = ticker.tick() => {
                     run_due_periodic_routines(&state).await;
+                    let _ = crate::routes::downloads::poll_due_subscriptions(&state).await;
                 }
             }
         }

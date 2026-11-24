@@ -132,7 +132,7 @@ export default function RecentWidget() {
   return (
     <ul
       className={cn(
-        "no-scrollbar grid auto-cols-[9.5rem] grid-flow-col gap-3 overflow-x-auto pb-1 md:grid-flow-row md:grid-cols-6 md:overflow-visible",
+        "no-scrollbar grid auto-cols-[9.5rem] grid-flow-col gap-3.5 overflow-x-auto pb-1 md:grid-flow-row md:grid-cols-[repeat(auto-fill,minmax(min(100%,9.75rem),1fr))] md:overflow-visible",
       )}
     >
       {recent.slice(0, 6).map((work) => (

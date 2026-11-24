@@ -3,6 +3,7 @@ import { ArrowLeft, Pencil, Trash2, UserPlus, Users, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { errorText } from "@/lib/errors";
+import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import type { PhotoPersonSummary } from "../api";
@@ -93,7 +94,7 @@ export function PhotoPeoplePage() {
   };
 
   return (
-    <div className="grid gap-5">
+    <PageFrame className="gap-5">
       {activePerson ? (
         <>
           <PageHeader
@@ -191,7 +192,7 @@ export function PhotoPeoplePage() {
               }
             />
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            <div className="pv-grid-square">
               {people.map((person) => (
                 <article
                   key={person.id}
@@ -306,6 +307,6 @@ export function PhotoPeoplePage() {
           </form>
         </div>
       ) : null}
-    </div>
+    </PageFrame>
   );
 }

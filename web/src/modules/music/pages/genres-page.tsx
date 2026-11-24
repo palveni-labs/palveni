@@ -16,6 +16,7 @@ import { musicKeys } from "../queries";
 
 const VIEW_KEY = "palveni.music.genres.view";
 
+/** Editorial non-purple palette ( §3 forbids purple hues). */
 const GENRE_SWATCHES = [
   "#8c2f24",
   "#9e4d23",
@@ -153,7 +154,7 @@ function GenresContent({ libraryId }: { libraryId: string }) {
       ) : genres.length === 0 ? (
         <EmptyState icon={Tag} title={t("musicApp.genres.empty")} />
       ) : view === "grid" ? (
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="pv-grid-card">
           {genres.map((genre) => (
             <GenreCard key={genre.name} libraryId={libraryId} genre={genre} />
           ))}

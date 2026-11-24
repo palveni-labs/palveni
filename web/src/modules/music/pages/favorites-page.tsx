@@ -73,7 +73,7 @@ function FavoriteAlbums({ libraryId }: { libraryId: string }) {
   if (albums.length === 0) return <EmptyState icon={Disc3} title={t("musicApp.favorites.emptyAlbums")} />;
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+    <div className="pv-grid-square">
       {albums.map((album) => (
         <AlbumCard key={album.id} album={album} />
       ))}
@@ -96,7 +96,7 @@ function FavoriteArtists({ libraryId }: { libraryId: string }) {
   if (artists.length === 0) return <EmptyState icon={UsersRound} title={t("musicApp.favorites.emptyArtists")} />;
 
   return (
-    <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+    <div className="pv-grid-square">
       {artists.map((artist) => (
         <ArtistCard key={artist.id} artist={artist} />
       ))}

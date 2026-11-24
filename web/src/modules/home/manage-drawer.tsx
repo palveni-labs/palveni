@@ -268,7 +268,9 @@ export function HomeManageDrawer({
                   >
                     <option value="video.play">{t("home.manage.events.videoPlay")}</option>
                     <option value="video.pause">{t("home.manage.events.videoPause")}</option>
+                    <option value="video.stop">{t("home.manage.events.videoStop")}</option>
                     <option value="music.play">{t("home.manage.events.musicPlay")}</option>
+                    <option value="music.pause">{t("home.manage.events.musicPause")}</option>
                     <option value="night.play">{t("home.manage.events.nightPlay")}</option>
                   </select>
                 </div>

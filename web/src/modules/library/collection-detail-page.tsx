@@ -379,7 +379,7 @@ export function CollectionDetailPage() {
             </span>
           }
         >
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="pv-grid-card">
             {autoRelated.map((work) => {
               const Icon = KIND_ICONS[work.entryKind];
               return (

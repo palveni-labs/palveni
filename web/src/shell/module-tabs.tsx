@@ -16,7 +16,7 @@ export function ModuleTabs() {
   const entries = (module?.nav ?? []).filter((entry) => isEnabled(entry, access));
   if (entries.length < 2) return null;
   return (
-    <nav aria-label={module ? t(module.titleKey) : undefined} className="mx-auto w-full max-w-[76rem] px-4 pt-4 md:hidden">
+    <nav aria-label={module ? t(module.titleKey) : undefined} className="mx-auto w-full max-w-(--pv-layout-max) px-(--pv-layout-gutter) pt-4 md:hidden">
       <ul className="no-scrollbar flex w-full gap-1 overflow-x-auto border-b border-line">
         {entries.map((entry) => {
           const Icon = entry.icon;

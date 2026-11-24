@@ -113,6 +113,13 @@ describe("users, account security and maintenance", () => {
     await user.click(screen.getByRole("button", { name: "确认导入" }));
     await waitFor(() => expect(db.auditLogs.some((entry) => entry.action === "system.imported")).toBe(true));
 
+    // 2b. Switch to online server direct-connect mode and preview match
+    await user.click(screen.getByRole("button", { name: "在线直连" }));
+    await user.type(screen.getByLabelText("旧服务器地址"), "http://192.168.0.10:8096");
+    await user.type(screen.getByLabelText("API Key"), "jf_secret_token");
+    await user.click(screen.getByRole("button", { name: "预览匹配" }));
+    expect(await screen.findByText(/共 1 条 · 已匹配 1 · 未匹配 0/)).toBeInTheDocument();
+
     // 3. Filter security audit log by system. prefix
     const filterSelect = screen.getByRole("combobox", { name: "筛选操作前缀" });
     await user.selectOptions(filterSelect, "system.");

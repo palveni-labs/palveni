@@ -60,7 +60,7 @@ function AlbumShelf({
       ) : isError ? (
         <ErrorState compact error={error} onRetry={onRetry} />
       ) : (
-        <div className="no-scrollbar -mx-1 flex gap-5 overflow-x-auto px-1 pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        <div className="no-scrollbar -mx-1 flex gap-4 overflow-x-auto px-1 pb-2 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0 sm:grid sm:grid-cols-[repeat(auto-fill,minmax(min(100%,clamp(9.75rem,14.5cqi,12.5rem)),1fr))] sm:gap-(--pv-grid-gap,1.125rem)">
           {albums.map((album) => (
             <AlbumCard key={album.id} album={album} className="w-40 shrink-0 sm:w-auto sm:shrink" />
           ))}

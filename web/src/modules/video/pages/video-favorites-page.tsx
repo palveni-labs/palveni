@@ -46,7 +46,7 @@ export function VideoFavoritesPage() {
   }, [favQueries]);
 
   return (
-    <div className="pv-enter mx-auto flex w-full max-w-[88rem] flex-col gap-5 px-(--pv-gutter) pt-5 pb-14 max-md:px-4 max-md:pt-4">
+    <div className="pv-enter pv-page-frame mx-auto flex w-full max-w-(--pv-layout-max) flex-col gap-5 px-(--pv-layout-gutter) pt-(--pv-layout-top) pb-(--pv-layout-bottom)">
       <PageHeader
         title={t("videoApp.favorites.title")}
         summary={!isPending && entries.length > 0 ? t("videoApp.favorites.count", { count: entries.length }) : undefined}
@@ -112,7 +112,7 @@ export function VideoFavoritesPage() {
       ) : (
         <div
           role="list"
-          className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+          className="pv-grid-poster"
         >
           {entries.map((entry) => (
             <div key={`${entry.libraryId}:${entry.id}`} role="listitem" className="min-w-0">

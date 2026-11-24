@@ -3,6 +3,7 @@ import { Grid2X2, Heart, LayoutGrid, Play } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
+import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import { PhotoGrid } from "../components/photo-image";
@@ -22,7 +23,7 @@ export function PhotoFavoritesPage() {
   const [viewer, setViewer] = useState<{ index: number; slideshow: boolean } | null>(null);
 
   return (
-    <div className="grid gap-5">
+    <PageFrame className="gap-5">
       <PageHeader
         title={t("photosApp.favorites.title")}
         summary={t("photosApp.favorites.count", { count: total })}
@@ -95,6 +96,6 @@ export function PhotoFavoritesPage() {
         }
         onClose={() => setViewer(null)}
       />
-    </div>
+    </PageFrame>
   );
 }

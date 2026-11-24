@@ -4,6 +4,7 @@ import { FolderHeart, FolderPlus, Pencil, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { errorText } from "@/lib/errors";
+import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import type { PhotoAlbumSummary } from "../api";
@@ -81,7 +82,7 @@ export function PhotoAlbumsPage() {
   };
 
   return (
-    <div className="grid gap-5">
+    <PageFrame className="gap-5">
       <PageHeader
         title={t("photosApp.albums.title")}
         summary={t("photosApp.albums.count", { count: albums.length })}
@@ -110,7 +111,7 @@ export function PhotoAlbumsPage() {
           }
         />
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <div className="pv-grid-square">
           {albums.map((album) => (
             <div
               key={album.id}
@@ -233,6 +234,6 @@ export function PhotoAlbumsPage() {
           </div>
         </div>
       ) : null}
-    </div>
+    </PageFrame>
   );
 }

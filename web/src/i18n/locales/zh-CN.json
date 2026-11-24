@@ -1061,8 +1061,10 @@
       "ruleAdded": "已添加影音联动规则",
       "events": {
         "videoPlay": "开始播放电影或剧集",
-        "videoPause": "暂停播放影视",
+        "videoPause": "暂停播放影视（恢复灯光）",
+        "videoStop": "结束播放影视（恢复灯光）",
         "musicPlay": "开始播放音乐",
+        "musicPause": "暂停或停止音乐",
         "nightPlay": "夜间 23:30 后开始播放"
       },
       "mqttSection": "MQTT 桥接与氛围灯",
@@ -1450,14 +1452,24 @@
     },
     "importer": {
       "title": "Emby / Jellyfin / Navidrome / M3U 迁移导入",
+      "modes": {
+        "file": "文件 / JSON",
+        "online": "在线直连"
+      },
       "source": "数据来源",
       "sources": {
         "auto": "自动识别",
-        "jellyfin": "Jellyfin JSON",
-        "emby": "Emby JSON",
-        "navidrome": "Navidrome / Subsonic JSON",
+        "jellyfin": "Jellyfin",
+        "emby": "Emby",
+        "navidrome": "Navidrome / Subsonic",
         "m3u": "M3U / M3U8 歌单"
       },
+      "serverUrl": "旧服务器地址",
+      "serverUrlPlaceholder": "旧服务器地址（如 http://192.168.0.10:8096）",
+      "username": "账号",
+      "password": "密码",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "API Key（Jellyfin / Emby 可替代密码）",
       "playlistName": "歌单名称（可选）",
       "uploadFile": "选择文件",
       "contentLabel": "导入内容",

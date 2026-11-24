@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { errorText } from "@/lib/errors";
 import { useFeature } from "@/modules/access";
+import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { ShareDialog } from "@/ui/share-dialog";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
@@ -46,14 +47,26 @@ export function PhotoAlbumDetailPage() {
   const sharesEnabled = useFeature("shares");
 
   if (albumQuery.isLoading || timeline.isLoading) {
-    return <LoadingRows rows={4} />;
+    return (
+      <PageFrame>
+        <LoadingRows rows={4} />
+      </PageFrame>
+    );
   }
   if (albumQuery.isError) {
-    return <ErrorState error={albumQuery.error} onRetry={() => void albumQuery.refetch()} />;
+    return (
+      <PageFrame>
+        <ErrorState error={albumQuery.error} onRetry={() => void albumQuery.refetch()} />
+      </PageFrame>
+    );
   }
   const album = albumQuery.data;
   if (!album) {
-    return <ErrorState error={new Error("Not found")} />;
+    return (
+      <PageFrame>
+        <ErrorState error={new Error("Not found")} />
+      </PageFrame>
+    );
   }
 
   const selectedArray = [...selectedIds];
@@ -109,7 +122,7 @@ export function PhotoAlbumDetailPage() {
   };
 
   return (
-    <div className="grid gap-5">
+    <PageFrame className="gap-5">
       <PageHeader
         title={album.title}
         summary={
@@ -291,6 +304,6 @@ export function PhotoAlbumDetailPage() {
           </div>
         </div>
       ) : null}
-    </div>
+    </PageFrame>
   );
 }

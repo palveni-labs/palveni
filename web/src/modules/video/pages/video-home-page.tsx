@@ -225,7 +225,7 @@ function LibraryTiles({
   return (
     <section aria-label={t("videoApp.home.libraries")} className="grid gap-3">
       <h2 className="font-heading text-lg font-title text-heading">{t("videoApp.home.libraries")}</h2>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="pv-grid-card">
         {libraries.map((lib) => {
           const preview = previewsByLibrary.get(lib.id);
           const backdrop = preview
@@ -342,7 +342,7 @@ export function VideoHomePage() {
     home.latestEpisodes.length === 0;
 
   return (
-    <div className="pv-enter mx-auto flex w-full max-w-[88rem] flex-col gap-7 px-(--pv-gutter) pt-5 pb-14 max-md:gap-6 max-md:px-4 max-md:pt-4">
+    <div className="pv-enter pv-page-frame mx-auto flex w-full max-w-(--pv-layout-max) flex-col gap-7 px-(--pv-layout-gutter) pt-(--pv-layout-top) pb-(--pv-layout-bottom) max-md:gap-6">
       <PageHeader
         title={t("videoApp.title")}
         actions={

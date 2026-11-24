@@ -607,6 +607,7 @@ mod tests {
                 content: "#EXTM3U\n/nonexistent/song.flac\n".into(),
                 playlist_name: Some("Test".into()),
                 dry_run: true,
+                ..Default::default()
             })),
         )
         .await

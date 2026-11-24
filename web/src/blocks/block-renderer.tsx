@@ -145,7 +145,7 @@ export function BlockRenderer({ blocks, onAction, readOnly = false, busy = false
               )}
             />
           ) : (
-            <div key={index} className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-3">
+            <div key={index} className="pv-grid-card">
               {entry.blocks.map((block, inner) => render(block, `${index}-${inner}`))}
             </div>
           )

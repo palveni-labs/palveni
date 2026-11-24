@@ -123,7 +123,7 @@ export function TopBar() {
   return (
     <div className="shrink-0">
       <header className="relative z-20 flex h-(--pv-shell-h) items-center border-b border-shell-line/75 bg-shell/90 text-shell-fg backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-[77.5rem] items-center gap-3 px-4 md:px-6">
+        <div className="mx-auto flex w-full max-w-(--pv-layout-max) items-center gap-3 px-(--pv-layout-gutter)">
           <div className="flex min-w-0 grow items-center gap-1 md:grow-0">
             <Wordmark className="me-2 text-shell-fg" />
             <ServerSwitch className="max-lg:hidden" />
@@ -168,7 +168,8 @@ export function Toolbar({
     </button>
   ) : null;
   return (
-    <div className="shrink-0 px-3 pt-3 md:px-6">
+    <div className="shrink-0 pt-3">
+      <div className="mx-auto w-full max-w-(--pv-layout-max) px-(--pv-layout-gutter)">
       <header className="pv-glass-toolbar relative z-20 flex h-13 items-center gap-3 rounded-2xl px-3.5 md:px-4">
         <Wordmark className="text-heading md:hidden" />
         {sidebarSide === "left" ? openButton : null}
@@ -199,6 +200,7 @@ export function Toolbar({
       </header>
       {status === "activity-window" ? <ActivityWindow className="mt-2 lg:hidden" /> : null}
       {navPhone === "top-scroll" ? <ScrollTabs /> : null}
+      </div>
     </div>
   );
 }

@@ -114,7 +114,7 @@ function SearchResults({
         <section aria-label={t("musicApp.artists.title")} className="grid gap-3">
           <h2 className="font-heading text-lg font-title text-heading">{t("musicApp.artists.title")}</h2>
           {artists[0]?.artistObj ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6">
+            <div className="pv-grid-square">
               {artists.slice(0, tab === "all" ? 6 : 18).map((entry) => (
                 <ArtistCard key={`${entry.libraryId}:${entry.id}`} artist={entry.artistObj!} />
               ))}
@@ -146,7 +146,7 @@ function SearchResults({
         <section aria-label={t("musicApp.albums.title")} className="grid gap-3">
           <h2 className="font-heading text-lg font-title text-heading">{t("musicApp.albums.title")}</h2>
           {albums[0]?.albumObj ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            <div className="pv-grid-square">
               {albums.slice(0, tab === "all" ? 6 : 18).map((entry) => (
                 <AlbumCard key={`${entry.libraryId}:${entry.id}`} album={entry.albumObj!} />
               ))}

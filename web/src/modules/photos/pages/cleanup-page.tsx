@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
 import { errorText } from "@/lib/errors";
+import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import type { PhotoDuplicateItem, PhotoTimelineItem } from "../api";
@@ -96,7 +97,7 @@ export function PhotoCleanupPage() {
   };
 
   return (
-    <div className="grid gap-6">
+    <PageFrame className="gap-6">
       <PageHeader
         title={t("photosApp.cleanup.title")}
         summary={
@@ -250,7 +251,7 @@ export function PhotoCleanupPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              <div className="pv-grid-card">
                 {cluster.items.map((item, idx) => {
                   const marked = markedIds.has(item.id);
                   return (
@@ -337,6 +338,6 @@ export function PhotoCleanupPage() {
         onIndexChange={setPreviewIndex}
         onClose={() => setPreviewIndex(null)}
       />
-    </div>
+    </PageFrame>
   );
 }

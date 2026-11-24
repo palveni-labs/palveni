@@ -25,6 +25,7 @@ import { cn } from "@/lib/cn";
 import { errorText } from "@/lib/errors";
 import { useFeature } from "@/modules/access";
 import { AddToCollectionDialog } from "@/ui/add-to-collection-dialog";
+import { PageFrame } from "@/ui/frame";
 import { MetadataEditModal } from "@/ui/metadata-edit-modal";
 import { ToolbarTitle } from "@/ui/page";
 import { ShareDialog } from "@/ui/share-dialog";
@@ -280,10 +281,18 @@ export function BookReaderPage({ itemId }: { itemId: string }) {
   });
 
   if (manifestQuery.isLoading) {
-    return <LoadingRows rows={6} />;
+    return (
+      <PageFrame>
+        <LoadingRows rows={6} />
+      </PageFrame>
+    );
   }
   if (manifestQuery.error || !manifest) {
-    return <ErrorState error={manifestQuery.error} onRetry={() => void manifestQuery.refetch()} />;
+    return (
+      <PageFrame>
+        <ErrorState error={manifestQuery.error} onRetry={() => void manifestQuery.refetch()} />
+      </PageFrame>
+    );
   }
 
   const { entry, bookmarks } = manifest;
@@ -353,7 +362,7 @@ export function BookReaderPage({ itemId }: { itemId: string }) {
   const themeSpec = THEME_STYLES[typography.theme];
 
   return (
-    <div className="grid gap-4 pb-10">
+    <PageFrame className="gap-4">
       <ToolbarTitle title={entry.title} />
 
       {/* Reader Top Bar */}
@@ -905,6 +914,6 @@ export function BookReaderPage({ itemId }: { itemId: string }) {
           }}
         />
       ) : null}
-    </div>
+    </PageFrame>
   );
 }

@@ -113,7 +113,7 @@ pub async fn loudness(
 }
 
 pub async fn lyrics(
-    _user: CurrentUser,
+    user: CurrentUser,
     State(state): State<AppState>,
     path: Result<Path<String>, PathRejection>,
 ) -> Result<
@@ -130,18 +130,157 @@ pub async fn lyrics(
         .track_location(id)
         .await?
         .ok_or_else(|| ApiError::not_found("Track not found"))?;
-    let lyrics = palveni_library::lyrics::read(location)
-        .await
-        .map_err(|error| match error {
-            palveni_core::Error::Internal(detail) => ApiError::internal(detail),
-            _ => ApiError::not_found("Track not available"),
-        })?;
+    let mut lyrics =
+        palveni_library::lyrics::read(location)
+            .await
+            .map_err(|error| match error {
+                palveni_core::Error::Internal(detail) => ApiError::internal(detail),
+                _ => ApiError::not_found("Track not available"),
+            })?;
+    if lyrics.is_none() {
+        lyrics = fetch_lrclib_lyrics(&state, user.user.id, id).await;
+    }
     let mut headers = axum::http::HeaderMap::new();
     headers.insert(
         axum::http::header::CACHE_CONTROL,
         axum::http::HeaderValue::from_static("private, no-store"),
     );
     Ok((headers, Json(palveni_core::music::TrackLyrics { lyrics })))
+}
+
+async fn fetch_lrclib_lyrics(
+    state: &AppState,
+    user_id: palveni_core::UserId,
+    track_id: palveni_core::ItemId,
+) -> Option<palveni_core::music::Lyrics> {
+    let installed = state
+        .db
+        .plugins_photo_ai()
+        .get_installed_plugin("palveni.recipe.lrclib")
+        .await
+        .ok()??;
+    if !installed.enabled
+        || !installed
+            .granted_permissions
+            .iter()
+            .any(|perm| perm == "network:lrclib.net")
+    {
+        return None;
+    }
+
+    let prefer_synced = installed
+        .settings
+        .get("preferSynced")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(true);
+    let fallback_plain = installed
+        .settings
+        .get("fallbackPlain")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(true);
+    if !prefer_synced && !fallback_plain {
+        return None;
+    }
+
+    let track = state
+        .db
+        .music()
+        .lookup_tracks(user_id, &[track_id])
+        .await
+        .ok()?
+        .into_iter()
+        .next()?;
+    let title = track.title.trim();
+    if title.is_empty() {
+        return None;
+    }
+
+    let mut params: Vec<(&str, String)> = vec![("track_name", title.to_owned())];
+    if let Some(artist) = track
+        .artist
+        .as_deref()
+        .or(track.album_artist.as_deref())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        params.push(("artist_name", artist.to_owned()));
+    }
+    if let Some(album) = track
+        .album
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        params.push(("album_name", album.to_owned()));
+    }
+    if let Some(duration_ms) = track.duration_ms.filter(|ms| *ms > 0) {
+        let secs = (duration_ms + 500) / 1000;
+        if secs > 0 {
+            params.push(("duration", secs.to_string()));
+        }
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(3))
+        .user_agent("Palveni-Server/0.1 (+https://palveni.local)")
+        .build()
+        .ok()?;
+    let response = client
+        .get("https://lrclib.net/api/get")
+        .query(&params)
+        .send()
+        .await
+        .ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    let payload: serde_json::Value = response.json().await.ok()?;
+    parse_lrclib_response(&payload, prefer_synced, fallback_plain)
+}
+
+fn parse_lrclib_response(
+    payload: &serde_json::Value,
+    prefer_synced: bool,
+    fallback_plain: bool,
+) -> Option<palveni_core::music::Lyrics> {
+    use palveni_core::music::{Lyrics, LyricsFormat, LyricsSource};
+    let synced = payload
+        .get("syncedLyrics")
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let plain = payload
+        .get("plainLyrics")
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+
+    if prefer_synced {
+        if let Some(text) = synced {
+            return Some(Lyrics {
+                source: LyricsSource::Online,
+                format: LyricsFormat::Lrc,
+                text: text.to_owned(),
+            });
+        }
+        if fallback_plain && let Some(text) = plain {
+            return Some(Lyrics {
+                source: LyricsSource::Online,
+                format: LyricsFormat::Plain,
+                text: text.to_owned(),
+            });
+        }
+        return None;
+    }
+
+    if fallback_plain && let Some(text) = plain {
+        return Some(Lyrics {
+            source: LyricsSource::Online,
+            format: LyricsFormat::Plain,
+            text: text.to_owned(),
+        });
+    }
+    None
 }
 
 #[derive(Deserialize)]
@@ -192,4 +331,38 @@ pub async fn artwork(
         .header(header::X_CONTENT_TYPE_OPTIONS, "nosniff")
         .body(Body::from(data))
         .map_err(ApiError::internal)
+}
+
+#[cfg(test)]
+mod tests {
+    use palveni_core::music::{LyricsFormat, LyricsSource};
+    use serde_json::json;
+
+    use super::parse_lrclib_response;
+
+    #[test]
+    fn lrclib_parser_honors_synced_preference_and_plain_fallback() {
+        let both = json!({
+            "syncedLyrics": "[00:10.00] First line\n[00:15.00] Second line",
+            "plainLyrics": "First line\nSecond line"
+        });
+        let preferred = parse_lrclib_response(&both, true, true).unwrap();
+        assert_eq!(preferred.source, LyricsSource::Online);
+        assert_eq!(preferred.format, LyricsFormat::Lrc);
+        assert!(preferred.text.starts_with("[00:10.00]"));
+
+        let plain_pref = parse_lrclib_response(&both, false, true).unwrap();
+        assert_eq!(plain_pref.source, LyricsSource::Online);
+        assert_eq!(plain_pref.format, LyricsFormat::Plain);
+        assert_eq!(plain_pref.text, "First line\nSecond line");
+
+        let plain_only = json!({
+            "syncedLyrics": "   ",
+            "plainLyrics": "Plain verse"
+        });
+        let fallback = parse_lrclib_response(&plain_only, true, true).unwrap();
+        assert_eq!(fallback.format, LyricsFormat::Plain);
+        assert!(parse_lrclib_response(&plain_only, true, false).is_none());
+        assert!(parse_lrclib_response(&both, false, false).is_none());
+    }
 }

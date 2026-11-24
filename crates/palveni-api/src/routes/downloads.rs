@@ -1,7 +1,9 @@
 //! External Downloader Bridge (`qBittorrent` / `Transmission` / `aria2`) & RSS/Atom
 //! Media Subscriptions (`module: downloads`).
 
+use std::collections::VecDeque;
 use std::net::IpAddr;
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use axum::Json;
@@ -32,6 +34,163 @@ const POLL_TIMEOUT: Duration = Duration::from_secs(3);
 const SUBMIT_TIMEOUT: Duration = Duration::from_secs(6);
 const FEED_TIMEOUT: Duration = Duration::from_secs(6);
 const MAX_FEED_BYTES: usize = 2 * 1024 * 1024;
+const AUTO_POLL_INTERVAL_MS: i64 = 15 * 60 * 1000;
+const AUTO_POLL_SEEN_MAX: usize = 512;
+
+fn auto_poll_seen() -> &'static Mutex<VecDeque<String>> {
+    static SEEN: OnceLock<Mutex<VecDeque<String>>> = OnceLock::new();
+    SEEN.get_or_init(|| Mutex::new(VecDeque::with_capacity(AUTO_POLL_SEEN_MAX)))
+}
+
+fn remember_auto_submitted(sub_id: &str, link: &str) -> bool {
+    let key = format!("{sub_id}:{link}");
+    let mut guard = auto_poll_seen()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if guard.iter().any(|existing| existing == &key) {
+        return false;
+    }
+    if guard.len() >= AUTO_POLL_SEEN_MAX {
+        guard.pop_front();
+    }
+    guard.push_back(key);
+    true
+}
+
+/// Polls due RSS/Atom media subscriptions in the background, automatically pushing newly
+/// matched download URIs to the first enabled downloader client and notifying the owner.
+pub(crate) async fn poll_due_subscriptions(state: &AppState) -> usize {
+    let Ok(subs) = state.db.downloads().list_subscriptions(None).await else {
+        return 0;
+    };
+    let now_ms = clock::to_millis(clock::now());
+    let due: Vec<MediaSubscription> = subs
+        .into_iter()
+        .filter(|sub| {
+            sub.enabled
+                && sub
+                    .feed_url
+                    .as_deref()
+                    .is_some_and(|url| !url.trim().is_empty())
+                && sub.last_checked_at.is_none_or(|ts| {
+                    now_ms.saturating_sub(clock::to_millis(ts)) >= AUTO_POLL_INTERVAL_MS
+                })
+        })
+        .collect();
+    if due.is_empty() {
+        return 0;
+    }
+
+    let enabled_client = state
+        .db
+        .downloads()
+        .list_clients()
+        .await
+        .ok()
+        .and_then(|clients| clients.into_iter().find(|c| c.enabled));
+    let Ok(feed_http) = http_client(FEED_TIMEOUT) else {
+        return 0;
+    };
+    let Ok(submit_http) = http_client(SUBMIT_TIMEOUT) else {
+        return 0;
+    };
+
+    let mut total_submitted = 0usize;
+    for sub in due {
+        let Some(raw_feed) = sub.feed_url.as_deref() else {
+            continue;
+        };
+        let Ok(feed_url) = validate_ssrf_safe_url(raw_feed, "feedUrl", true) else {
+            continue;
+        };
+        let Ok(resp) = feed_http.get(&feed_url).send().await else {
+            continue;
+        };
+        if !resp.status().is_success() {
+            continue;
+        }
+        let Ok(bytes) = resp.bytes().await else {
+            continue;
+        };
+        if bytes.len() > MAX_FEED_BYTES {
+            continue;
+        }
+        let xml = String::from_utf8_lossy(&bytes);
+        let (_, matches) = parse_and_match_feed(&xml, &sub.title, sub.quality_rule.as_deref());
+        let _ = state
+            .db
+            .downloads()
+            .mark_subscription_checked(&sub.id, now_ms)
+            .await;
+
+        let mut submitted_titles = Vec::new();
+        if let Some(ref client_rec) = enabled_client {
+            let cred = load_credential(state, client_rec).unwrap_or_default();
+            for item in &matches {
+                let Some(raw_link) = item.link.as_deref() else {
+                    continue;
+                };
+                let Ok(uri) = validate_download_uri(raw_link) else {
+                    continue;
+                };
+                if !remember_auto_submitted(&sub.id, &uri) {
+                    continue;
+                }
+                if submit_download_uri(
+                    &submit_http,
+                    client_rec,
+                    &cred,
+                    &uri,
+                    client_rec.save_path.as_deref(),
+                    None,
+                )
+                .await
+                .is_ok()
+                {
+                    total_submitted += 1;
+                    submitted_titles.push(item.title.clone());
+                }
+            }
+        }
+
+        if !submitted_titles.is_empty() {
+            let owner = sub.owner_id.parse().ok();
+            let preview = submitted_titles
+                .iter()
+                .take(3)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join("、");
+            let body = format!(
+                "自动匹配并投递 {} 条资源至下载器：{}",
+                submitted_titles.len(),
+                preview
+            );
+            crate::routes::notifications::dispatch_notification_event(
+                state,
+                owner,
+                "downloads.rss_matched",
+                &format!("RSS 追更命中：{}", sub.title),
+                &body,
+            )
+            .await;
+            audit(
+                state,
+                AuditEntry {
+                    action: actions::DOWNLOAD_SUBMITTED,
+                    actor: owner,
+                    target: Some(sub.id.clone()),
+                    detail: Some(json!({
+                        "subscriptionTitle": sub.title,
+                        "autoSubmitted": submitted_titles.len(),
+                    })),
+                },
+            )
+            .await;
+        }
+    }
+    total_submitted
+}
 
 const DOWNLOADER_SECRET_SCOPE: &[u8] = b"palveni:downloader-credential:v1";
 
@@ -1206,5 +1365,14 @@ mod tests {
         assert!(validate_ssrf_safe_url("http://0.0.0.0:8080", "url", false).is_err());
         assert!(validate_ssrf_safe_url("http://user:pass@192.168.1.2:8080", "url", false).is_err());
         assert!(validate_ssrf_safe_url("http://192.168.1.20:8080", "url", false).is_ok());
+    }
+
+    #[test]
+    fn auto_poll_dedupe_accepts_first_and_skips_duplicate_link() {
+        let sub_id = "sub-unit-dedupe-1";
+        let link = "magnet:?xt=urn:btih:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        assert!(remember_auto_submitted(sub_id, link));
+        assert!(!remember_auto_submitted(sub_id, link));
+        assert!(remember_auto_submitted("sub-unit-dedupe-2", link));
     }
 }

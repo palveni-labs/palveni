@@ -488,15 +488,26 @@ export function createHandlers(db: MockDb, options: HandlerOptions = {}) {
       const auth = authenticate(request);
       if ("response" in auth) return auth.response;
       const body = await readJson<ExternalImportRequest>(request);
+      const serverUrl = typeof body?.serverUrl === "string" ? body.serverUrl.trim() : "";
       const content = typeof body?.content === "string" ? body.content.trim() : "";
-      if (!content) return fail(400, "validation_failed", "Import content must not be empty");
+      if (!content && !serverUrl) return fail(400, "validation_failed", "Import content must not be empty");
       const dryRun = body?.dryRun !== false;
       const allLeaves = db.allLeafItems();
 
       let detectedSource: ExternalImportSource = body?.source && body.source !== "auto" ? body.source : "jellyfin";
       const candidates: Array<{ title: string; path?: string; favorite: boolean; history: boolean; isPlaylist: boolean }> = [];
 
-      if (!content.startsWith("{") && !content.startsWith("[")) {
+      if (serverUrl) {
+        if (allLeaves[0]) {
+          candidates.push({
+            title: allLeaves[0].title,
+            path: allLeaves[0].path ?? undefined,
+            favorite: true,
+            history: true,
+            isPlaylist: false,
+          });
+        }
+      } else if (!content.startsWith("{") && !content.startsWith("[")) {
         detectedSource = "m3u";
         for (const line of content.split(/\r?\n/)) {
           const trimmed = line.trim();

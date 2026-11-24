@@ -2,6 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { BookOpen, ChevronRight, FolderOpen, Layers, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
+import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import { readingImagePaths, type ReadingEntry, type ReadingSeries } from "../api";
@@ -35,7 +36,7 @@ function ShelfSection({
           </Link>
         ) : null}
       </div>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+      <div className="pv-grid-poster">
         {entries.map((entry) => (
           <ReadingCard key={entry.itemId} entry={entry} />
         ))}
@@ -51,7 +52,7 @@ function SeriesSection({ series }: { series: ReadingSeries[] }) {
   return (
     <section aria-label={t("readingApp.home.series")} className="grid gap-3">
       <h2 className="font-heading text-lg font-title text-heading">{t("readingApp.home.series")}</h2>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="pv-grid-card">
         {series.map((s) => (
           <Link
             key={`${s.libraryId}:${s.kind}:${s.seriesKey}`}
@@ -105,7 +106,7 @@ export function ReadingHomePage({ libraryId }: { libraryId?: string }) {
     data.series.length === 0;
 
   return (
-    <div className="grid gap-6 pb-8">
+    <PageFrame className="gap-6">
       <PageHeader
         title={t("readingApp.title")}
         summary={t("readingApp.home.summary")}
@@ -193,7 +194,7 @@ export function ReadingHomePage({ libraryId }: { libraryId?: string }) {
           {libraries.length > 0 ? (
             <section aria-label={t("readingApp.home.libraries")} className="grid gap-3">
               <h2 className="font-heading text-lg font-title text-heading">{t("readingApp.home.libraries")}</h2>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="pv-grid-card">
                 {libraries.map((lib) => (
                   <div
                     key={lib.id}
@@ -235,6 +236,6 @@ export function ReadingHomePage({ libraryId }: { libraryId?: string }) {
           ) : null}
         </div>
       ) : null}
-    </div>
+    </PageFrame>
   );
 }

@@ -139,7 +139,7 @@ export function MusicArtistDetailPage() {
       {albums.length > 0 ? (
         <section aria-label={t("musicApp.artists.discography")} className="grid gap-3">
           <h2 className="font-heading text-lg font-title text-heading">{t("musicApp.artists.discography")}</h2>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          <div className="pv-grid-square">
             {albums.map((album) => (
               <AlbumCard key={album.id} album={album} showArtist={false} />
             ))}

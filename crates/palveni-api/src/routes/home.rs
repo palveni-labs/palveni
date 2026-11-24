@@ -353,19 +353,32 @@ pub(crate) async fn activate_scene_internal(
     Ok(Some(state.db.home().snapshot().await?))
 }
 
-/// Non-blocking media-playback linkage trigger invoked when video or audio playback starts.
+fn event_kinds_for_media_trigger(
+    event_kind: &'static str,
+    is_late_night: bool,
+) -> Vec<&'static str> {
+    let mut kinds = vec![event_kind];
+    if event_kind == "video.stop" {
+        kinds.push("video.pause");
+    } else if event_kind == "music.stop" {
+        kinds.push("music.pause");
+    }
+    if is_late_night && matches!(event_kind, "video.play" | "music.play") {
+        kinds.push("night.play");
+    }
+    kinds
+}
+
+/// Non-blocking media-playback linkage trigger invoked on video or audio start/pause/stop.
 pub fn trigger_media_event(state: &AppState, event_kind: &'static str) {
     let state = state.clone();
     tokio::spawn(async move {
         let now = clock::now();
-        // Asia/Shanghai is UTC+8: check 23:30..05:30 local window for night rules.
-        let shanghai = now + chrono::Duration::hours(8);
+        // Respect the host/container configured local timezone (`TZ`) instead of a hardcoded offset.
+        let local_now = chrono::Local::now();
         let is_late_night =
-            (shanghai.hour() == 23 && shanghai.minute() >= 30) || shanghai.hour() < 6;
-        let mut kinds = vec![event_kind];
-        if is_late_night && matches!(event_kind, "video.play" | "music.play") {
-            kinds.push("night.play");
-        }
+            (local_now.hour() == 23 && local_now.minute() >= 30) || local_now.hour() < 6;
+        let kinds = event_kinds_for_media_trigger(event_kind, is_late_night);
         let Ok(matching_rules) = state.db.home().enabled_rules_for_events(&kinds).await else {
             return;
         };
@@ -1141,5 +1154,29 @@ mod tests {
         );
         assert!(decrypt_bridge_token(&node, "bridge-2", &ct).is_err());
         assert!(decrypt_bridge_token(&other, "bridge-1", &ct).is_err());
+    }
+
+    #[test]
+    fn media_trigger_expands_stop_to_pause_and_late_night_play() {
+        assert_eq!(
+            event_kinds_for_media_trigger("video.stop", false),
+            vec!["video.stop", "video.pause"]
+        );
+        assert_eq!(
+            event_kinds_for_media_trigger("music.stop", true),
+            vec!["music.stop", "music.pause"]
+        );
+        assert_eq!(
+            event_kinds_for_media_trigger("video.pause", true),
+            vec!["video.pause"]
+        );
+        assert_eq!(
+            event_kinds_for_media_trigger("video.play", true),
+            vec!["video.play", "night.play"]
+        );
+        assert_eq!(
+            event_kinds_for_media_trigger("music.play", false),
+            vec!["music.play"]
+        );
     }
 }
