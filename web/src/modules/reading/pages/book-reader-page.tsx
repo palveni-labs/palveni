@@ -1,4 +1,5 @@
 import { Button, toast } from "@heroui/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -9,16 +10,24 @@ import {
   ChevronRight,
   Download,
   Heart,
+  Layers,
   List,
+  PencilLine,
+  Share2,
   Trash2,
   Type,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useIsAdmin } from "@/api/queries/auth";
 import { cn } from "@/lib/cn";
 import { errorText } from "@/lib/errors";
+import { useFeature } from "@/modules/access";
+import { AddToCollectionDialog } from "@/ui/add-to-collection-dialog";
+import { MetadataEditModal } from "@/ui/metadata-edit-modal";
 import { ToolbarTitle } from "@/ui/page";
+import { ShareDialog } from "@/ui/share-dialog";
 import { ErrorState, LoadingRows } from "@/ui/states";
 import {
   downloadOriginalReadingFile,
@@ -27,6 +36,7 @@ import {
   type ReadingBookmark,
 } from "../api";
 import {
+  readingKeys,
   useCreateReadingBookmark,
   useDeleteReadingBookmark,
   useReadingChapter,
@@ -169,9 +179,16 @@ function SanitizedChapterBody({
 
 export function BookReaderPage({ itemId }: { itemId: string }) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const isAdmin = useIsAdmin();
   const manifestQuery = useReadingManifest(itemId);
   const manifest = manifestQuery.data;
 
+  const [metadataOpen, setMetadataOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [collectionOpen, setCollectionOpen] = useState(false);
+  const sharesEnabled = useFeature("shares");
+  const collectionsEnabled = useFeature("collections");
   const [chapterOverride, setChapterOverride] = useState<number | null>(null);
   const [drawer, setDrawer] = useState<"none" | "toc" | "bookmarks" | "typography">("none");
   const [typography, setTypography] = useState<TypographySettings>(loadTypography);
@@ -436,6 +453,39 @@ export function BookReaderPage({ itemId }: { itemId: string }) {
                 : t("readingApp.bookReader.markCompleted")}
             </span>
           </button>
+
+          {collectionsEnabled ? (
+            <button
+              type="button"
+              aria-label={t("collectionsApp.addToCollection")}
+              onClick={() => setCollectionOpen(true)}
+              className="inline-flex size-8 items-center justify-center rounded-control text-fg-muted transition-colors hover:bg-hover hover:text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+            >
+              <Layers className="size-4" aria-hidden />
+            </button>
+          ) : null}
+
+          {sharesEnabled ? (
+            <button
+              type="button"
+              aria-label={t("sharesApp.button")}
+              onClick={() => setShareOpen(true)}
+              className="inline-flex size-8 items-center justify-center rounded-control text-fg-muted transition-colors hover:bg-hover hover:text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+            >
+              <Share2 className="size-4" aria-hidden />
+            </button>
+          ) : null}
+
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={() => setMetadataOpen(true)}
+              className="inline-flex h-8 items-center gap-1 rounded-control px-2.5 text-xs font-mid text-fg transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+            >
+              <PencilLine className="size-3.5" aria-hidden />
+              <span className="max-md:sr-only">{t("metadataModal.trigger")}</span>
+            </button>
+          ) : null}
 
           {entry.kind === "book" ? (
             <button
@@ -814,6 +864,47 @@ export function BookReaderPage({ itemId }: { itemId: string }) {
           ) : null}
         </div>
       )}
+      {shareOpen ? (
+        <ShareDialog
+          isOpen
+          onClose={() => setShareOpen(false)}
+          targetKind="item"
+          targetId={entry.itemId}
+          defaultTitle={entry.title}
+        />
+      ) : null}
+      <AddToCollectionDialog
+        isOpen={collectionOpen}
+        onClose={() => setCollectionOpen(false)}
+        item={{
+          entryKind: entry.kind === "comic" ? "comic" : "book",
+          targetId: entry.itemId,
+          title: entry.title,
+          subtitle: entry.authors[0] ?? entry.seriesName ?? entry.format.toUpperCase(),
+          artworkId: entry.hasCover ? `rd_${entry.itemId}` : null,
+        }}
+      />
+      {isAdmin ? (
+        <MetadataEditModal
+          isOpen={metadataOpen}
+          onClose={() => setMetadataOpen(false)}
+          itemId={entry.itemId}
+          defaultMediaType="book"
+          initialValues={{
+            title: entry.title,
+            genres: entry.tags,
+            overview: entry.summary,
+          }}
+          onSaved={() => {
+            void queryClient.invalidateQueries({ queryKey: readingKeys.manifest(itemId) });
+            void queryClient.invalidateQueries({ queryKey: readingKeys.all });
+          }}
+          onReset={() => {
+            void queryClient.invalidateQueries({ queryKey: readingKeys.manifest(itemId) });
+            void queryClient.invalidateQueries({ queryKey: readingKeys.all });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

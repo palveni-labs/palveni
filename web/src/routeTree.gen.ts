@@ -13,14 +13,19 @@ import { Route as shellRoutesAppRouteImport } from "./shell/routes/app"
 import { Route as shellRoutesLoginRouteImport } from "./shell/routes/login"
 import { Route as shellRoutesSetupRouteImport } from "./shell/routes/setup"
 import { Route as IndexRouteImport } from "./modules/overview/routes/index"
+import { Route as shellRoutesShareRouteImport } from "./shell/routes/share"
 import { Route as AppsIndexRouteImport } from "./modules/apps/routes/index"
 import { Route as AppsPluginsRouteImport } from "./modules/apps/routes/plugins"
 import { Route as AppsThemesRouteImport } from "./modules/apps/routes/themes"
+import { Route as AssistantIndexRouteImport } from "./modules/assistant/routes/index"
 import { Route as BroadcastIndexRouteImport } from "./modules/broadcast/routes/index"
+import { Route as BroadcastVirtualRouteImport } from "./modules/broadcast/routes/virtual"
+import { Route as HomeIndexRouteImport } from "./modules/home/routes/index"
 import { Route as LibraryIndexRouteImport } from "./modules/library/routes/index"
 import { Route as LibraryLibraryIdRouteImport } from "./modules/library/routes/$libraryId"
 import { Route as LibraryConnectionsRouteImport } from "./modules/library/routes/connections"
 import { Route as LibraryMusicSearchRouteImport } from "./modules/library/routes/music-search"
+import { Route as LibrarySharesRouteImport } from "./modules/library/routes/shares"
 import { Route as MusicIndexRouteImport } from "./modules/music/routes/index"
 import { Route as MusicAudiobooksRouteImport } from "./modules/music/routes/audiobooks"
 import { Route as MusicFavoritesRouteImport } from "./modules/music/routes/favorites"
@@ -28,8 +33,10 @@ import { Route as MusicGenresRouteImport } from "./modules/music/routes/genres"
 import { Route as MusicSearchRouteImport } from "./modules/music/routes/search"
 import { Route as MusicSongsRouteImport } from "./modules/music/routes/songs"
 import { Route as PhotosIndexRouteImport } from "./modules/photos/routes/index"
+import { Route as PhotosCleanupRouteImport } from "./modules/photos/routes/cleanup"
 import { Route as PhotosFavoritesRouteImport } from "./modules/photos/routes/favorites"
 import { Route as PhotosMemoriesRouteImport } from "./modules/photos/routes/memories"
+import { Route as PhotosPeopleRouteImport } from "./modules/photos/routes/people"
 import { Route as PhotosPlacesRouteImport } from "./modules/photos/routes/places"
 import { Route as ReadingIndexRouteImport } from "./modules/reading/routes/index"
 import { Route as ReadingBooksRouteImport } from "./modules/reading/routes/books"
@@ -39,11 +46,18 @@ import { Route as ReadingSearchRouteImport } from "./modules/reading/routes/sear
 import { Route as SystemIndexRouteImport } from "./modules/system/routes/index"
 import { Route as SystemHardwareRouteImport } from "./modules/system/routes/hardware"
 import { Route as SystemLibrariesRouteImport } from "./modules/system/routes/libraries"
+import { Route as SystemMaintenanceRouteImport } from "./modules/system/routes/maintenance"
+import { Route as SystemNotificationsRouteImport } from "./modules/system/routes/notifications"
 import { Route as SystemSettingsRouteImport } from "./modules/system/routes/settings"
+import { Route as SystemUsersRouteImport } from "./modules/system/routes/users"
 import { Route as TasksIndexRouteImport } from "./modules/tasks/routes/index"
+import { Route as TasksDownloadsRouteImport } from "./modules/tasks/routes/downloads"
+import { Route as TasksOrganizerRouteImport } from "./modules/tasks/routes/organizer"
 import { Route as VideoIndexRouteImport } from "./modules/video/routes/index"
 import { Route as VideoFavoritesRouteImport } from "./modules/video/routes/favorites"
 import { Route as VideoSearchRouteImport } from "./modules/video/routes/search"
+import { Route as LibraryCollectionsIndexRouteImport } from "./modules/library/routes/collections/index"
+import { Route as LibraryCollectionsCollectionIdRouteImport } from "./modules/library/routes/collections/$collectionId"
 import { Route as MusicAlbumsIndexRouteImport } from "./modules/music/routes/albums/index"
 import { Route as MusicArtistsIndexRouteImport } from "./modules/music/routes/artists/index"
 import { Route as MusicPlaylistsIndexRouteImport } from "./modules/music/routes/playlists/index"
@@ -77,6 +91,11 @@ const IndexRoute = IndexRouteImport.update({
   path: "/",
   getParentRoute: () => shellRoutesAppRoute,
 } as any)
+const shellRoutesShareRoute = shellRoutesShareRouteImport.update({
+  id: "/s/$token",
+  path: "/s/$token",
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppsIndexRoute = AppsIndexRouteImport.update({
   id: "/apps/",
   path: "/apps/",
@@ -92,9 +111,24 @@ const AppsThemesRoute = AppsThemesRouteImport.update({
   path: "/apps/themes",
   getParentRoute: () => shellRoutesAppRoute,
 } as any)
+const AssistantIndexRoute = AssistantIndexRouteImport.update({
+  id: "/assistant/",
+  path: "/assistant/",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
 const BroadcastIndexRoute = BroadcastIndexRouteImport.update({
   id: "/broadcast/",
   path: "/broadcast/",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
+const BroadcastVirtualRoute = BroadcastVirtualRouteImport.update({
+  id: "/broadcast/virtual",
+  path: "/broadcast/virtual",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
+const HomeIndexRoute = HomeIndexRouteImport.update({
+  id: "/home/",
+  path: "/home/",
   getParentRoute: () => shellRoutesAppRoute,
 } as any)
 const LibraryIndexRoute = LibraryIndexRouteImport.update({
@@ -115,6 +149,11 @@ const LibraryConnectionsRoute = LibraryConnectionsRouteImport.update({
 const LibraryMusicSearchRoute = LibraryMusicSearchRouteImport.update({
   id: "/library/music-search",
   path: "/library/music-search",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
+const LibrarySharesRoute = LibrarySharesRouteImport.update({
+  id: "/library/shares",
+  path: "/library/shares",
   getParentRoute: () => shellRoutesAppRoute,
 } as any)
 const MusicIndexRoute = MusicIndexRouteImport.update({
@@ -152,6 +191,11 @@ const PhotosIndexRoute = PhotosIndexRouteImport.update({
   path: "/photos/",
   getParentRoute: () => shellRoutesAppRoute,
 } as any)
+const PhotosCleanupRoute = PhotosCleanupRouteImport.update({
+  id: "/photos/cleanup",
+  path: "/photos/cleanup",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
 const PhotosFavoritesRoute = PhotosFavoritesRouteImport.update({
   id: "/photos/favorites",
   path: "/photos/favorites",
@@ -160,6 +204,11 @@ const PhotosFavoritesRoute = PhotosFavoritesRouteImport.update({
 const PhotosMemoriesRoute = PhotosMemoriesRouteImport.update({
   id: "/photos/memories",
   path: "/photos/memories",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
+const PhotosPeopleRoute = PhotosPeopleRouteImport.update({
+  id: "/photos/people",
+  path: "/photos/people",
   getParentRoute: () => shellRoutesAppRoute,
 } as any)
 const PhotosPlacesRoute = PhotosPlacesRouteImport.update({
@@ -207,14 +256,39 @@ const SystemLibrariesRoute = SystemLibrariesRouteImport.update({
   path: "/system/libraries",
   getParentRoute: () => shellRoutesAppRoute,
 } as any)
+const SystemMaintenanceRoute = SystemMaintenanceRouteImport.update({
+  id: "/system/maintenance",
+  path: "/system/maintenance",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
+const SystemNotificationsRoute = SystemNotificationsRouteImport.update({
+  id: "/system/notifications",
+  path: "/system/notifications",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
 const SystemSettingsRoute = SystemSettingsRouteImport.update({
   id: "/system/settings",
   path: "/system/settings",
   getParentRoute: () => shellRoutesAppRoute,
 } as any)
+const SystemUsersRoute = SystemUsersRouteImport.update({
+  id: "/system/users",
+  path: "/system/users",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
 const TasksIndexRoute = TasksIndexRouteImport.update({
   id: "/tasks/",
   path: "/tasks/",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
+const TasksDownloadsRoute = TasksDownloadsRouteImport.update({
+  id: "/tasks/downloads",
+  path: "/tasks/downloads",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
+const TasksOrganizerRoute = TasksOrganizerRouteImport.update({
+  id: "/tasks/organizer",
+  path: "/tasks/organizer",
   getParentRoute: () => shellRoutesAppRoute,
 } as any)
 const VideoIndexRoute = VideoIndexRouteImport.update({
@@ -232,6 +306,17 @@ const VideoSearchRoute = VideoSearchRouteImport.update({
   path: "/video/search",
   getParentRoute: () => shellRoutesAppRoute,
 } as any)
+const LibraryCollectionsIndexRoute = LibraryCollectionsIndexRouteImport.update({
+  id: "/library/collections/",
+  path: "/library/collections/",
+  getParentRoute: () => shellRoutesAppRoute,
+} as any)
+const LibraryCollectionsCollectionIdRoute =
+  LibraryCollectionsCollectionIdRouteImport.update({
+    id: "/library/collections/$collectionId",
+    path: "/library/collections/$collectionId",
+    getParentRoute: () => shellRoutesAppRoute,
+  } as any)
 const MusicAlbumsIndexRoute = MusicAlbumsIndexRouteImport.update({
   id: "/music/albums/",
   path: "/music/albums/",
@@ -306,18 +391,23 @@ export interface FileRoutesByFullPath {
   "/": typeof IndexRoute
   "/login": typeof shellRoutesLoginRoute
   "/setup": typeof shellRoutesSetupRoute
+  "/s/$token": typeof shellRoutesShareRoute
   "/apps/plugins": typeof AppsPluginsRoute
   "/apps/themes": typeof AppsThemesRoute
+  "/broadcast/virtual": typeof BroadcastVirtualRoute
   "/library/$libraryId": typeof LibraryLibraryIdRoute
   "/library/connections": typeof LibraryConnectionsRoute
   "/library/music-search": typeof LibraryMusicSearchRoute
+  "/library/shares": typeof LibrarySharesRoute
   "/music/audiobooks": typeof MusicAudiobooksRoute
   "/music/favorites": typeof MusicFavoritesRoute
   "/music/genres": typeof MusicGenresRoute
   "/music/search": typeof MusicSearchRoute
   "/music/songs": typeof MusicSongsRoute
+  "/photos/cleanup": typeof PhotosCleanupRoute
   "/photos/favorites": typeof PhotosFavoritesRoute
   "/photos/memories": typeof PhotosMemoriesRoute
+  "/photos/people": typeof PhotosPeopleRoute
   "/photos/places": typeof PhotosPlacesRoute
   "/reading/books": typeof ReadingBooksRoute
   "/reading/comics": typeof ReadingComicsRoute
@@ -325,11 +415,18 @@ export interface FileRoutesByFullPath {
   "/reading/search": typeof ReadingSearchRoute
   "/system/hardware": typeof SystemHardwareRoute
   "/system/libraries": typeof SystemLibrariesRoute
+  "/system/maintenance": typeof SystemMaintenanceRoute
+  "/system/notifications": typeof SystemNotificationsRoute
   "/system/settings": typeof SystemSettingsRoute
+  "/system/users": typeof SystemUsersRoute
+  "/tasks/downloads": typeof TasksDownloadsRoute
+  "/tasks/organizer": typeof TasksOrganizerRoute
   "/video/favorites": typeof VideoFavoritesRoute
   "/video/search": typeof VideoSearchRoute
   "/apps/": typeof AppsIndexRoute
+  "/assistant/": typeof AssistantIndexRoute
   "/broadcast/": typeof BroadcastIndexRoute
+  "/home/": typeof HomeIndexRoute
   "/library/": typeof LibraryIndexRoute
   "/music/": typeof MusicIndexRoute
   "/photos/": typeof PhotosIndexRoute
@@ -337,11 +434,13 @@ export interface FileRoutesByFullPath {
   "/system/": typeof SystemIndexRoute
   "/tasks/": typeof TasksIndexRoute
   "/video/": typeof VideoIndexRoute
+  "/library/collections/$collectionId": typeof LibraryCollectionsCollectionIdRoute
   "/music/playlists/$playlistId": typeof MusicPlaylistsPlaylistIdRoute
   "/photos/albums/$albumId": typeof PhotosAlbumsAlbumIdRoute
   "/reading/book/$itemId": typeof ReadingBookItemIdRoute
   "/reading/comic/$itemId": typeof ReadingComicItemIdRoute
   "/video/play/$itemId": typeof VideoPlayItemIdRoute
+  "/library/collections/": typeof LibraryCollectionsIndexRoute
   "/music/albums/": typeof MusicAlbumsIndexRoute
   "/music/artists/": typeof MusicArtistsIndexRoute
   "/music/playlists/": typeof MusicPlaylistsIndexRoute
@@ -354,19 +453,24 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   "/login": typeof shellRoutesLoginRoute
   "/setup": typeof shellRoutesSetupRoute
+  "/s/$token": typeof shellRoutesShareRoute
   "/": typeof IndexRoute
   "/apps/plugins": typeof AppsPluginsRoute
   "/apps/themes": typeof AppsThemesRoute
+  "/broadcast/virtual": typeof BroadcastVirtualRoute
   "/library/$libraryId": typeof LibraryLibraryIdRoute
   "/library/connections": typeof LibraryConnectionsRoute
   "/library/music-search": typeof LibraryMusicSearchRoute
+  "/library/shares": typeof LibrarySharesRoute
   "/music/audiobooks": typeof MusicAudiobooksRoute
   "/music/favorites": typeof MusicFavoritesRoute
   "/music/genres": typeof MusicGenresRoute
   "/music/search": typeof MusicSearchRoute
   "/music/songs": typeof MusicSongsRoute
+  "/photos/cleanup": typeof PhotosCleanupRoute
   "/photos/favorites": typeof PhotosFavoritesRoute
   "/photos/memories": typeof PhotosMemoriesRoute
+  "/photos/people": typeof PhotosPeopleRoute
   "/photos/places": typeof PhotosPlacesRoute
   "/reading/books": typeof ReadingBooksRoute
   "/reading/comics": typeof ReadingComicsRoute
@@ -374,11 +478,18 @@ export interface FileRoutesByTo {
   "/reading/search": typeof ReadingSearchRoute
   "/system/hardware": typeof SystemHardwareRoute
   "/system/libraries": typeof SystemLibrariesRoute
+  "/system/maintenance": typeof SystemMaintenanceRoute
+  "/system/notifications": typeof SystemNotificationsRoute
   "/system/settings": typeof SystemSettingsRoute
+  "/system/users": typeof SystemUsersRoute
+  "/tasks/downloads": typeof TasksDownloadsRoute
+  "/tasks/organizer": typeof TasksOrganizerRoute
   "/video/favorites": typeof VideoFavoritesRoute
   "/video/search": typeof VideoSearchRoute
   "/apps": typeof AppsIndexRoute
+  "/assistant": typeof AssistantIndexRoute
   "/broadcast": typeof BroadcastIndexRoute
+  "/home": typeof HomeIndexRoute
   "/library": typeof LibraryIndexRoute
   "/music": typeof MusicIndexRoute
   "/photos": typeof PhotosIndexRoute
@@ -386,11 +497,13 @@ export interface FileRoutesByTo {
   "/system": typeof SystemIndexRoute
   "/tasks": typeof TasksIndexRoute
   "/video": typeof VideoIndexRoute
+  "/library/collections/$collectionId": typeof LibraryCollectionsCollectionIdRoute
   "/music/playlists/$playlistId": typeof MusicPlaylistsPlaylistIdRoute
   "/photos/albums/$albumId": typeof PhotosAlbumsAlbumIdRoute
   "/reading/book/$itemId": typeof ReadingBookItemIdRoute
   "/reading/comic/$itemId": typeof ReadingComicItemIdRoute
   "/video/play/$itemId": typeof VideoPlayItemIdRoute
+  "/library/collections": typeof LibraryCollectionsIndexRoute
   "/music/albums": typeof MusicAlbumsIndexRoute
   "/music/artists": typeof MusicArtistsIndexRoute
   "/music/playlists": typeof MusicPlaylistsIndexRoute
@@ -405,19 +518,24 @@ export interface FileRoutesById {
   "/_app": typeof shellRoutesAppRouteWithChildren
   "/login": typeof shellRoutesLoginRoute
   "/setup": typeof shellRoutesSetupRoute
+  "/s/$token": typeof shellRoutesShareRoute
   "/_app/": typeof IndexRoute
   "/_app/apps/plugins": typeof AppsPluginsRoute
   "/_app/apps/themes": typeof AppsThemesRoute
+  "/_app/broadcast/virtual": typeof BroadcastVirtualRoute
   "/_app/library/$libraryId": typeof LibraryLibraryIdRoute
   "/_app/library/connections": typeof LibraryConnectionsRoute
   "/_app/library/music-search": typeof LibraryMusicSearchRoute
+  "/_app/library/shares": typeof LibrarySharesRoute
   "/_app/music/audiobooks": typeof MusicAudiobooksRoute
   "/_app/music/favorites": typeof MusicFavoritesRoute
   "/_app/music/genres": typeof MusicGenresRoute
   "/_app/music/search": typeof MusicSearchRoute
   "/_app/music/songs": typeof MusicSongsRoute
+  "/_app/photos/cleanup": typeof PhotosCleanupRoute
   "/_app/photos/favorites": typeof PhotosFavoritesRoute
   "/_app/photos/memories": typeof PhotosMemoriesRoute
+  "/_app/photos/people": typeof PhotosPeopleRoute
   "/_app/photos/places": typeof PhotosPlacesRoute
   "/_app/reading/books": typeof ReadingBooksRoute
   "/_app/reading/comics": typeof ReadingComicsRoute
@@ -425,11 +543,18 @@ export interface FileRoutesById {
   "/_app/reading/search": typeof ReadingSearchRoute
   "/_app/system/hardware": typeof SystemHardwareRoute
   "/_app/system/libraries": typeof SystemLibrariesRoute
+  "/_app/system/maintenance": typeof SystemMaintenanceRoute
+  "/_app/system/notifications": typeof SystemNotificationsRoute
   "/_app/system/settings": typeof SystemSettingsRoute
+  "/_app/system/users": typeof SystemUsersRoute
+  "/_app/tasks/downloads": typeof TasksDownloadsRoute
+  "/_app/tasks/organizer": typeof TasksOrganizerRoute
   "/_app/video/favorites": typeof VideoFavoritesRoute
   "/_app/video/search": typeof VideoSearchRoute
   "/_app/apps/": typeof AppsIndexRoute
+  "/_app/assistant/": typeof AssistantIndexRoute
   "/_app/broadcast/": typeof BroadcastIndexRoute
+  "/_app/home/": typeof HomeIndexRoute
   "/_app/library/": typeof LibraryIndexRoute
   "/_app/music/": typeof MusicIndexRoute
   "/_app/photos/": typeof PhotosIndexRoute
@@ -437,11 +562,13 @@ export interface FileRoutesById {
   "/_app/system/": typeof SystemIndexRoute
   "/_app/tasks/": typeof TasksIndexRoute
   "/_app/video/": typeof VideoIndexRoute
+  "/_app/library/collections/$collectionId": typeof LibraryCollectionsCollectionIdRoute
   "/_app/music/playlists/$playlistId": typeof MusicPlaylistsPlaylistIdRoute
   "/_app/photos/albums/$albumId": typeof PhotosAlbumsAlbumIdRoute
   "/_app/reading/book/$itemId": typeof ReadingBookItemIdRoute
   "/_app/reading/comic/$itemId": typeof ReadingComicItemIdRoute
   "/_app/video/play/$itemId": typeof VideoPlayItemIdRoute
+  "/_app/library/collections/": typeof LibraryCollectionsIndexRoute
   "/_app/music/albums/": typeof MusicAlbumsIndexRoute
   "/_app/music/artists/": typeof MusicArtistsIndexRoute
   "/_app/music/playlists/": typeof MusicPlaylistsIndexRoute
@@ -457,18 +584,23 @@ export interface FileRouteTypes {
     | "/"
     | "/login"
     | "/setup"
+    | "/s/$token"
     | "/apps/plugins"
     | "/apps/themes"
+    | "/broadcast/virtual"
     | "/library/$libraryId"
     | "/library/connections"
     | "/library/music-search"
+    | "/library/shares"
     | "/music/audiobooks"
     | "/music/favorites"
     | "/music/genres"
     | "/music/search"
     | "/music/songs"
+    | "/photos/cleanup"
     | "/photos/favorites"
     | "/photos/memories"
+    | "/photos/people"
     | "/photos/places"
     | "/reading/books"
     | "/reading/comics"
@@ -476,11 +608,18 @@ export interface FileRouteTypes {
     | "/reading/search"
     | "/system/hardware"
     | "/system/libraries"
+    | "/system/maintenance"
+    | "/system/notifications"
     | "/system/settings"
+    | "/system/users"
+    | "/tasks/downloads"
+    | "/tasks/organizer"
     | "/video/favorites"
     | "/video/search"
     | "/apps/"
+    | "/assistant/"
     | "/broadcast/"
+    | "/home/"
     | "/library/"
     | "/music/"
     | "/photos/"
@@ -488,11 +627,13 @@ export interface FileRouteTypes {
     | "/system/"
     | "/tasks/"
     | "/video/"
+    | "/library/collections/$collectionId"
     | "/music/playlists/$playlistId"
     | "/photos/albums/$albumId"
     | "/reading/book/$itemId"
     | "/reading/comic/$itemId"
     | "/video/play/$itemId"
+    | "/library/collections/"
     | "/music/albums/"
     | "/music/artists/"
     | "/music/playlists/"
@@ -505,19 +646,24 @@ export interface FileRouteTypes {
   to:
     | "/login"
     | "/setup"
+    | "/s/$token"
     | "/"
     | "/apps/plugins"
     | "/apps/themes"
+    | "/broadcast/virtual"
     | "/library/$libraryId"
     | "/library/connections"
     | "/library/music-search"
+    | "/library/shares"
     | "/music/audiobooks"
     | "/music/favorites"
     | "/music/genres"
     | "/music/search"
     | "/music/songs"
+    | "/photos/cleanup"
     | "/photos/favorites"
     | "/photos/memories"
+    | "/photos/people"
     | "/photos/places"
     | "/reading/books"
     | "/reading/comics"
@@ -525,11 +671,18 @@ export interface FileRouteTypes {
     | "/reading/search"
     | "/system/hardware"
     | "/system/libraries"
+    | "/system/maintenance"
+    | "/system/notifications"
     | "/system/settings"
+    | "/system/users"
+    | "/tasks/downloads"
+    | "/tasks/organizer"
     | "/video/favorites"
     | "/video/search"
     | "/apps"
+    | "/assistant"
     | "/broadcast"
+    | "/home"
     | "/library"
     | "/music"
     | "/photos"
@@ -537,11 +690,13 @@ export interface FileRouteTypes {
     | "/system"
     | "/tasks"
     | "/video"
+    | "/library/collections/$collectionId"
     | "/music/playlists/$playlistId"
     | "/photos/albums/$albumId"
     | "/reading/book/$itemId"
     | "/reading/comic/$itemId"
     | "/video/play/$itemId"
+    | "/library/collections"
     | "/music/albums"
     | "/music/artists"
     | "/music/playlists"
@@ -555,19 +710,24 @@ export interface FileRouteTypes {
     | "/_app"
     | "/login"
     | "/setup"
+    | "/s/$token"
     | "/_app/"
     | "/_app/apps/plugins"
     | "/_app/apps/themes"
+    | "/_app/broadcast/virtual"
     | "/_app/library/$libraryId"
     | "/_app/library/connections"
     | "/_app/library/music-search"
+    | "/_app/library/shares"
     | "/_app/music/audiobooks"
     | "/_app/music/favorites"
     | "/_app/music/genres"
     | "/_app/music/search"
     | "/_app/music/songs"
+    | "/_app/photos/cleanup"
     | "/_app/photos/favorites"
     | "/_app/photos/memories"
+    | "/_app/photos/people"
     | "/_app/photos/places"
     | "/_app/reading/books"
     | "/_app/reading/comics"
@@ -575,11 +735,18 @@ export interface FileRouteTypes {
     | "/_app/reading/search"
     | "/_app/system/hardware"
     | "/_app/system/libraries"
+    | "/_app/system/maintenance"
+    | "/_app/system/notifications"
     | "/_app/system/settings"
+    | "/_app/system/users"
+    | "/_app/tasks/downloads"
+    | "/_app/tasks/organizer"
     | "/_app/video/favorites"
     | "/_app/video/search"
     | "/_app/apps/"
+    | "/_app/assistant/"
     | "/_app/broadcast/"
+    | "/_app/home/"
     | "/_app/library/"
     | "/_app/music/"
     | "/_app/photos/"
@@ -587,11 +754,13 @@ export interface FileRouteTypes {
     | "/_app/system/"
     | "/_app/tasks/"
     | "/_app/video/"
+    | "/_app/library/collections/$collectionId"
     | "/_app/music/playlists/$playlistId"
     | "/_app/photos/albums/$albumId"
     | "/_app/reading/book/$itemId"
     | "/_app/reading/comic/$itemId"
     | "/_app/video/play/$itemId"
+    | "/_app/library/collections/"
     | "/_app/music/albums/"
     | "/_app/music/artists/"
     | "/_app/music/playlists/"
@@ -606,6 +775,7 @@ export interface RootRouteChildren {
   shellRoutesAppRoute: typeof shellRoutesAppRouteWithChildren
   shellRoutesLoginRoute: typeof shellRoutesLoginRoute
   shellRoutesSetupRoute: typeof shellRoutesSetupRoute
+  shellRoutesShareRoute: typeof shellRoutesShareRoute
 }
 
 declare module "@tanstack/react-router" {
@@ -638,6 +808,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
+    "/s/$token": {
+      id: "/s/$token"
+      path: "/s/$token"
+      fullPath: "/s/$token"
+      preLoaderRoute: typeof shellRoutesShareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     "/_app/apps/": {
       id: "/_app/apps/"
       path: "/apps"
@@ -659,11 +836,32 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AppsThemesRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
+    "/_app/assistant/": {
+      id: "/_app/assistant/"
+      path: "/assistant"
+      fullPath: "/assistant/"
+      preLoaderRoute: typeof AssistantIndexRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
     "/_app/broadcast/": {
       id: "/_app/broadcast/"
       path: "/broadcast"
       fullPath: "/broadcast/"
       preLoaderRoute: typeof BroadcastIndexRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
+    "/_app/broadcast/virtual": {
+      id: "/_app/broadcast/virtual"
+      path: "/broadcast/virtual"
+      fullPath: "/broadcast/virtual"
+      preLoaderRoute: typeof BroadcastVirtualRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
+    "/_app/home/": {
+      id: "/_app/home/"
+      path: "/home"
+      fullPath: "/home/"
+      preLoaderRoute: typeof HomeIndexRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
     "/_app/library/": {
@@ -692,6 +890,13 @@ declare module "@tanstack/react-router" {
       path: "/library/music-search"
       fullPath: "/library/music-search"
       preLoaderRoute: typeof LibraryMusicSearchRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
+    "/_app/library/shares": {
+      id: "/_app/library/shares"
+      path: "/library/shares"
+      fullPath: "/library/shares"
+      preLoaderRoute: typeof LibrarySharesRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
     "/_app/music/": {
@@ -743,6 +948,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof PhotosIndexRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
+    "/_app/photos/cleanup": {
+      id: "/_app/photos/cleanup"
+      path: "/photos/cleanup"
+      fullPath: "/photos/cleanup"
+      preLoaderRoute: typeof PhotosCleanupRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
     "/_app/photos/favorites": {
       id: "/_app/photos/favorites"
       path: "/photos/favorites"
@@ -755,6 +967,13 @@ declare module "@tanstack/react-router" {
       path: "/photos/memories"
       fullPath: "/photos/memories"
       preLoaderRoute: typeof PhotosMemoriesRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
+    "/_app/photos/people": {
+      id: "/_app/photos/people"
+      path: "/photos/people"
+      fullPath: "/photos/people"
+      preLoaderRoute: typeof PhotosPeopleRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
     "/_app/photos/places": {
@@ -820,6 +1039,20 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof SystemLibrariesRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
+    "/_app/system/maintenance": {
+      id: "/_app/system/maintenance"
+      path: "/system/maintenance"
+      fullPath: "/system/maintenance"
+      preLoaderRoute: typeof SystemMaintenanceRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
+    "/_app/system/notifications": {
+      id: "/_app/system/notifications"
+      path: "/system/notifications"
+      fullPath: "/system/notifications"
+      preLoaderRoute: typeof SystemNotificationsRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
     "/_app/system/settings": {
       id: "/_app/system/settings"
       path: "/system/settings"
@@ -827,11 +1060,32 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof SystemSettingsRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
+    "/_app/system/users": {
+      id: "/_app/system/users"
+      path: "/system/users"
+      fullPath: "/system/users"
+      preLoaderRoute: typeof SystemUsersRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
     "/_app/tasks/": {
       id: "/_app/tasks/"
       path: "/tasks"
       fullPath: "/tasks/"
       preLoaderRoute: typeof TasksIndexRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
+    "/_app/tasks/downloads": {
+      id: "/_app/tasks/downloads"
+      path: "/tasks/downloads"
+      fullPath: "/tasks/downloads"
+      preLoaderRoute: typeof TasksDownloadsRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
+    "/_app/tasks/organizer": {
+      id: "/_app/tasks/organizer"
+      path: "/tasks/organizer"
+      fullPath: "/tasks/organizer"
+      preLoaderRoute: typeof TasksOrganizerRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
     "/_app/video/": {
@@ -853,6 +1107,20 @@ declare module "@tanstack/react-router" {
       path: "/video/search"
       fullPath: "/video/search"
       preLoaderRoute: typeof VideoSearchRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
+    "/_app/library/collections/": {
+      id: "/_app/library/collections/"
+      path: "/library/collections"
+      fullPath: "/library/collections/"
+      preLoaderRoute: typeof LibraryCollectionsIndexRouteImport
+      parentRoute: typeof shellRoutesAppRoute
+    }
+    "/_app/library/collections/$collectionId": {
+      id: "/_app/library/collections/$collectionId"
+      path: "/library/collections/$collectionId"
+      fullPath: "/library/collections/$collectionId"
+      preLoaderRoute: typeof LibraryCollectionsCollectionIdRouteImport
       parentRoute: typeof shellRoutesAppRoute
     }
     "/_app/music/albums/": {
@@ -953,16 +1221,20 @@ interface shellRoutesAppRouteChildren {
   IndexRoute: typeof IndexRoute
   AppsPluginsRoute: typeof AppsPluginsRoute
   AppsThemesRoute: typeof AppsThemesRoute
+  BroadcastVirtualRoute: typeof BroadcastVirtualRoute
   LibraryLibraryIdRoute: typeof LibraryLibraryIdRoute
   LibraryConnectionsRoute: typeof LibraryConnectionsRoute
   LibraryMusicSearchRoute: typeof LibraryMusicSearchRoute
+  LibrarySharesRoute: typeof LibrarySharesRoute
   MusicAudiobooksRoute: typeof MusicAudiobooksRoute
   MusicFavoritesRoute: typeof MusicFavoritesRoute
   MusicGenresRoute: typeof MusicGenresRoute
   MusicSearchRoute: typeof MusicSearchRoute
   MusicSongsRoute: typeof MusicSongsRoute
+  PhotosCleanupRoute: typeof PhotosCleanupRoute
   PhotosFavoritesRoute: typeof PhotosFavoritesRoute
   PhotosMemoriesRoute: typeof PhotosMemoriesRoute
+  PhotosPeopleRoute: typeof PhotosPeopleRoute
   PhotosPlacesRoute: typeof PhotosPlacesRoute
   ReadingBooksRoute: typeof ReadingBooksRoute
   ReadingComicsRoute: typeof ReadingComicsRoute
@@ -970,11 +1242,18 @@ interface shellRoutesAppRouteChildren {
   ReadingSearchRoute: typeof ReadingSearchRoute
   SystemHardwareRoute: typeof SystemHardwareRoute
   SystemLibrariesRoute: typeof SystemLibrariesRoute
+  SystemMaintenanceRoute: typeof SystemMaintenanceRoute
+  SystemNotificationsRoute: typeof SystemNotificationsRoute
   SystemSettingsRoute: typeof SystemSettingsRoute
+  SystemUsersRoute: typeof SystemUsersRoute
+  TasksDownloadsRoute: typeof TasksDownloadsRoute
+  TasksOrganizerRoute: typeof TasksOrganizerRoute
   VideoFavoritesRoute: typeof VideoFavoritesRoute
   VideoSearchRoute: typeof VideoSearchRoute
   AppsIndexRoute: typeof AppsIndexRoute
+  AssistantIndexRoute: typeof AssistantIndexRoute
   BroadcastIndexRoute: typeof BroadcastIndexRoute
+  HomeIndexRoute: typeof HomeIndexRoute
   LibraryIndexRoute: typeof LibraryIndexRoute
   MusicIndexRoute: typeof MusicIndexRoute
   PhotosIndexRoute: typeof PhotosIndexRoute
@@ -982,11 +1261,13 @@ interface shellRoutesAppRouteChildren {
   SystemIndexRoute: typeof SystemIndexRoute
   TasksIndexRoute: typeof TasksIndexRoute
   VideoIndexRoute: typeof VideoIndexRoute
+  LibraryCollectionsCollectionIdRoute: typeof LibraryCollectionsCollectionIdRoute
   MusicPlaylistsPlaylistIdRoute: typeof MusicPlaylistsPlaylistIdRoute
   PhotosAlbumsAlbumIdRoute: typeof PhotosAlbumsAlbumIdRoute
   ReadingBookItemIdRoute: typeof ReadingBookItemIdRoute
   ReadingComicItemIdRoute: typeof ReadingComicItemIdRoute
   VideoPlayItemIdRoute: typeof VideoPlayItemIdRoute
+  LibraryCollectionsIndexRoute: typeof LibraryCollectionsIndexRoute
   MusicAlbumsIndexRoute: typeof MusicAlbumsIndexRoute
   MusicArtistsIndexRoute: typeof MusicArtistsIndexRoute
   MusicPlaylistsIndexRoute: typeof MusicPlaylistsIndexRoute
@@ -1001,16 +1282,20 @@ const shellRoutesAppRouteChildren: shellRoutesAppRouteChildren = {
   IndexRoute: IndexRoute,
   AppsPluginsRoute: AppsPluginsRoute,
   AppsThemesRoute: AppsThemesRoute,
+  BroadcastVirtualRoute: BroadcastVirtualRoute,
   LibraryLibraryIdRoute: LibraryLibraryIdRoute,
   LibraryConnectionsRoute: LibraryConnectionsRoute,
   LibraryMusicSearchRoute: LibraryMusicSearchRoute,
+  LibrarySharesRoute: LibrarySharesRoute,
   MusicAudiobooksRoute: MusicAudiobooksRoute,
   MusicFavoritesRoute: MusicFavoritesRoute,
   MusicGenresRoute: MusicGenresRoute,
   MusicSearchRoute: MusicSearchRoute,
   MusicSongsRoute: MusicSongsRoute,
+  PhotosCleanupRoute: PhotosCleanupRoute,
   PhotosFavoritesRoute: PhotosFavoritesRoute,
   PhotosMemoriesRoute: PhotosMemoriesRoute,
+  PhotosPeopleRoute: PhotosPeopleRoute,
   PhotosPlacesRoute: PhotosPlacesRoute,
   ReadingBooksRoute: ReadingBooksRoute,
   ReadingComicsRoute: ReadingComicsRoute,
@@ -1018,11 +1303,18 @@ const shellRoutesAppRouteChildren: shellRoutesAppRouteChildren = {
   ReadingSearchRoute: ReadingSearchRoute,
   SystemHardwareRoute: SystemHardwareRoute,
   SystemLibrariesRoute: SystemLibrariesRoute,
+  SystemMaintenanceRoute: SystemMaintenanceRoute,
+  SystemNotificationsRoute: SystemNotificationsRoute,
   SystemSettingsRoute: SystemSettingsRoute,
+  SystemUsersRoute: SystemUsersRoute,
+  TasksDownloadsRoute: TasksDownloadsRoute,
+  TasksOrganizerRoute: TasksOrganizerRoute,
   VideoFavoritesRoute: VideoFavoritesRoute,
   VideoSearchRoute: VideoSearchRoute,
   AppsIndexRoute: AppsIndexRoute,
+  AssistantIndexRoute: AssistantIndexRoute,
   BroadcastIndexRoute: BroadcastIndexRoute,
+  HomeIndexRoute: HomeIndexRoute,
   LibraryIndexRoute: LibraryIndexRoute,
   MusicIndexRoute: MusicIndexRoute,
   PhotosIndexRoute: PhotosIndexRoute,
@@ -1030,11 +1322,13 @@ const shellRoutesAppRouteChildren: shellRoutesAppRouteChildren = {
   SystemIndexRoute: SystemIndexRoute,
   TasksIndexRoute: TasksIndexRoute,
   VideoIndexRoute: VideoIndexRoute,
+  LibraryCollectionsCollectionIdRoute: LibraryCollectionsCollectionIdRoute,
   MusicPlaylistsPlaylistIdRoute: MusicPlaylistsPlaylistIdRoute,
   PhotosAlbumsAlbumIdRoute: PhotosAlbumsAlbumIdRoute,
   ReadingBookItemIdRoute: ReadingBookItemIdRoute,
   ReadingComicItemIdRoute: ReadingComicItemIdRoute,
   VideoPlayItemIdRoute: VideoPlayItemIdRoute,
+  LibraryCollectionsIndexRoute: LibraryCollectionsIndexRoute,
   MusicAlbumsIndexRoute: MusicAlbumsIndexRoute,
   MusicArtistsIndexRoute: MusicArtistsIndexRoute,
   MusicPlaylistsIndexRoute: MusicPlaylistsIndexRoute,
@@ -1053,6 +1347,7 @@ const rootRouteChildren: RootRouteChildren = {
   shellRoutesAppRoute: shellRoutesAppRouteWithChildren,
   shellRoutesLoginRoute: shellRoutesLoginRoute,
   shellRoutesSetupRoute: shellRoutesSetupRoute,
+  shellRoutesShareRoute: shellRoutesShareRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

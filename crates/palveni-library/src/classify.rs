@@ -1,10 +1,10 @@
-//! File classification for the file-level scan.
+//! File classification for the M0 file-level scan.
 
 use palveni_core::{ItemKind, LibraryKind};
 
 const VIDEO_EXTENSIONS: &[&str] = &[
     "3gp", "avi", "flv", "m2ts", "m4v", "mkv", "mov", "mp4", "mpeg", "mpg", "mts", "ogv", "rm",
-    "rmvb", "ts", "vob", "webm", "wmv",
+    "rmvb", "strm", "ts", "vob", "webm", "wmv",
 ];
 
 const AUDIO_EXTENSIONS: &[&str] = &[
@@ -12,7 +12,7 @@ const AUDIO_EXTENSIONS: &[&str] = &[
     "ogg", "opus", "tta", "wav", "wma", "wv",
 ];
 
-// Photo libraries index still images.
+// Images only for now; Live Photo / phone videos join with the photo module.
 const PHOTO_EXTENSIONS: &[&str] = &[
     "arw", "avif", "bmp", "cr2", "cr3", "dng", "gif", "heic", "heif", "jpeg", "jpg", "jxl", "nef",
     "orf", "png", "raf", "rw2", "tif", "tiff", "webp",
@@ -103,12 +103,13 @@ pub fn title_for_file(name: &str) -> String {
     }
 }
 
-/// Lowercase title used for ordering.
+/// Ordering key. M0 uses a lowercase title; pinyin and natural-number
+/// ordering arrive with the search work (ADR-003).
 pub fn sort_key(title: &str) -> String {
     title.trim().to_lowercase()
 }
 
-/// Normalised title used for searching.
+/// Text for the future search abstraction.
 pub fn search_text(title: &str) -> String {
     title.trim().to_lowercase()
 }
@@ -128,11 +129,16 @@ mod tests {
             Some(ItemKind::Video)
         );
         assert_eq!(
+            classify(LibraryKind::Video, "Cloud Movie (2024).STRM"),
+            Some(ItemKind::Video)
+        );
+        assert_eq!(classify(LibraryKind::Music, "Cloud Movie.strm"), None);
+        assert_eq!(
             classify(LibraryKind::Photo, "IMG_0001.HEIC"),
             Some(ItemKind::Photo)
         );
         assert_eq!(
-            classify(LibraryKind::Book, "雾灯.epub"),
+            classify(LibraryKind::Book, "三体.epub"),
             Some(ItemKind::Book)
         );
         assert_eq!(

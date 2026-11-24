@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -8,9 +9,12 @@ import {
   ChevronRight,
   Columns2,
   Heart,
+  Layers,
   Maximize2,
   Minimize2,
+  PencilLine,
   ScrollText,
+  Share2,
   Square,
   Trash2,
   X,
@@ -18,12 +22,18 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ApiError } from "@/api/errors";
+import { useIsAdmin } from "@/api/queries/auth";
 import { cn } from "@/lib/cn";
+import { useFeature } from "@/modules/access";
+import { AddToCollectionDialog } from "@/ui/add-to-collection-dialog";
+import { MetadataEditModal } from "@/ui/metadata-edit-modal";
 import { ToolbarTitle } from "@/ui/page";
+import { ShareDialog } from "@/ui/share-dialog";
 import { ErrorState, LoadingRows } from "@/ui/states";
 import { readingImagePaths } from "../api";
 import { ReadingImage } from "../components/reading-image";
 import {
+  readingKeys,
   useCreateReadingBookmark,
   useDeleteReadingBookmark,
   usePrefetchComicPages,
@@ -70,10 +80,17 @@ function saveComicPrefs(prefs: ComicPrefs) {
 
 export function ComicReaderPage({ itemId }: { itemId: string }) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const isAdmin = useIsAdmin();
   const stageRef = useRef<HTMLDivElement>(null);
   const manifestQuery = useReadingManifest(itemId);
   const manifest = manifestQuery.data;
 
+  const [metadataOpen, setMetadataOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [collectionOpen, setCollectionOpen] = useState(false);
+  const sharesEnabled = useFeature("shares");
+  const collectionsEnabled = useFeature("collections");
   const [prefs, setPrefs] = useState<ComicPrefs>(loadComicPrefs);
   const [pageOverride, setPageOverride] = useState<number | null>(null);
   const [showBookmarks, setShowBookmarks] = useState(false);
@@ -220,7 +237,7 @@ export function ComicReaderPage({ itemId }: { itemId: string }) {
     >
       <ToolbarTitle title={entry.title} />
 
-      {/* Top Dark Control Bar (fixed dark chrome) */}
+      {/* Top Dark Control Bar */}
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-neutral-900/90 px-3.5 py-2.5 backdrop-blur-xs">
         <div className="flex min-w-0 items-center gap-2.5">
           <Link
@@ -357,6 +374,39 @@ export function ComicReaderPage({ itemId }: { itemId: string }) {
           >
             <Heart className={cn("size-4", entry.state.favorite && "fill-current")} aria-hidden />
           </button>
+
+          {collectionsEnabled ? (
+            <button
+              type="button"
+              aria-label={t("collectionsApp.addToCollection")}
+              onClick={() => setCollectionOpen(true)}
+              className="grid size-8 place-items-center rounded-control text-neutral-300 transition-colors hover:bg-white/12 hover:text-white focus-visible:outline-2 focus-visible:outline-amber-400"
+            >
+              <Layers className="size-4" aria-hidden />
+            </button>
+          ) : null}
+
+          {sharesEnabled ? (
+            <button
+              type="button"
+              aria-label={t("sharesApp.button")}
+              onClick={() => setShareOpen(true)}
+              className="grid size-8 place-items-center rounded-control text-neutral-300 transition-colors hover:bg-white/12 hover:text-white focus-visible:outline-2 focus-visible:outline-amber-400"
+            >
+              <Share2 className="size-4" aria-hidden />
+            </button>
+          ) : null}
+
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={() => setMetadataOpen(true)}
+              className="inline-flex h-8 items-center gap-1 rounded-control bg-white/8 px-2.5 text-xs text-neutral-200 transition-colors hover:bg-white/14 focus-visible:outline-2 focus-visible:outline-amber-400"
+            >
+              <PencilLine className="size-3.5" aria-hidden />
+              <span className="max-lg:sr-only">{t("metadataModal.trigger")}</span>
+            </button>
+          ) : null}
 
           {/* Completed */}
           <button
@@ -568,6 +618,47 @@ export function ComicReaderPage({ itemId }: { itemId: string }) {
             <ChevronRight className="size-4" aria-hidden />
           </button>
         </footer>
+      ) : null}
+      {shareOpen ? (
+        <ShareDialog
+          isOpen
+          onClose={() => setShareOpen(false)}
+          targetKind="item"
+          targetId={entry.itemId}
+          defaultTitle={entry.title}
+        />
+      ) : null}
+      <AddToCollectionDialog
+        isOpen={collectionOpen}
+        onClose={() => setCollectionOpen(false)}
+        item={{
+          entryKind: "comic",
+          targetId: entry.itemId,
+          title: entry.title,
+          subtitle: entry.seriesName ?? entry.authors[0] ?? entry.format.toUpperCase(),
+          artworkId: entry.hasCover ? `rd_${entry.itemId}` : null,
+        }}
+      />
+      {isAdmin ? (
+        <MetadataEditModal
+          isOpen={metadataOpen}
+          onClose={() => setMetadataOpen(false)}
+          itemId={entry.itemId}
+          defaultMediaType="book"
+          initialValues={{
+            title: entry.title,
+            genres: entry.tags,
+            overview: entry.summary,
+          }}
+          onSaved={() => {
+            void queryClient.invalidateQueries({ queryKey: readingKeys.manifest(itemId) });
+            void queryClient.invalidateQueries({ queryKey: readingKeys.all });
+          }}
+          onReset={() => {
+            void queryClient.invalidateQueries({ queryKey: readingKeys.manifest(itemId) });
+            void queryClient.invalidateQueries({ queryKey: readingKeys.all });
+          }}
+        />
       ) : null}
     </div>
   );

@@ -59,9 +59,11 @@ export function PageHeader({ title, summary, actions, className }: { title: stri
     );
   }
   return (
-    <div className={cn("flex flex-wrap items-baseline gap-x-4 gap-y-1", className)}>
-      <h1 className="font-heading text-headline font-title text-heading">{title}</h1>
-      {summary ? <p className="min-w-0 text-base text-fg-muted">{summary}</p> : null}
+    <div className={cn("flex flex-wrap items-end justify-between gap-x-4 gap-y-2.5", className)}>
+      <div className="grid min-w-0 gap-1">
+        <h1 className="font-heading text-headline font-title text-heading">{title}</h1>
+        {summary ? <p className="min-w-0 text-sm text-fg-muted">{summary}</p> : null}
+      </div>
       {actions ? <div className="ms-auto flex flex-wrap items-center gap-2 self-center">{actions}</div> : null}
     </div>
   );

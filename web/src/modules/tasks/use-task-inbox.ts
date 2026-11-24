@@ -6,11 +6,18 @@ import { useIsAdmin } from "@/api/queries/auth";
 import { useScanLibrary } from "@/api/queries/libraries";
 import { useNow } from "@/lib/use-now";
 import type { ActivitySummary, InboxItem } from "@/modules/types";
-import type { Task } from "./task";
+import { useInboxItems } from "@/shell/inbox-store";
+import { useApproveTask, useCancelTask } from "@/provisional/queries/tasks";
+import type { Task } from "@/provisional/types";
 import { useTaskLabels } from "./task-kinds";
 import { isActiveTask, useTaskFeed } from "./use-task-feed";
 
 const RECENT_MS = 24 * 3600_000;
+
+/** Rows a task's change preview selects by default (what "确认" approves without opening it). */
+export function defaultSelection(task: Task): string[] {
+  return task.result.flatMap((block) => (block.type === "change-preview" ? block.rows.filter((row) => row.selected).map((row) => row.id) : []));
+}
 
 /**
  * Scans whose newest run could not read some of the library's places: the library may be out of
@@ -26,13 +33,20 @@ function incompleteScans(tasks: Task[]): Set<string> {
   return new Set([...latest.values()].filter((task) => task.state === "succeeded" && scanGaps(task.step)).map((task) => task.id));
 }
 
+/**
+ * Approvals waiting for the user, incomplete scans (as alerts, until the library is scanned
+ * again), and tasks that finished or failed in the last day.
+ */
 export function useTaskInbox(): InboxItem[] {
   const { t } = useTranslation();
   const { title } = useTaskLabels();
   const { tasks } = useTaskFeed();
   const isAdmin = useIsAdmin();
+  const approve = useApproveTask();
+  const cancel = useCancelTask();
   const scan = useScanLibrary();
   const now = useNow(60_000);
+  const busyId = approve.isPending ? approve.variables.id : cancel.isPending ? cancel.variables : null;
   const scanningId = scan.isPending ? scan.variables : null;
   return useMemo(() => {
     const incomplete = incompleteScans(tasks);
@@ -60,6 +74,33 @@ export function useTaskInbox(): InboxItem[] {
           },
         ];
       }
+      if (task.state === "awaiting_approval") {
+        return [
+          {
+            id: task.id,
+            kind: "approval",
+            title: title(task),
+            detail: task.message ?? undefined,
+            createdAt: task.createdAt,
+            tone: "warning",
+            to: "/tasks",
+            search: { task: task.id },
+            scope: task.scope ?? undefined,
+            previews: task.previews,
+            actions: [
+              { id: "dismiss", label: t("attention.dismiss"), variant: "ghost", run: () => cancel.mutate(task.id), busy: busyId === task.id },
+              { id: "review", label: t("attention.review"), variant: "outline", to: "/tasks", search: { task: task.id } },
+              {
+                id: "confirm",
+                label: t("attention.confirm"),
+                variant: "confirm",
+                run: () => approve.mutate({ id: task.id, selectedRowIds: defaultSelection(task) }),
+                busy: busyId === task.id,
+              },
+            ],
+          },
+        ];
+      }
       const finished = task.finishedAt ? Date.parse(task.finishedAt) : 0;
       if ((task.state === "succeeded" || task.state === "failed") && now - finished < RECENT_MS && task.finishedAt) {
         return [
@@ -77,14 +118,19 @@ export function useTaskInbox(): InboxItem[] {
       }
       return [];
     });
-  }, [tasks, title, t, now, isAdmin, scan, scanningId]);
+  }, [tasks, title, t, now, approve, cancel, busyId, isAdmin, scan, scanningId]);
 }
 
-export function useFailureCount(): number {
+/**
+ * Navigation badge: work that needs the user — every request waiting for confirmation (task or
+ * assistant run, as collected in the inbox) plus tasks that failed in the last day.
+ */
+export function useAwaitingCount(): number {
   const { tasks } = useTaskFeed();
   const now = useNow(60_000);
+  const approvals = useInboxItems().filter((item) => item.kind === "approval").length;
   const failed = tasks.filter((task) => task.state === "failed" && task.finishedAt !== null && now - Date.parse(task.finishedAt) < RECENT_MS).length;
-  return failed;
+  return approvals + failed;
 }
 
 /** The most important running work, for the shell's activity display. */

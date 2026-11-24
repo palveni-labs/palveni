@@ -3,10 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 import type { components } from "@/api/generated";
-import { MUSIC_MOCK_FEATURES } from "@/mocks/music/handlers";
-import { M0_FEATURES, MOCK_ACCOUNTS } from "@/mocks/db";
+import { MOCK_ACCOUNTS } from "@/mocks/db";
 import { MEDIA_EXCLUSIVE_EVENT, playerStore } from "@/player/store";
-import { installMockDb, server } from "@/test/msw-server";
+import { ALL_FEATURES, installMockDb, server } from "@/test/msw-server";
 import { renderLoadedApp, signIn } from "@/test/render-app";
 import en from "./locales/en.json";
 import zhCN from "./locales/zh-CN.json";
@@ -22,7 +21,7 @@ describe("music app module", () => {
   });
 
   it("renders Music Home, starts shuffled playback in the persistent bar, and pauses on video exclusive event", async () => {
-    const db = installMockDb({ features: [...M0_FEATURES, ...MUSIC_MOCK_FEATURES] });
+    const db = installMockDb({ features: ALL_FEATURES });
     signIn(db, MOCK_ACCOUNTS.admin.username);
     const user = userEvent.setup();
     await renderLoadedApp("/music");
@@ -57,7 +56,7 @@ describe("music app module", () => {
   });
 
   it("browses albums, toggles grid/list view, opens album detail, and favorites album", async () => {
-    const db = installMockDb({ features: [...M0_FEATURES, ...MUSIC_MOCK_FEATURES] });
+    const db = installMockDb({ features: ALL_FEATURES });
     signIn(db, MOCK_ACCOUNTS.admin.username);
     const user = userEvent.setup();
     const { router } = await renderLoadedApp("/music/albums");
@@ -80,7 +79,7 @@ describe("music app module", () => {
   });
 
   it("supports multi-select on Songs table and ignores Space shortcut while typing in search", async () => {
-    const db = installMockDb({ features: [...M0_FEATURES, ...MUSIC_MOCK_FEATURES] });
+    const db = installMockDb({ features: ALL_FEATURES });
     signIn(db, MOCK_ACCOUNTS.admin.username);
     const user = userEvent.setup();
     await renderLoadedApp("/music/songs");
@@ -104,7 +103,7 @@ describe("music app module", () => {
   });
 
   it("creates, opens, reorders and deletes playlists", async () => {
-    const db = installMockDb({ features: [...M0_FEATURES, ...MUSIC_MOCK_FEATURES] });
+    const db = installMockDb({ features: ALL_FEATURES });
     signIn(db, MOCK_ACCOUNTS.admin.username);
     const user = userEvent.setup();
     const { router } = await renderLoadedApp("/music/playlists");
@@ -128,7 +127,7 @@ describe("music app module", () => {
   });
 
   it("navigates Artists, Genres, Favorites tabs, Search, and switches between multiple music libraries", async () => {
-    const db = installMockDb({ features: [...M0_FEATURES, ...MUSIC_MOCK_FEATURES] });
+    const db = installMockDb({ features: ALL_FEATURES });
     db.createLibrary("古典黑胶", "music", ["/srv/media/vinyl"]);
     signIn(db, MOCK_ACCOUNTS.admin.username);
     const user = userEvent.setup();
@@ -162,7 +161,7 @@ describe("music app module", () => {
   }, 15_000);
 
   it("browses /music/audiobooks, resumes spoken chapters, jumps M4B timestamps, and controls speed & sleep timer", async () => {
-    const db = installMockDb({ features: [...M0_FEATURES, ...MUSIC_MOCK_FEATURES, "spoken", "spokenChapters"] });
+    const db = installMockDb({ features: [...ALL_FEATURES, "spoken", "spokenChapters"] });
     const audiobookLib = db.createLibrary("有声书房", "audiobook", ["/srv/media/audiobooks"]);
     const podcastLib = db.createLibrary("深夜电台", "podcast", ["/srv/media/podcasts"]);
     signIn(db, MOCK_ACCOUNTS.admin.username);
@@ -283,7 +282,7 @@ describe("music app module", () => {
   }, 15_000);
 
   it("shows empty state with Library Management link and spoken-genre quick link when no spoken library exists", async () => {
-    const db = installMockDb({ features: [...M0_FEATURES, ...MUSIC_MOCK_FEATURES] });
+    const db = installMockDb({ features: ALL_FEATURES });
     signIn(db, MOCK_ACCOUNTS.admin.username);
     const musicLib = db.libraries.find((lib) => lib.kind === "music")!;
     server.use(

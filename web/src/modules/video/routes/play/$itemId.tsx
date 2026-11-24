@@ -13,6 +13,7 @@ export const Route = createFileRoute("/_app/video/play/$itemId")({
     season: parseNonNegInt(search.season),
     startMs: parseNonNegInt(search.startMs),
     fromStart: search.fromStart === true || search.fromStart === "true" ? true : undefined,
+    resumeDirect: search.resumeDirect === true || search.resumeDirect === "true" ? true : undefined,
     title: typeof search.title === "string" && search.title ? search.title.slice(0, 256) : undefined,
   }),
   component: VideoPlayerPage,

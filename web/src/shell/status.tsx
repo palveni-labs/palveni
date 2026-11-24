@@ -23,22 +23,30 @@ export function useConnectionLabel(): { live: boolean; label: string } {
   return { live, label: live ? t("status.connected") : status === "connecting" ? t("status.connecting") : t("status.reconnecting") };
 }
 
+const CONTAINER_HOSTNAME = /^[0-9a-f]{12}$/i;
+
+function displayServerName(raw: string | undefined, fallback: string): string {
+  if (!raw) return "…";
+  return CONTAINER_HOSTNAME.test(raw.trim()) ? fallback : raw;
+}
+
 /** Server name with a menu (one server today; the menu holds its details). */
 export function ServerSwitch({ className, tone = "shell" }: { className?: string; tone?: "shell" | "plain" }) {
   const { t } = useTranslation();
   const { data: info } = useSystemInfo();
+  const label = displayServerName(info?.name, t("app.name"));
   return (
     <Dropdown>
       <Dropdown.Trigger
         aria-label={t("status.serverMenu")}
         className={cn(
-          "inline-flex h-8 min-w-0 items-center gap-1.5 rounded-control px-2 font-mid outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
+          "inline-flex h-8 min-w-0 items-center gap-1.5 rounded-control px-2.5 text-sm font-mid outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
           tone === "shell" ? "text-shell-fg hover:bg-shell-field" : "text-fg hover:bg-hover",
           className,
         )}
       >
-        <span className="truncate">{info?.name ?? "…"}</span>
-        <ChevronDown className="size-3.5 shrink-0 opacity-70" aria-hidden />
+        <span className="max-w-[10rem] truncate">{label}</span>
+        <ChevronDown className="size-3.5 shrink-0 opacity-65" aria-hidden />
       </Dropdown.Trigger>
       <Dropdown.Popover placement="bottom start" className="min-w-64">
         <Dropdown.Menu aria-label={t("status.serverMenu")}>

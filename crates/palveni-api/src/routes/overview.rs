@@ -27,7 +27,7 @@ use crate::routes::path_id;
 use crate::state::AppState;
 
 const SUBPROCESS_TIMEOUT: Duration = Duration::from_secs(2);
-const ACTIVE_SESSION_WINDOW_MS: i64 = 30 * 60 * 1000;
+pub(crate) const ACTIVE_SESSION_WINDOW_MS: i64 = 30 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // Storage Report & Mount Reconnect (`module: storage`)
@@ -123,7 +123,7 @@ pub async fn reconnect_mount(
     }))
 }
 
-async fn collect_mounts(state: &AppState) -> Result<Vec<StorageMount>, ApiError> {
+pub(crate) async fn collect_mounts(state: &AppState) -> Result<Vec<StorageMount>, ApiError> {
     let now = clock::now();
     let pinned = state.db.overview().pinned_mounts().await?;
     let libs = state.db.libraries().list().await?;
@@ -205,7 +205,7 @@ fn mount_label(path: &str) -> String {
 }
 
 /// Safe cross-platform disk volume probing via `df -Pk` with bounded timeout (zero `unsafe`).
-async fn probe_df_volumes(library_paths: &[String]) -> Vec<StorageVolume> {
+pub(crate) async fn probe_df_volumes(library_paths: &[String]) -> Vec<StorageVolume> {
     let mut cmd = tokio::process::Command::new("df");
     cmd.arg("-Pk").stdin(Stdio::null()).stderr(Stdio::null());
 
@@ -382,7 +382,7 @@ pub async fn system_metrics(
     }))
 }
 
-async fn read_cpu_load_ratio(cores: usize) -> f64 {
+pub(crate) async fn read_cpu_load_ratio(cores: usize) -> f64 {
     let cores_f = (cores.max(1)) as f64;
     if let Ok(text) = tokio::fs::read_to_string("/proc/loadavg").await
         && let Some(load1) = parse_loadavg_1m(&text)
@@ -417,7 +417,7 @@ fn parse_loadavg_1m(text: &str) -> Option<f64> {
         .filter(|v| v.is_finite() && *v >= 0.0)
 }
 
-async fn read_memory_usage(fallback_total: u64) -> (u64, u64) {
+pub(crate) async fn read_memory_usage(fallback_total: u64) -> (u64, u64) {
     if let Ok(meminfo) = tokio::fs::read_to_string("/proc/meminfo").await
         && let Some((used, total)) = parse_linux_meminfo(&meminfo)
     {

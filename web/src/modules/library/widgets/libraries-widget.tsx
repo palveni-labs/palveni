@@ -9,6 +9,7 @@ import type { Library } from "@/api/types";
 import { RelativeTime } from "@/components/relative-time";
 import { formatNumber } from "@/lib/format";
 import { LIBRARY_KIND_META, LIBRARY_KINDS } from "@/lib/kinds";
+import { useCatalog } from "@/provisional/queries/catalog";
 import { useFeature } from "@/modules/access";
 import { useSlot } from "@/skins/scope";
 import { StatusLabel } from "@/ui/marks";
@@ -16,6 +17,16 @@ import { useSectionVariant } from "@/ui/section";
 import { EmptyState, LoadingRows } from "@/ui/states";
 import { CoverMosaic } from "@/ui/work";
 import { useScanningLibraries } from "../use-scanning";
+
+const KIND_GLOW: Record<Library["kind"], string> = {
+  video: "pv-glow-blue",
+  music: "pv-glow-sky",
+  audiobook: "pv-glow-orange",
+  podcast: "pv-glow-emerald",
+  photo: "pv-glow-amber",
+  book: "pv-glow-emerald",
+  comic: "pv-glow-orange",
+};
 
 function LibraryCell({ library, covers, scanning }: { library: Library; covers: string[]; scanning: boolean }) {
   const { t, i18n } = useTranslation();
@@ -31,17 +42,25 @@ function LibraryCell({ library, covers, scanning }: { library: Library; covers: 
   const count = `${formatNumber(library.itemCount, i18n.resolvedLanguage ?? "en")} ${t(`units.${library.kind}`)}`;
   const useVideoApp = library.kind === "video" && videoEnabled;
   return (
-    <div className={cn("relative flex min-h-[4.75rem] items-center gap-3 py-3.5 ps-(--pv-pad-panel) pe-2.5", empty && "bg-sunken/60")}>
+    <div
+      className={cn(
+        "group relative flex min-h-[5.5rem] items-center gap-3.5 rounded-xl border border-line/65 bg-sunken/50 p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-line-strong/80 hover:bg-surface/85 hover:shadow-panel",
+        KIND_GLOW[library.kind],
+        empty && "opacity-80",
+      )}
+    >
       {itemColor === "on" ? (
         empty ? (
-          <span className="grid size-11 shrink-0 place-items-center rounded-tile border-[1.5px] border-dashed border-line-strong text-fg-subtle">
-            <Icon className="size-[1.1rem]" aria-hidden />
+          <span className="grid size-13 shrink-0 place-items-center rounded-xl border-[1.5px] border-dashed border-line-strong text-fg-subtle">
+            <Icon className="size-5" aria-hidden />
           </span>
         ) : (
-          <CoverMosaic artworkIds={covers} title={library.name} icon={Icon} className="size-11 shrink-0 rounded-tile ring-1 ring-line ring-inset" />
+          <CoverMosaic artworkIds={covers} title={library.name} icon={Icon} className="size-13 shrink-0 rounded-xl shadow-art ring-1 ring-white/12 ring-inset" />
         )
       ) : (
-        <Icon className="size-[1.15rem] shrink-0 text-icon" aria-hidden />
+        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-surface text-icon shadow-panel">
+          <Icon className="size-5" aria-hidden />
+        </span>
       )}
       {openMusic ? (
         <Link to="/music" search={{ library: library.id }} className="grid min-w-0 flex-1 gap-0.5 outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-focus">
@@ -130,6 +149,7 @@ export default function LibrariesWidget() {
   const isAdmin = useIsAdmin();
   const variant = useSectionVariant();
   const { data, isPending } = useLibraries();
+  const { data: catalog } = useCatalog(useFeature("artwork"));
   const scanning = useScanningLibraries();
   if (isPending) return <LoadingRows rows={3} className="px-5 pb-4" />;
   const libraries = [...(data?.libraries ?? [])].sort(
@@ -155,16 +175,13 @@ export default function LibrariesWidget() {
   return (
     <ul
       className={cn(
-        "grid sm:grid-cols-2 lg:grid-cols-3",
-        variant === "plain" ? "gap-1 [&>li]:rounded-tile [&>li]:bg-sunken" : "border-t border-line [&>li]:border-line max-sm:divide-y max-sm:divide-line",
-        variant !== "plain" &&
-          "sm:max-lg:[&>li:nth-child(even)]:border-s sm:max-lg:[&>li:nth-child(n+3)]:border-t lg:[&>li:nth-child(n+4)]:border-t lg:[&>li:not(:nth-child(3n+1))]:border-s",
-        variant === "rule" && "[&>li:first-child>div]:ps-0 lg:[&>li:nth-child(3n+1)>div]:ps-0",
+        "grid grid-cols-1 gap-3 sm:grid-cols-2",
+        variant === "panel" && "px-(--pv-pad-panel) pb-(--pv-pad-panel)",
       )}
     >
       {libraries.map((library) => (
         <li key={library.id} className="min-w-0">
-          <LibraryCell library={library} covers={[]} scanning={scanning.has(library.id)} />
+          <LibraryCell library={library} covers={catalog?.libraryCovers[library.id] ?? []} scanning={scanning.has(library.id)} />
         </li>
       ))}
     </ul>

@@ -3,11 +3,12 @@ import { Link } from "@tanstack/react-router";
 import { FolderCog, FolderPlus, Library as LibraryIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
-import { useFeature } from "@/modules/access";
 import { useIsAdmin } from "@/api/queries/auth";
 import { useLibraries } from "@/api/queries/libraries";
 import type { Library, LibraryKind } from "@/api/types";
 import { LIBRARY_KINDS } from "@/lib/kinds";
+import { useFeature } from "@/modules/access";
+import { useCatalog } from "@/provisional/queries/catalog";
 import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { Section, SectionRows } from "@/ui/section";
@@ -48,9 +49,12 @@ export function LibrariesPage() {
   const isAdmin = useIsAdmin();
   const itemCount = useItemCountLabel();
   const query = useLibraries();
+  const { data: catalog } = useCatalog(useFeature("artwork"));
   const personal = useFeature("personal");
   const subscriptions = useFeature("broadcast");
   const storage = useFeature("connections");
+  const collectionsEnabled = useFeature("collections");
+  const sharesEnabled = useFeature("shares");
   const scanning = useScanningLibraries();
   const libraries = query.data?.libraries ?? [];
   const groups = LIBRARY_KINDS.map((kind) => ({
@@ -87,8 +91,18 @@ export function LibrariesPage() {
   return (
     <PageFrame>
       <PageHeader title={t("nav.libraries")} summary={summary} actions={actions} />
-      {(subscriptions || storage) && (
+      {(subscriptions || storage || collectionsEnabled || sharesEnabled) && (
         <nav aria-label={t("nav.libraries")} className="flex flex-wrap gap-2">
+          {collectionsEnabled && (
+            <Link to="/library/collections" className={buttonVariants({ variant: "outline", size: "sm" })}>
+              {t("nav.collections")}
+            </Link>
+          )}
+          {sharesEnabled && (
+            <Link to="/library/shares" className={buttonVariants({ variant: "outline", size: "sm" })}>
+              {t("nav.shares")}
+            </Link>
+          )}
           {subscriptions && (["radio", "podcast", "iptv"] as const).map((kind) => (
             <Link key={kind} to="/broadcast" search={{ kind }} className={buttonVariants({ variant: "outline", size: "sm" })}>
               {t(`broadcast.${kind}`)}
@@ -119,7 +133,7 @@ export function LibrariesPage() {
       ) : (
         <div className={cn("grid items-start gap-(--pv-gap-section)", groups.length > 1 && "lg:grid-cols-2")}>
           {groups.map((group) => (
-            <KindSection key={group.kind} kind={group.kind} libraries={group.libraries} covers={{}} scanning={scanning} />
+            <KindSection key={group.kind} kind={group.kind} libraries={group.libraries} covers={catalog?.libraryCovers ?? {}} scanning={scanning} />
           ))}
         </div>
       )}

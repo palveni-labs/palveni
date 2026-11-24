@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
 import { useAccess } from "@/modules/access";
-import { isVisible } from "@/modules/registry";
+import { isEnabled } from "@/modules/registry";
 import { useActiveModule } from "./use-shell-modules";
 
 /**
@@ -13,7 +13,7 @@ export function ModuleTabs() {
   const { t } = useTranslation();
   const access = useAccess();
   const { module, entry: active } = useActiveModule();
-  const entries = (module?.nav ?? []).filter((entry) => isVisible(entry, access));
+  const entries = (module?.nav ?? []).filter((entry) => isEnabled(entry, access));
   if (entries.length < 2) return null;
   return (
     <nav aria-label={module ? t(module.titleKey) : undefined} className="mx-auto w-full max-w-[76rem] px-4 pt-4 md:hidden">

@@ -1,12 +1,14 @@
 import { AlertDialog, Button, Input, Modal } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useNavigate } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, GripVertical, ListMusic, Pencil, Play, Plus, Shuffle, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, GripVertical, ListMusic, Pencil, Play, Plus, Share2, Shuffle, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
+import { useFeature } from "@/modules/access";
 import { playerStore } from "@/player/store";
 import { PageFrame } from "@/ui/frame";
+import { ShareDialog } from "@/ui/share-dialog";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import { musicApi, type MusicTrack, type Playlist } from "../api";
 import { MusicArtwork, MusicMosaic } from "../artwork";
@@ -120,6 +122,8 @@ export function MusicPlaylistDetailPage() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const sharesEnabled = useFeature("shares");
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
 
@@ -223,6 +227,16 @@ export function MusicPlaylistDetailPage() {
               <Pencil aria-hidden />
               <span className="max-sm:sr-only">{t("musicApp.playlists.rename")}</span>
             </Button>
+            {sharesEnabled ? (
+              <Button
+                size="sm"
+                className="bg-white/14 text-white hover:bg-white/22"
+                onPress={() => setShareOpen(true)}
+              >
+                <Share2 className="size-4" aria-hidden />
+                <span className="max-sm:sr-only">{t("sharesApp.button")}</span>
+              </Button>
+            ) : null}
             <Button
               size="sm"
               isIconOnly
@@ -374,6 +388,15 @@ export function MusicPlaylistDetailPage() {
           </AlertDialog.Dialog>
         </AlertDialog.Container>
       </AlertDialog.Backdrop>
+      {shareOpen ? (
+        <ShareDialog
+          isOpen
+          onClose={() => setShareOpen(false)}
+          targetKind="playlist"
+          targetId={playlist.id}
+          defaultTitle={playlist.name}
+        />
+      ) : null}
     </PageFrame>
   );
 }

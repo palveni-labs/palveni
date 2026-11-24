@@ -8,6 +8,19 @@ import { videoKeys } from "../queries";
 
 const HAS_IO = typeof IntersectionObserver !== "undefined";
 
+const VIDEO_FALLBACKS = [
+  "linear-gradient(145deg, oklch(0.32 0.09 246), oklch(0.20 0.06 218))",
+  "linear-gradient(145deg, oklch(0.32 0.08 198), oklch(0.20 0.05 168))",
+  "linear-gradient(145deg, oklch(0.34 0.09 42), oklch(0.21 0.06 24))",
+  "linear-gradient(145deg, oklch(0.32 0.08 156), oklch(0.20 0.05 190))",
+] as const;
+
+function fallbackGradient(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i += 1) h = (h * 33 + seed.charCodeAt(i)) >>> 0;
+  return VIDEO_FALLBACKS[h % VIDEO_FALLBACKS.length] ?? VIDEO_FALLBACKS[0];
+}
+
 /**
  * Loads an authenticated video artwork image (poster, backdrop, thumb or person portrait)
  * via Bearer fetch + object URL with viewport lazy-gating, proper cleanup and graceful fallback.
@@ -80,16 +93,23 @@ export function VideoImage({
       role={decorative ? undefined : "img"}
       aria-label={decorative ? undefined : alt}
       aria-hidden={decorative || undefined}
-      className={cn("relative grid place-items-center overflow-hidden bg-sunken text-fg-subtle", className)}
+      style={!query.data ? { backgroundImage: fallbackGradient(path ?? alt ?? fallbackText ?? "video") } : undefined}
+      className={cn("relative grid place-items-center overflow-hidden bg-sunken text-white/75", className)}
     >
       {!query.data ? (
-        fallbackText ? (
-          <span className="font-heading text-lg font-title tracking-tight text-fg-muted select-none">
-            {fallbackText}
-          </span>
-        ) : (
-          <FallbackIcon className="size-8 opacity-65" strokeWidth={1.5} aria-hidden />
-        )
+        <>
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_24%_18%,rgba(255,255,255,0.16),transparent_62%)]"
+          />
+          {fallbackText ? (
+            <span className="relative font-heading text-lg font-title tracking-tight text-white/90 select-none">
+              {fallbackText}
+            </span>
+          ) : (
+            <FallbackIcon className="relative size-8 opacity-75" strokeWidth={1.5} aria-hidden />
+          )}
+        </>
       ) : null}
       {query.data ? (
         <img

@@ -10,7 +10,9 @@ use serde_json::json;
 use tokio::sync::{broadcast, watch};
 
 use crate::PerfTier;
-use crate::ids::LibraryId;
+use crate::assistant::{AssistantRun, Task};
+use crate::home::HomeDevice;
+use crate::ids::{LibraryId, UserId};
 use crate::model::{Job, Library};
 
 /// Events delivered to clients over `GET /api/v1/events`.
@@ -26,6 +28,41 @@ pub enum ServerEvent {
     },
     /// A library was deleted.
     LibraryDeleted { id: LibraryId },
+    /// A smart-home device state changed.
+    HomeDeviceUpdated(HomeDevice),
+    /// An assistant run progressed or paused for approval (scoped to owner).
+    AssistantRunUpdated {
+        user_id: UserId,
+        run: Box<AssistantRun>,
+    },
+    /// A unified task changed state (scoped to owner when set, or admin-only for system jobs).
+    TaskUpdated {
+        user_id: Option<UserId>,
+        admin_only: bool,
+        task: Box<Task>,
+    },
+    /// An active playback session updated its live state (scoped to owner).
+    PlaybackSessionUpdated {
+        user_id: UserId,
+        session_id: String,
+        device_name: String,
+        state: String,
+        item_id: Option<String>,
+        title: Option<String>,
+        position_ms: i64,
+        volume: i32,
+        ambient_hex: Option<String>,
+    },
+    /// A remote playback command targeting one of the owner's active sessions.
+    PlaybackCommand {
+        user_id: UserId,
+        target_session_id: String,
+        command: String,
+        position_ms: Option<i64>,
+        volume: Option<i32>,
+        item_id: Option<String>,
+        issued_by: String,
+    },
 }
 
 impl ServerEvent {
@@ -36,11 +73,30 @@ impl ServerEvent {
             ServerEvent::SettingsUpdated { .. } => "settings.updated",
             ServerEvent::LibraryUpdated(_) => "library.updated",
             ServerEvent::LibraryDeleted { .. } => "library.deleted",
+            ServerEvent::HomeDeviceUpdated(_) => "home.device.updated",
+            ServerEvent::AssistantRunUpdated { .. } => "assistant.run.updated",
+            ServerEvent::TaskUpdated { .. } => "task.updated",
+            ServerEvent::PlaybackSessionUpdated { .. } => "playback.session.updated",
+            ServerEvent::PlaybackCommand { .. } => "playback.command",
         }
     }
 
     pub const fn admin_only(&self) -> bool {
-        matches!(self, Self::JobUpdated(_) | Self::SettingsUpdated { .. })
+        match self {
+            Self::JobUpdated(_) | Self::SettingsUpdated { .. } => true,
+            Self::TaskUpdated { admin_only, .. } => *admin_only,
+            _ => false,
+        }
+    }
+
+    pub const fn owner_user(&self) -> Option<UserId> {
+        match self {
+            Self::AssistantRunUpdated { user_id, .. } => Some(*user_id),
+            Self::TaskUpdated { user_id, .. } => *user_id,
+            Self::PlaybackSessionUpdated { user_id, .. } => Some(*user_id),
+            Self::PlaybackCommand { user_id, .. } => Some(*user_id),
+            _ => None,
+        }
     }
 
     /// SSE `data:` payload (single-line JSON).
@@ -55,6 +111,45 @@ impl ServerEvent {
             }
             ServerEvent::LibraryUpdated(library) => serde_json::to_string(library),
             ServerEvent::LibraryDeleted { id } => serde_json::to_string(&json!({ "id": id })),
+            ServerEvent::HomeDeviceUpdated(device) => serde_json::to_string(device),
+            ServerEvent::AssistantRunUpdated { run, .. } => serde_json::to_string(run),
+            ServerEvent::TaskUpdated { task, .. } => serde_json::to_string(task),
+            ServerEvent::PlaybackSessionUpdated {
+                session_id,
+                device_name,
+                state,
+                item_id,
+                title,
+                position_ms,
+                volume,
+                ambient_hex,
+                ..
+            } => serde_json::to_string(&json!({
+                "sessionId": session_id,
+                "deviceName": device_name,
+                "state": state,
+                "itemId": item_id,
+                "title": title,
+                "positionMs": position_ms,
+                "volume": volume,
+                "ambientHex": ambient_hex,
+            })),
+            ServerEvent::PlaybackCommand {
+                target_session_id,
+                command,
+                position_ms,
+                volume,
+                item_id,
+                issued_by,
+                ..
+            } => serde_json::to_string(&json!({
+                "targetSessionId": target_session_id,
+                "command": command,
+                "positionMs": position_ms,
+                "volume": volume,
+                "itemId": item_id,
+                "issuedBy": issued_by,
+            })),
         }
     }
 }

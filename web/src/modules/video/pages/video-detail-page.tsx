@@ -1,25 +1,38 @@
 import { Button, buttonVariants, toast } from "@heroui/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  BookOpen,
   Check,
   Clapperboard,
+  Disc3,
   Download,
   Film,
   Heart,
+  Layers,
+  PencilLine,
   Play,
   RotateCcw,
+  Share2,
   Star,
   Tv,
   User,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useIsAdmin } from "@/api/queries/auth";
+import { useRelatedWorks, type RelatedWork } from "@/api/queries/shares-collections";
 import { cn } from "@/lib/cn";
 import { errorText } from "@/lib/errors";
 import { formatBytes } from "@/lib/format";
+import { useFeature } from "@/modules/access";
+import { AddToCollectionDialog } from "@/ui/add-to-collection-dialog";
+import { MetadataEditModal } from "@/ui/metadata-edit-modal";
 import { ToolbarTitle } from "@/ui/page";
+import { ShareDialog } from "@/ui/share-dialog";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
+import { Cover } from "@/ui/work";
 import { downloadOriginalVideo, imagePaths, type MediaInfo, type VideoEntry, type VideoPerson } from "../api";
 import { MediaRail } from "../components/media-rail";
 import { PosterCard } from "../components/poster-card";
@@ -43,6 +56,7 @@ import {
   useToggleWorkPlayed,
   useVideoEpisodes,
   useVideoWork,
+  videoKeys,
 } from "../queries";
 
 function MediaSpecsStrip({ info }: { info: MediaInfo }) {
@@ -317,6 +331,8 @@ function VideoDetailView({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const isAdmin = useIsAdmin();
 
   const detailQuery = useVideoWork(libraryId, workId);
   const togglePlayed = useToggleWorkPlayed();
@@ -338,6 +354,13 @@ function VideoDetailView({
   const [pickedSeason, setPickedSeason] = useState<number | null>(null);
   const [pickedFileId, setPickedFileId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [metadataOpen, setMetadataOpen] = useState(false);
+  const [collectionOpen, setCollectionOpen] = useState(false);
+  const sharesEnabled = useFeature("shares");
+  const collectionsEnabled = useFeature("collections");
+  const relatedQuery = useRelatedWorks(work?.title, "video", collectionsEnabled);
+  const relatedWorks = relatedQuery.data?.works ?? [];
   const selectedSeason = pickedSeason ?? defaultSeason;
   const selectedFileId = pickedFileId ?? files[0]?.itemId ?? work?.itemId ?? null;
 
@@ -626,6 +649,39 @@ function VideoDetailView({
                     {t(favorite ? "videoApp.detail.favorite" : "videoApp.detail.addFavorite")}
                   </button>
 
+                  {sharesEnabled ? (
+                    <button
+                      type="button"
+                      onClick={() => setShareOpen(true)}
+                      className="inline-flex h-10 items-center gap-1.5 rounded-control border border-white/25 bg-white/14 px-3.5 text-sm font-mid text-white backdrop-blur-xs transition-colors hover:bg-white/24 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                    >
+                      <Share2 className="size-4" aria-hidden />
+                      {t("sharesApp.button")}
+                    </button>
+                  ) : null}
+
+                  {collectionsEnabled ? (
+                    <button
+                      type="button"
+                      onClick={() => setCollectionOpen(true)}
+                      className="inline-flex h-10 items-center gap-1.5 rounded-control border border-white/25 bg-white/14 px-3.5 text-sm font-mid text-white backdrop-blur-xs transition-colors hover:bg-white/24 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                    >
+                      <Layers className="size-4" aria-hidden />
+                      {t("collectionsApp.addToCollection")}
+                    </button>
+                  ) : null}
+
+                  {isAdmin && primaryItemId ? (
+                    <button
+                      type="button"
+                      onClick={() => setMetadataOpen(true)}
+                      className="inline-flex h-10 items-center gap-1.5 rounded-control border border-white/25 bg-white/14 px-3.5 text-sm font-mid text-white backdrop-blur-xs transition-colors hover:bg-white/24 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                    >
+                      <PencilLine className="size-4" aria-hidden />
+                      {t("metadataModal.trigger")}
+                    </button>
+                  ) : null}
+
                   {!isSeries && primaryItemId ? (
                     <button
                       type="button"
@@ -724,6 +780,59 @@ function VideoDetailView({
         {/* Cast & Crew */}
         <CastRail libraryId={libraryId} people={detail.people} />
 
+        {/* Cross-Media Related Works (Soundtracks, Books, Comics) */}
+        {relatedWorks.length > 0 ? (
+          <MediaRail title={t("collectionsApp.relatedRailTitle")} count={relatedWorks.length}>
+            {relatedWorks.map((rel: RelatedWork) => {
+              const Icon = rel.entryKind === "music_album" ? Disc3 : BookOpen;
+              const openRelated = () => {
+                if (rel.entryKind === "music_album") {
+                  void navigate({
+                    to: "/music/albums/$libraryId/$albumId",
+                    params: { libraryId: rel.libraryId, albumId: rel.targetId },
+                  });
+                } else if (rel.entryKind === "book") {
+                  void navigate({
+                    to: "/reading/book/$itemId",
+                    params: { itemId: rel.targetId },
+                  });
+                } else if (rel.entryKind === "comic") {
+                  void navigate({
+                    to: "/reading/comic/$itemId",
+                    params: { itemId: rel.targetId },
+                  });
+                }
+              };
+              return (
+                <button
+                  key={`${rel.entryKind}:${rel.libraryId}:${rel.targetId}`}
+                  type="button"
+                  onClick={openRelated}
+                  className="group flex w-36 shrink-0 snap-start flex-col gap-2 rounded-tile text-start outline-none focus-visible:ring-2 focus-visible:ring-(--pv-focus) sm:w-40"
+                >
+                  <Cover
+                    artworkId={rel.artworkId}
+                    title={rel.title}
+                    icon={Icon}
+                    decorative
+                    className="aspect-square w-full rounded-tile ring-1 ring-line/70 transition-shadow group-hover:shadow-raised"
+                  />
+                  <div className="grid min-w-0 gap-0.5 px-0.5">
+                    <span className="truncate text-sm font-strong text-fg group-hover:text-heading group-hover:underline">
+                      {rel.title}
+                    </span>
+                    <span className="truncate text-xs text-fg-muted">
+                      {[t(`collectionsApp.entryKinds.${rel.entryKind}`), rel.subtitle]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </MediaRail>
+        ) : null}
+
         {/* Similar Titles */}
         {detail.similar.length > 0 ? (
           <MediaRail title={t("videoApp.detail.similar")} count={detail.similar.length}>
@@ -737,6 +846,54 @@ function VideoDetailView({
           </MediaRail>
         ) : null}
       </div>
+
+      <ShareDialog
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        targetKind="video_work"
+        targetId={work.id}
+        libraryId={libraryId}
+        defaultTitle={work.title}
+      />
+
+      <AddToCollectionDialog
+        isOpen={collectionOpen}
+        onClose={() => setCollectionOpen(false)}
+        item={{
+          entryKind: "video",
+          targetId: work.id,
+          libraryId,
+          title: work.title,
+          subtitle: work.year != null ? String(work.year) : null,
+          artworkId: work.posterItemId ? `vp_${work.posterItemId}` : null,
+        }}
+      />
+
+      {isAdmin && primaryItemId ? (
+        <MetadataEditModal
+          isOpen={metadataOpen}
+          onClose={() => setMetadataOpen(false)}
+          itemId={primaryItemId}
+          workKey={work.id}
+          defaultMediaType={isSeries ? "tv" : "movie"}
+          initialValues={{
+            title: work.title,
+            originalTitle: work.originalTitle,
+            year: work.year,
+            rating: work.communityRating,
+            genres: work.genres,
+            overview: work.overview,
+          }}
+          onSaved={() => {
+            void queryClient.invalidateQueries({ queryKey: videoKeys.work(libraryId, workId) });
+            void queryClient.invalidateQueries({ queryKey: videoKeys.all });
+          }}
+          onReset={() => {
+            void queryClient.invalidateQueries({ queryKey: videoKeys.work(libraryId, workId) });
+            void queryClient.invalidateQueries({ queryKey: videoKeys.all });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

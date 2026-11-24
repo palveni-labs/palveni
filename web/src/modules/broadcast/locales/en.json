@@ -39,5 +39,30 @@
   "subRequired": "Enter a feed URL or provide a playlist.",
   "playerUnsupported": "This browser cannot play the selected stream. Try another stream or open its URL in a player.",
   "chooseLine": "Playback stream",
-  "noStreams": "No playable HTTP or HTTPS streams."
+  "noStreams": "No playable HTTP or HTTPS streams.",
+  "virtualTv": {
+    "nav": "Virtual TV",
+    "title": "24×7 Virtual Live TV",
+    "copyM3u": "Copy M3U URL",
+    "copyXmltv": "Copy XMLTV URL",
+    "copiedM3u": "Copied M3U playlist URL",
+    "copiedXmltv": "Copied XMLTV guide URL",
+    "addChannel": "New channel",
+    "channelNumber": "Channel number",
+    "channelName": "Channel name",
+    "channelNamePlaceholder": "e.g. Sci-Fi Cinema",
+    "videoLibrary": "Video library",
+    "genreFilter": "Genre filter (optional)",
+    "genrePlaceholder": "e.g. Sci-Fi",
+    "createSubmit": "Create channel",
+    "deleteChannel": "Remove channel",
+    "confirmDelete": "Remove virtual channel “{{name}}”?",
+    "tuneInNow": "Tune in live",
+    "liveNow": "LIVE",
+    "upcomingSchedule": "Next 12 hours",
+    "noChannels": "No virtual channels yet",
+    "noVideoLibraries": "Create and scan a video library first",
+    "noPlayableItems": "No matching playable videos in this channel",
+    "cycleSummary": "{{items}} titles · {{minutes}} min loop"
+  }
 }

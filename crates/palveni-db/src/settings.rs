@@ -12,6 +12,7 @@ use crate::error::{DbError, is_unique_violation};
 pub const KEY_RUNTIME: &str = "server.runtime";
 pub const KEY_SERVER_ID: &str = "server.id";
 pub const KEY_HARDWARE_REPORT: &str = "hardware.report";
+pub const KEY_METADATA_CONFIG: &str = "metadata.config";
 
 pub struct Settings<'a> {
     pub(crate) db: &'a Db,

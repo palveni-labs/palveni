@@ -41,15 +41,19 @@ describe("应用 › 插件", () => {
     expect(within(whisper!).getByText("已停用")).toBeInTheDocument();
   });
 
-  it("opens the store from Apps, finds a package and lets an administrator install and manage it", async () => {
+  it("opens the store tab from Apps, installs an official skin and manages it in Appearance", async () => {
     const db = installMockDb();
     signIn(db, MOCK_ACCOUNTS.admin.username);
     const user = userEvent.setup();
     const { router } = renderApp("/apps");
+
+    await user.click(await screen.findByRole("tab", { name: "配方商店" }, { timeout: 5000 }));
     const available = await screen.findByRole("region", { name: "官方目录中可安装的插件" });
     const search = screen.getByRole("searchbox", { name: "搜索插件" });
-    expect(screen.getByRole("link", { name: "向 GitHub 插件仓投稿" })).toHaveAttribute("href", "https://github.com/palveni-labs/plugins#submit-a-plugin");
-    await user.click(screen.getByRole("button", { name: "可安装" }));
+    expect(screen.getByRole("link", { name: "向 GitHub 插件仓投稿" })).toHaveAttribute(
+      "href",
+      "https://github.com/palveni-labs/plugins#submit-a-plugin",
+    );
     expect(screen.queryByRole("region", { name: "已安装的插件" })).not.toBeInTheDocument();
     await user.type(search, "ink");
     await user.click(await within(available).findByRole("button", { name: "安装「纸墨」" }));
@@ -57,13 +61,75 @@ describe("应用 › 插件", () => {
     const dialog = await screen.findByRole("alertdialog", { name: "安装「纸墨」？" });
     await user.click(within(dialog).getByRole("button", { name: "安装" }));
     await waitFor(() => expect(within(available).queryByRole("button", { name: "安装「纸墨」" })).not.toBeInTheDocument());
-    await user.click(screen.getByRole("button", { name: "已安装" }));
+    await user.clear(search);
+    await user.click(screen.getByRole("tab", { name: "已安装" }));
     const installed = await screen.findByRole("region", { name: "已安装的插件" });
     expect(await within(installed).findByRole("heading", { name: /纸墨/ })).toBeInTheDocument();
     await user.click(within(installed).getByRole("link", { name: "在外观中管理" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/apps/themes"));
     expect(await screen.findByRole("button", { name: "卸载「纸墨」" })).toBeInTheDocument();
   });
+
+  it("enforces permission review gate on recipe install, edits settings via drawer, rolls back and uninstalls", async () => {
+    const db = installMockDb();
+    signIn(db, MOCK_ACCOUNTS.admin.username);
+    const user = userEvent.setup();
+    renderApp("/apps/plugins");
+
+    // Switch to Recipe Store tab
+    await user.click(await screen.findByRole("tab", { name: "配方商店" }, { timeout: 5000 }));
+    const storeSection = await screen.findByRole("region", { name: "官方配方与小组件商店" });
+    const tmdbHeading = await within(storeSection).findByRole("heading", { name: "TMDB Metadata Recipe" });
+    const tmdbCard = tmdbHeading.closest("article")!;
+    expect(within(tmdbCard).getByText("中风险")).toBeInTheDocument();
+
+    // Click Install -> Permission Risk Review Modal opens with confirm disabled
+    await user.click(within(tmdbCard).getByRole("button", { name: "安装" }));
+    const reviewModal = await screen.findByRole("dialog", { name: /权限与风险审查：TMDB Metadata Recipe/ });
+    const confirmBtn = within(reviewModal).getByRole("button", { name: "同意授权并安装" });
+    expect(confirmBtn).toBeDisabled();
+
+    // Check only first permission -> still disabled
+    const checkboxes = within(reviewModal).getAllByRole("checkbox");
+    expect(checkboxes.length).toBe(2);
+    await user.click(checkboxes[0]!);
+    expect(confirmBtn).toBeDisabled();
+
+    // Check second permission -> enabled -> confirm install
+    await user.click(checkboxes[1]!);
+    expect(confirmBtn).toBeEnabled();
+    await user.click(confirmBtn);
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /权限与风险审查/ })).not.toBeInTheDocument());
+
+    // Switch back to Installed tab -> TMDB card appears with Switch, Settings, Rollback, Uninstall
+    await user.click(screen.getByRole("tab", { name: "已安装" }));
+    const installedSection = await screen.findByRole("region", { name: "已安装的插件" });
+    expect(await within(installedSection).findByRole("heading", { name: /TMDB Metadata Recipe/ })).toBeInTheDocument();
+
+    // Open Settings drawer -> change language enum & boolean -> save
+    await user.click(within(installedSection).getByRole("button", { name: "配置" }));
+    const settingsDrawer = await screen.findByRole("dialog", { name: /插件配置：TMDB Metadata Recipe/ });
+    const langSelect = within(settingsDrawer).getByLabelText("Metadata Language");
+    await user.selectOptions(langSelect, "en-US");
+    await user.click(within(settingsDrawer).getByRole("button", { name: "保存配置" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /插件配置/ })).not.toBeInTheDocument());
+    expect(db.plugins.find((p) => p.id === "palveni.recipe.tmdb")?.settings?.language).toBe("en-US");
+
+    // Toggle Enable/Disable switch
+    const toggle = within(installedSection).getByRole("switch", { name: /TMDB Metadata Recipe/ });
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+    await user.click(toggle);
+    await waitFor(() => expect(toggle).toHaveAttribute("aria-checked", "false"));
+
+    // Rollback from 1.2.0 to 1.1.0
+    await user.click(within(installedSection).getByRole("button", { name: "回滚至 1.1.0" }));
+    expect(await within(installedSection).findByText("版本 1.1.0")).toBeInTheDocument();
+    expect(within(installedSection).queryByRole("button", { name: /回滚至/ })).not.toBeInTheDocument();
+
+    // Uninstall
+    await user.click(within(installedSection).getByRole("button", { name: "卸载" }));
+    expect(await screen.findByText("还没有安装插件")).toBeInTheDocument();
+  }, 15_000);
 
   it("opens appearance when a member enters Apps", async () => {
     const db = installMockDb();

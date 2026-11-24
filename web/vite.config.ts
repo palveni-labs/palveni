@@ -4,7 +4,8 @@ import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig, type PluginOption } from "vite";
+import { msw } from "msw/vite";
+import { defineConfig, loadEnv, type PluginOption } from "vite";
 
 // Default port of the Palveni server (P-A-L-V on a phone keypad).
 const API_TARGET = "http://127.0.0.1:7258";
@@ -27,7 +28,11 @@ function fontLicenses(): PluginOption {
   };
 }
 
-export default defineConfig(() => {
+export default defineConfig(({ command, mode }) => {
+  const env = loadEnv(mode, process.cwd(), "VITE_");
+  // `npm run dev:mock` runs with `--mode mock`; VITE_API_MOCK=1 in the environment works too.
+  const apiMock = command === "serve" && (mode === "mock" || env.VITE_API_MOCK === "1");
+
   const plugins: PluginOption[] = [
     // Route layout lives in tsr.config.json + src/routes.ts (shared with `tsr generate`).
     tanstackRouter({ target: "react", autoCodeSplitting: true }),
@@ -35,14 +40,22 @@ export default defineConfig(() => {
     tailwindcss(),
     fontLicenses(),
   ];
+  // Serves /mockServiceWorker.js from the installed msw package during mock development only;
+  // nothing from msw is ever emitted into dist/.
+  if (apiMock) plugins.push(msw({ mode: "worker-only" }));
+
   return {
     base: "/",
     plugins,
+    define: {
+      "import.meta.env.VITE_API_MOCK": JSON.stringify(apiMock ? "1" : "0"),
+    },
     resolve: {
       alias: { "@": path.resolve(import.meta.dirname, "src") },
     },
     server: {
       port: 5173,
+      // The mock serves the skin plugin packages from ../plugins (dev only).
       fs: { allow: [import.meta.dirname, path.resolve(import.meta.dirname, "../plugins")] },
       proxy: {
         "/api": { target: API_TARGET, changeOrigin: false },

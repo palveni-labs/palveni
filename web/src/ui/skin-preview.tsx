@@ -117,7 +117,7 @@ function MiniSidebar() {
   );
 }
 
-function ScanWarning() {
+function WaitingRow() {
   const { t } = useTranslation();
   const attention = useSlot("attention");
   const inset = useRowInset();
@@ -134,9 +134,9 @@ function ScanWarning() {
       <AttentionMark previews={BLANK_COVERS} title="" />
       <div className="grid min-w-0 flex-1 gap-0.5">
         <span className="truncate text-md font-mid text-fg">{t("appearance.preview.waitingTitle")}</span>
-        <span className="text-sm font-mid text-attention">{t("jobSteps.incomplete")}</span>
+        <span className="text-sm font-mid text-attention">{t("attention.waiting")}</span>
       </div>
-      <span className={cn(buttonVariants({ variant: "primary", size: "sm" }), "button--confirm shrink-0")}>{t("jobSteps.rescan")}</span>
+      <span className={cn(buttonVariants({ variant: "primary", size: "sm" }), "button--confirm shrink-0")}>{t("attention.confirm")}</span>
     </li>
   );
 }
@@ -203,7 +203,7 @@ function Miniature() {
           {pageTitle === "content" ? <span className="font-heading text-headline leading-none font-title text-heading">{title}</span> : null}
           <Section title={t("appearance.preview.section")} count={2}>
             <ul className={cn(attention === "tint" ? "grid gap-2" : "divide-y divide-line", section === "panel" && attention !== "tint" && "border-t border-line")}>
-              <ScanWarning />
+              <WaitingRow />
               <RunningRow />
             </ul>
           </Section>

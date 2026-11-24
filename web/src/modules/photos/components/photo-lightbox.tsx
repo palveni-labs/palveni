@@ -1,14 +1,19 @@
 import { toast } from "@heroui/react";
 import { Link } from "@tanstack/react-router";
 import {
+  Check,
   ChevronLeft,
   ChevronRight,
   Download,
   FolderPlus,
   Heart,
   Info,
+  Layers,
   Pause,
   Play,
+  Share2,
+  UserPlus,
+  Users,
   X,
   ZoomIn,
 } from "lucide-react";
@@ -16,9 +21,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
 import { errorText } from "@/lib/errors";
+import { useFeature } from "@/modules/access";
+import { AddToCollectionDialog } from "@/ui/add-to-collection-dialog";
+import { ShareDialog } from "@/ui/share-dialog";
 import { photosApi, type PhotoTimelineItem } from "../api";
 import { formatBytesCompact, formatCameraLabel } from "../format";
-import { usePhotoInfo, useTogglePhotoFavorite } from "../queries";
+import {
+  useCreatePhotoPerson,
+  usePhotoInfo,
+  usePhotoItemPeople,
+  usePhotoPeople,
+  useTagPhotoPerson,
+  useTogglePhotoFavorite,
+  useUntagPhotoPerson,
+} from "../queries";
 import { AddToAlbumModal } from "./add-to-album-modal";
 import { PhotoImage } from "./photo-image";
 
@@ -82,7 +98,14 @@ function PhotoLightboxSession({
   const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   const [slideshow, setSlideshow] = useState(initialSlideshow);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [peopleOpen, setPeopleOpen] = useState(false);
+  const [newPersonName, setNewPersonName] = useState("");
   const [albumModalOpen, setAlbumModalOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [collectionOpen, setCollectionOpen] = useState(false);
+  const sharesEnabled = useFeature("shares");
+  const collectionsEnabled = useFeature("collections");
+  const modalPaused = albumModalOpen || shareOpen || collectionOpen;
 
   const zoom = transform.photoId === current.id ? transform.zoom : 1;
   const panX = transform.photoId === current.id ? transform.panX : 0;
@@ -90,6 +113,48 @@ function PhotoLightboxSession({
 
   const toggleFav = useTogglePhotoFavorite();
   const { data: detail } = usePhotoInfo(current.id, infoOpen);
+  const { data: peopleList } = usePhotoPeople(peopleOpen);
+  const { data: itemPeopleData } = usePhotoItemPeople(current.id, peopleOpen || infoOpen);
+  const createPerson = useCreatePhotoPerson();
+  const tagPerson = useTagPhotoPerson();
+  const untagPerson = useUntagPhotoPerson();
+
+  const itemPeople = itemPeopleData?.people ?? [];
+  const taggedPersonIds = new Set(itemPeople.map((p) => p.id));
+
+  const handleTogglePersonTag = (personId: string, name: string) => {
+    if (taggedPersonIds.has(personId)) {
+      untagPerson.mutate(
+        { itemId: current.id, personId },
+        {
+          onSuccess: () => toast.success(t("photosApp.people.untaggedToast")),
+          onError: (err) => toast.danger(errorText(t, err)),
+        },
+      );
+    } else {
+      tagPerson.mutate(
+        { itemId: current.id, personId },
+        {
+          onSuccess: () => toast.success(t("photosApp.people.taggedToast", { name })),
+          onError: (err) => toast.danger(errorText(t, err)),
+        },
+      );
+    }
+  };
+
+  const handleQuickCreateAndTag = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = newPersonName.trim();
+    if (!clean) return;
+    try {
+      const created = await createPerson.mutateAsync({ name: clean });
+      await tagPerson.mutateAsync({ itemId: current.id, personId: created.id });
+      setNewPersonName("");
+      toast.success(t("photosApp.people.taggedToast", { name: created.name }));
+    } catch (err) {
+      toast.danger(errorText(t, err));
+    }
+  };
 
   const goPrev = useCallback(() => {
     if (items.length === 0) return;
@@ -102,12 +167,12 @@ function PhotoLightboxSession({
   }, [index, items.length, onIndexChange]);
 
   useEffect(() => {
-    if (!slideshow || items.length <= 1 || albumModalOpen) return;
+    if (!slideshow || items.length <= 1 || modalPaused) return;
     const timer = window.setInterval(() => {
       goNext();
     }, SLIDESHOW_INTERVAL_MS);
     return () => window.clearInterval(timer);
-  }, [slideshow, items.length, albumModalOpen, goNext]);
+  }, [slideshow, items.length, modalPaused, goNext]);
 
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
@@ -118,7 +183,7 @@ function PhotoLightboxSession({
   }, []);
 
   useEffect(() => {
-    if (albumModalOpen) return;
+    if (modalPaused) return;
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT")) {
@@ -143,7 +208,7 @@ function PhotoLightboxSession({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [albumModalOpen, onClose, goPrev, goNext]);
+  }, [modalPaused, onClose, goPrev, goNext]);
 
   const isFavorite = detail?.favorite ?? current.favorite;
   const cameraText = formatCameraLabel(
@@ -261,6 +326,41 @@ function PhotoLightboxSession({
             <FolderPlus className="size-4" aria-hidden />
           </button>
 
+          {collectionsEnabled ? (
+            <button
+              type="button"
+              aria-label={t("collectionsApp.addToCollection")}
+              onClick={() => setCollectionOpen(true)}
+              className="grid size-8 place-items-center rounded-control text-neutral-200 transition-colors hover:bg-white/12 focus-visible:outline-2 focus-visible:outline-white"
+            >
+              <Layers className="size-4" aria-hidden />
+            </button>
+          ) : null}
+
+          {sharesEnabled ? (
+            <button
+              type="button"
+              aria-label={t("sharesApp.button")}
+              onClick={() => setShareOpen(true)}
+              className="grid size-8 place-items-center rounded-control text-neutral-200 transition-colors hover:bg-white/12 focus-visible:outline-2 focus-visible:outline-white"
+            >
+              <Share2 className="size-4" aria-hidden />
+            </button>
+          ) : null}
+
+          <button
+            type="button"
+            aria-label={t("photosApp.lightbox.tagPeople")}
+            aria-pressed={peopleOpen}
+            onClick={() => setPeopleOpen((prev) => !prev)}
+            className={cn(
+              "grid size-8 place-items-center rounded-control transition-colors focus-visible:outline-2 focus-visible:outline-white",
+              peopleOpen ? "bg-white text-neutral-950" : "text-neutral-200 hover:bg-white/12",
+            )}
+          >
+            <Users className="size-4" aria-hidden />
+          </button>
+
           <button
             type="button"
             aria-label={t("photosApp.lightbox.downloadOriginal")}
@@ -357,6 +457,62 @@ function PhotoLightboxSession({
           ) : null}
         </div>
 
+        {peopleOpen ? (
+          <aside
+            aria-label={t("photosApp.people.tagTitle")}
+            className="flex w-full shrink-0 flex-col gap-3 overflow-y-auto border-s border-white/12 bg-neutral-900 px-4 py-4 text-sm text-neutral-100 sm:w-72"
+          >
+            <h2 className="text-base font-strong text-white">{t("photosApp.people.tagTitle")}</h2>
+            {(peopleList?.people ?? []).length === 0 ? (
+              <p className="text-xs text-neutral-400">{t("photosApp.people.noPeopleYet")}</p>
+            ) : (
+              <ul className="grid gap-1.5">
+                {(peopleList?.people ?? []).map((person) => {
+                  const isTagged = taggedPersonIds.has(person.id);
+                  return (
+                    <li key={person.id}>
+                      <button
+                        type="button"
+                        aria-pressed={isTagged}
+                        disabled={tagPerson.isPending || untagPerson.isPending}
+                        onClick={() => handleTogglePersonTag(person.id, person.name)}
+                        className={cn(
+                          "flex w-full items-center justify-between rounded-control border px-3 py-2 text-start text-xs font-mid transition-colors focus-visible:outline-2 focus-visible:outline-white",
+                          isTagged
+                            ? "border-emerald-400/50 bg-emerald-500/20 text-white"
+                            : "border-white/12 bg-white/5 text-neutral-200 hover:bg-white/10",
+                        )}
+                      >
+                        <span className="truncate">{person.name}</span>
+                        {isTagged ? <Check className="size-3.5 shrink-0 text-emerald-300" aria-hidden /> : null}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            <form onSubmit={(e) => void handleQuickCreateAndTag(e)} className="mt-auto grid gap-2 border-t border-white/10 pt-3">
+              <input
+                type="text"
+                aria-label={t("photosApp.people.quickCreatePlaceholder")}
+                placeholder={t("photosApp.people.quickCreatePlaceholder")}
+                value={newPersonName}
+                onChange={(e) => setNewPersonName(e.target.value)}
+                className="h-8 rounded-control border border-white/20 bg-neutral-950 px-2.5 text-xs text-white placeholder:text-neutral-500 focus-visible:outline-2 focus-visible:outline-white"
+              />
+              <button
+                type="submit"
+                disabled={!newPersonName.trim() || createPerson.isPending || tagPerson.isPending}
+                className="inline-flex h-8 items-center justify-center gap-1.5 rounded-control bg-white px-3 text-xs font-strong text-neutral-950 transition-opacity hover:opacity-90 disabled:opacity-40"
+              >
+                <UserPlus className="size-3.5" aria-hidden />
+                {t("photosApp.people.quickCreateAdd")}
+              </button>
+            </form>
+          </aside>
+        ) : null}
+
         {infoOpen ? (
           <aside
             aria-label={t("photosApp.lightbox.exif.title")}
@@ -413,6 +569,23 @@ function PhotoLightboxSession({
                 }
                 mono
               />
+              {itemPeople.length > 0 ? (
+                <div className="grid gap-1 border-t border-white/10 pt-2">
+                  <dt className="text-xs text-neutral-400">{t("photosApp.lightbox.exif.people")}</dt>
+                  <dd className="flex flex-wrap gap-1.5">
+                    {itemPeople.map((p) => (
+                      <Link
+                        key={p.id}
+                        to="/photos/people"
+                        onClick={onClose}
+                        className="rounded-control bg-white/12 px-2 py-0.5 text-xs text-white hover:bg-white/20"
+                      >
+                        {p.name}
+                      </Link>
+                    ))}
+                  </dd>
+                </div>
+              ) : null}
               {detail?.albums && detail.albums.length > 0 ? (
                 <div className="grid gap-1 border-t border-white/10 pt-2">
                   <dt className="text-xs text-neutral-400">{t("photosApp.lightbox.exif.albums")}</dt>
@@ -440,6 +613,28 @@ function PhotoLightboxSession({
         itemIds={[current.id]}
         open={albumModalOpen}
         onClose={() => setAlbumModalOpen(false)}
+      />
+
+      {shareOpen ? (
+        <ShareDialog
+          isOpen
+          onClose={() => setShareOpen(false)}
+          targetKind="item"
+          targetId={current.id}
+          defaultTitle={current.title}
+        />
+      ) : null}
+
+      <AddToCollectionDialog
+        isOpen={collectionOpen}
+        onClose={() => setCollectionOpen(false)}
+        item={{
+          entryKind: "photo",
+          targetId: current.id,
+          title: current.title,
+          subtitle: cameraText || null,
+          artworkId: `ph_${current.id}`,
+        }}
       />
     </div>
   );

@@ -1,4 +1,6 @@
 //! Video media info probing, playback mode decision, and ticketed HLS session serving.
+use std::io::SeekFrom;
+
 use axum::{
     Json,
     body::Body,
@@ -6,7 +8,7 @@ use axum::{
         Path, Query, State,
         rejection::{PathRejection, QueryRejection},
     },
-    http::{HeaderMap, StatusCode, header},
+    http::{HeaderMap, HeaderValue, Method, StatusCode, header},
     response::{IntoResponse, Response},
 };
 use chrono::{DateTime, TimeDelta, Utc};
@@ -18,11 +20,13 @@ use palveni_media::video::{
     segment_content_type,
 };
 use serde::{Deserialize, Serialize};
+use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio_util::io::ReaderStream;
 use uuid::Uuid;
 
 use super::{
-    Access, PRIVATE_CACHE, issue_ticket_with_lifetime, ticket_scope, transcode, verify_ticket,
+    Access, PRIVATE_CACHE, issue_ticket_with_lifetime, serve_range, ticket_scope, transcode,
+    verify_ticket,
 };
 use crate::{AppState, auth::CurrentUser, error::ApiError, json::ApiJson, routes::path_id};
 
@@ -60,6 +64,8 @@ pub struct VideoPlaybackResponse {
     pub mode: DeliveryMode,
     pub protocol: PlaybackProtocol,
     pub url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub direct_url: Option<String>,
     pub expires_at: DateTime<Utc>,
     pub start_ms: u64,
     #[schema(required = true)]
@@ -202,6 +208,41 @@ pub async fn media_info(
     path: Result<Path<String>, PathRejection>,
 ) -> Result<Response, ApiError> {
     let id = path_id(&path?.0, "Video")?;
+    let location = state
+        .db
+        .video()
+        .location(id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Video not found"))?;
+    if palveni_library::video::strm::is_strm_path(&location.relative_path) {
+        palveni_library::video::strm::read_strm_location(location)
+            .await
+            .map_err(|err| match err {
+                palveni_core::Error::Invalid(msg) => ApiError::validation(msg),
+                palveni_core::Error::Internal(_) => ApiError::internal(err),
+                _ => ApiError::not_found("Video file unavailable"),
+            })?;
+        let runtime_ms = state
+            .db
+            .video()
+            .thumb_location(id)
+            .await
+            .ok()
+            .flatten()
+            .and_then(|t| t.runtime_ms)
+            .and_then(|ms| u64::try_from(ms).ok());
+        let info = MediaInfo {
+            container: Some("strm".into()),
+            duration_ms: runtime_ms,
+            size_bytes: None,
+            bitrate_kbps: None,
+            video: None,
+            audio: Vec::new(),
+            subtitles: Vec::new(),
+            chapters: Vec::new(),
+        };
+        return Ok(([(header::CACHE_CONTROL, PRIVATE_CACHE)], Json(info)).into_response());
+    }
     let (file, extension) = open_video_source(&state, id).await?;
     let probed = state
         .hardware
@@ -240,6 +281,42 @@ pub async fn start(
             ApiError::validation("Maximum bitrate must be between 100 and 200000 kbit/s")
                 .field("maxBitrateKbps"),
         );
+    }
+
+    let location = state
+        .db
+        .video()
+        .location(id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Video not found"))?;
+    if palveni_library::video::strm::is_strm_path(&location.relative_path) {
+        let target_url = palveni_library::video::strm::read_strm_location(location)
+            .await
+            .map_err(|err| match err {
+                palveni_core::Error::Invalid(msg) => ApiError::validation(msg),
+                palveni_core::Error::Internal(_) => ApiError::internal(err),
+                _ => ApiError::not_found("Video file unavailable"),
+            })?;
+        let now = clock::now();
+        let (expires_at, ticket) = issue_ticket_with_lifetime(
+            &state.identity,
+            &ticket_scope(id),
+            current.session_id,
+            now,
+            VIDEO_TICKET_LIFETIME,
+        );
+        let response = VideoPlaybackResponse {
+            session_id: Uuid::now_v7().to_string(),
+            mode: DeliveryMode::Direct,
+            protocol: PlaybackProtocol::File,
+            url: format!("/api/v1/items/{id}/stream?ticket={ticket}"),
+            direct_url: Some(target_url),
+            expires_at,
+            start_ms: 0,
+            reason: Some("strm".into()),
+        };
+        super::super::home::trigger_media_event(&state, "video.play");
+        return Ok(([(header::CACHE_CONTROL, PRIVATE_CACHE)], Json(response)).into_response());
     }
 
     let (file, extension) = open_video_source(&state, id).await?;
@@ -291,6 +368,7 @@ pub async fn start(
                 mode: DeliveryMode::Direct,
                 protocol: PlaybackProtocol::File,
                 url: format!("/api/v1/items/{id}/stream?ticket={ticket}"),
+                direct_url: None,
                 expires_at,
                 start_ms: 0,
                 reason: decision.reason,
@@ -328,6 +406,7 @@ pub async fn start(
                     "/api/v1/video-sessions/{}/master.m3u8?ticket={ticket}",
                     started.session_id
                 ),
+                direct_url: None,
                 expires_at,
                 start_ms: started.start_ms,
                 reason: decision.reason,
@@ -335,6 +414,7 @@ pub async fn start(
         }
     };
 
+    super::super::home::trigger_media_event(&state, "video.play");
     Ok(([(header::CACHE_CONTROL, PRIVATE_CACHE)], Json(response)).into_response())
 }
 
@@ -368,6 +448,7 @@ pub async fn playlist(
 /// `GET /api/v1/video-sessions/{sessionId}/segment/{file}`
 pub async fn segment(
     State(state): State<AppState>,
+    method: Method,
     path: Result<Path<(String, String)>, PathRejection>,
     query: Result<Query<Access>, QueryRejection>,
     headers: HeaderMap,
@@ -378,22 +459,37 @@ pub async fn segment(
         return Err(ApiError::validation("Invalid segment filename").field("file"));
     }
     authorize_hls(&state, session_id, &headers, query).await?;
-    let (opened, size) = state
+    let (mut opened, size) = state
         .hardware
         .video
         .open_segment(session_id, &file)
         .await
         .map_err(video_error)?;
-    Response::builder()
-        .header(header::CONTENT_TYPE, segment_content_type(&file))
-        .header(header::CONTENT_LENGTH, size)
-        .header(header::CACHE_CONTROL, PRIVATE_CACHE)
-        .header(header::X_CONTENT_TYPE_OPTIONS, "nosniff")
-        .body(Body::from_stream(ReaderStream::with_capacity(
-            opened,
-            64 * 1024,
-        )))
-        .map_err(ApiError::internal)
+    let mut response = serve_range(
+        method,
+        &headers,
+        size,
+        segment_content_type(&file),
+        move |range, _| async move {
+            if range.start > 0 {
+                opened
+                    .seek(SeekFrom::Start(range.start))
+                    .await
+                    .map_err(ApiError::internal)?;
+            }
+            let length = range.end.saturating_sub(range.start);
+            Ok(Body::from_stream(ReaderStream::with_capacity(
+                opened.take(length),
+                64 * 1024,
+            )))
+        },
+    )
+    .await?;
+    response.headers_mut().insert(
+        header::X_CONTENT_TYPE_OPTIONS,
+        HeaderValue::from_static("nosniff"),
+    );
+    Ok(response)
 }
 
 /// `DELETE /api/v1/video-sessions/{sessionId}`
@@ -478,6 +574,7 @@ mod tests {
             mode: DeliveryMode::Remux,
             protocol: PlaybackProtocol::Hls,
             url: "/api/v1/video-sessions/abc/master.m3u8?ticket=t".into(),
+            direct_url: None,
             expires_at: now,
             start_ms: 4_000,
             reason: Some("container mkv".into()),

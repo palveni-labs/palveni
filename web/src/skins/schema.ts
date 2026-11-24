@@ -1,6 +1,16 @@
+/**
+ * Skins: pure data that decides how the workspace looks.
+ *
+ * A skin is a typed manifest of token values (light and dark), one choice per variant slot, and
+ * font assets. It contains no code and no CSS: every value goes through a narrow grammar before
+ * it reaches a CSS variable, so a third-party skin cannot inject `url(...)`, selectors or script.
+ * Built-in skins are parsed by the same function.
+ */
 import { isColor } from "./color";
 
 export const SKIN_FORMAT = 1;
+
+/* ---------------------------------------------------------------- variant slots */
 
 /** Structural variants the host implements; a skin picks one value per slot. */
 export const SLOT_VALUES = {
@@ -19,6 +29,8 @@ export const SLOT_VALUES = {
 export type SlotName = keyof typeof SLOT_VALUES;
 export type Slots = { [K in SlotName]: (typeof SLOT_VALUES)[K][number] };
 export const SLOT_NAMES = Object.keys(SLOT_VALUES) as SlotName[];
+
+/* ---------------------------------------------------------------- tokens */
 
 /** Colour tokens, named by job. Every skin sets all of them, separately for light and dark. */
 export const COLOR_TOKENS = [
@@ -150,6 +162,10 @@ export interface MotionTokens {
   ease: [number, number, number, number];
 }
 
+/**
+ * Work colour recipe, per mode. The hue and chroma come from the cover; the skin
+ * only fixes lightness and a chroma factor for each use.
+ */
 export interface WorkRecipe {
   /** Whole region in the work's colour (white text on it). */
   fieldL: number;

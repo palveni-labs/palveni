@@ -5,6 +5,7 @@ import { ExternalLink, Heart, Plus, Radio } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useIsAdmin } from "@/api/queries/auth";
+import { useFeature } from "@/modules/access";
 import { useSecureSurface } from "@/skins/secure";
 import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
@@ -232,6 +233,7 @@ export function BroadcastPage({ kind = "radio" }: { kind?: BroadcastKind }) {
   const { t } = useTranslation();
   const client = useQueryClient();
   const admin = useIsAdmin();
+  const hasVirtualTv = useFeature("virtualTv");
   const [selectedId, setSelected] = useState("");
   const [editing, setEditing] = useState<BroadcastSource | "new" | null>(null);
   const secure = useSecureSurface();
@@ -301,6 +303,14 @@ export function BroadcastPage({ kind = "radio" }: { kind?: BroadcastKind }) {
             {t(("broadcast." + k) as "broadcast.radio" | "broadcast.iptv" | "broadcast.podcast")}
           </Link>
         ))}
+        {hasVirtualTv && (
+          <Link
+            to="/broadcast/virtual"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            {t("broadcast.virtualTv.nav")}
+          </Link>
+        )}
       </nav>
       {editing && (
         <SourceForm

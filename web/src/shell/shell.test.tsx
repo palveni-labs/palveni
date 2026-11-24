@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { M0_FEATURES, MOCK_ACCOUNTS } from "@/mocks/db";
 import { moveNavModule, resetNavPrefs, toggleNavModuleHidden } from "@/shell/nav-prefs";
 import { resetSkinStore, setNav } from "@/skins/store";
-import { installMockDb } from "@/test/msw-server";
+import { ALL_FEATURES, installMockDb } from "@/test/msw-server";
 import { renderLoadedApp, signIn } from "@/test/render-app";
 
 afterEach(() => {
@@ -21,7 +21,7 @@ describe("shell", () => {
     expect(navs.length).toBeGreaterThan(0);
     expect(document.documentElement.dataset.skin).toBe("workcolor");
     expect(document.documentElement.getAttribute("data-slot-nav")).toBe("sidebar");
-    expect(document.documentElement.getAttribute("data-slot-page-title")).toBe("toolbar");
+    expect(document.documentElement.getAttribute("data-slot-page-title")).toBe("content");
     expect(screen.getAllByText(/^(已连接|正在连接|连接中断，正在重连)$/).length).toBeGreaterThan(0);
     const sidebar = navs[0] as HTMLElement;
     expect(within(sidebar).getByRole("link", { name: "媒体库管理" })).toBeInTheDocument();
@@ -65,7 +65,7 @@ describe("shell", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe(`/library/${library.id}`));
   });
 
-  it("displays the cross-library search title in the desktop toolbar and retains the page heading", async () => {
+  it("displays the cross-library search heading in the page content", async () => {
     const match = window.matchMedia.bind(window);
     vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
       ...match(query), matches: query === "(min-width: 768px)",
@@ -74,8 +74,7 @@ describe("shell", () => {
     signIn(db, MOCK_ACCOUNTS.user.username);
     await renderLoadedApp("/library/music-search");
     const heading = await screen.findByRole("heading", { level: 1, name: "搜索所有音乐库" });
-    expect(heading).toHaveClass("sr-only");
-    expect(within(screen.getByRole("banner")).getByText("搜索所有音乐库")).toBeInTheDocument();
+    expect(heading).not.toHaveClass("sr-only");
   });
 
   it("supports right-docked sidebar and custom navigation item ordering and visibility", async () => {
@@ -107,7 +106,7 @@ describe("shell", () => {
     const { router } = await renderLoadedApp("/");
 
     const nav = (await screen.findAllByRole("navigation", { name: "导航" }))[0] as HTMLElement;
-    for (const label of ["概览", "资料", "任务", "应用", "系统"]) {
+    for (const label of ["概览", "助手", "资料", "任务", "家居", "应用", "系统"]) {
       expect(within(nav).getByRole("link", { name: new RegExp(label) })).toBeInTheDocument();
     }
 
@@ -118,4 +117,22 @@ describe("shell", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe("/system/hardware"));
   });
 
+  it("hides the assistant button and panel when the server has no assistant", async () => {
+    const db = installMockDb();
+    signIn(db, MOCK_ACCOUNTS.admin.username);
+    await renderLoadedApp("/");
+    await screen.findByRole("region", { name: "媒体库" });
+    expect(screen.queryByRole("region", { name: "助手建议" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^助手/ })).not.toBeInTheDocument();
+  });
+
+  it("collects approvals from modules into the inbox", async () => {
+    const db = installMockDb({ features: ALL_FEATURES });
+    signIn(db, MOCK_ACCOUNTS.admin.username);
+    const user = userEvent.setup();
+    await renderLoadedApp("/");
+    await user.click(await screen.findByRole("button", { name: /^收件箱/ }));
+    expect(await screen.findByText("等待确认 · 1")).toBeInTheDocument();
+    expect(screen.getAllByText("助手想为「无损音乐」补全 8 张专辑封面").length).toBeGreaterThan(0);
+  });
 });

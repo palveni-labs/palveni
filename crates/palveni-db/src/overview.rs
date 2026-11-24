@@ -1,20 +1,35 @@
-//! Cross-library overview, storage accounting and catalog covers.
+//! Cross-library overview, storage accounting, catalog covers, and assistant search queries.
 
 use std::collections::{BTreeMap, HashMap};
 
 use palveni_core::overview::{Catalog, CatalogWork, CatalogWorkKind, LibraryBytes};
+use palveni_core::{ItemId, LibraryId, UserId};
 use sea_orm::sea_query::{Expr, ExprTrait};
 use sea_orm::{
     ColumnTrait, Condition, EntityTrait, JoinType, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, RelationTrait,
 };
 
-use crate::convert::{now_ms, sha256_hex, ts};
+use crate::convert::{now_ms, parse_id, sha256_hex, ts};
 use crate::entities::{
-    items, libraries, library_mounts, music_albums, sessions, track_metadata, video_metadata,
+    items, libraries, library_mounts, music_albums, sessions, track_metadata, user_item_state,
+    video_metadata, video_people,
 };
 use crate::items::SORT_GROUP_LEAF;
 use crate::{Db, DbError};
+
+#[derive(sea_orm::FromQueryResult)]
+struct VideoWorkRow {
+    item_id: String,
+    library_id: String,
+    work_key: String,
+    work_title: String,
+    work_year: Option<i32>,
+    season: Option<i32>,
+    work_rating: Option<i32>,
+    work_poster: Option<String>,
+    thumb: Option<String>,
+}
 
 #[derive(sea_orm::FromQueryResult)]
 struct TrackAlbumRow {
@@ -33,11 +48,61 @@ pub struct Overview<'a> {
 }
 
 #[derive(Clone, Debug)]
+pub struct LargestItemRow {
+    pub id: ItemId,
+    pub title: String,
+    pub path: Option<String>,
+    pub library_id: LibraryId,
+    pub library_name: String,
+    pub size_bytes: u64,
+}
+
+#[derive(Clone, Debug)]
+pub struct DuplicateItemEntry {
+    pub id: ItemId,
+    pub library_id: LibraryId,
+    pub library_name: String,
+    pub title: String,
+    pub path: String,
+    pub size_bytes: i64,
+    pub created_at: i64,
+}
+
+#[derive(Clone, Debug)]
+pub struct DuplicateGroup {
+    pub keep: DuplicateItemEntry,
+    pub extras: Vec<DuplicateItemEntry>,
+}
+
+#[derive(Clone, Debug)]
 pub struct PinnedMountInfo {
     pub id: String,
     pub path: String,
     pub source_hash: String,
     pub affected_libraries: usize,
+}
+
+#[derive(Clone, Debug)]
+pub struct AssistantTrackHit {
+    pub item_id: ItemId,
+    pub library_id: LibraryId,
+    pub title: String,
+    pub artist: Option<String>,
+    pub album: Option<String>,
+    pub duration_ms: Option<i64>,
+}
+
+#[derive(Clone, Debug)]
+pub struct AssistantVideoHit {
+    pub item_id: ItemId,
+    pub library_id: LibraryId,
+    pub work_key: String,
+    pub title: String,
+    pub year: Option<i32>,
+    pub is_series: bool,
+    pub rating: Option<f64>,
+    pub watched: bool,
+    pub has_poster: bool,
 }
 
 fn parse_sum_u64(raw: Option<String>) -> u64 {
@@ -87,6 +152,136 @@ impl Overview<'_> {
             .collect();
         out.sort_by(|a, b| b.bytes.cmp(&a.bytes).then_with(|| a.name.cmp(&b.name)));
         Ok(out)
+    }
+
+    pub async fn largest_items(&self, limit: u64) -> Result<Vec<LargestItemRow>, DbError> {
+        let rows = items::Entity::find()
+            .join(
+                JoinType::InnerJoin,
+                items::Entity::belongs_to(libraries::Entity)
+                    .from(items::Column::LibraryId)
+                    .to(libraries::Column::Id)
+                    .into(),
+            )
+            .filter(items::Column::DeletedAt.is_null())
+            .filter(items::Column::SortGroup.eq(SORT_GROUP_LEAF))
+            .filter(items::Column::SizeBytes.is_not_null())
+            .filter(libraries::Column::DeletedAt.is_null())
+            .order_by_desc(items::Column::SizeBytes)
+            .order_by_asc(items::Column::Id)
+            .limit(limit.clamp(1, 50))
+            .select_only()
+            .columns([
+                items::Column::Id,
+                items::Column::Title,
+                items::Column::Path,
+                items::Column::LibraryId,
+            ])
+            .column_as(libraries::Column::Name, "library_name")
+            .column(items::Column::SizeBytes)
+            .into_tuple::<(String, String, Option<String>, String, String, Option<i64>)>()
+            .all(self.db.main())
+            .await?;
+
+        let mut out = Vec::with_capacity(rows.len());
+        for (id, title, path, lib_id, lib_name, size) in rows {
+            out.push(LargestItemRow {
+                id: parse_id(&id, "item id")?,
+                title,
+                path,
+                library_id: parse_id(&lib_id, "library id")?,
+                library_name: lib_name,
+                size_bytes: u64::try_from(size.unwrap_or(0)).unwrap_or(0),
+            });
+        }
+        Ok(out)
+    }
+
+    /// Scans live leaf items for duplicate `(library_id, normalized_title, size_bytes)` groups.
+    pub async fn duplicate_groups(
+        &self,
+        max_groups: usize,
+    ) -> Result<Vec<DuplicateGroup>, DbError> {
+        let libs: HashMap<String, String> = libraries::Entity::find()
+            .filter(libraries::Column::DeletedAt.is_null())
+            .all(self.db.main())
+            .await?
+            .into_iter()
+            .map(|l| (l.id, l.name))
+            .collect();
+        if libs.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let rows = items::Entity::find()
+            .filter(items::Column::DeletedAt.is_null())
+            .filter(items::Column::SortGroup.eq(SORT_GROUP_LEAF))
+            .filter(items::Column::Path.is_not_null())
+            .filter(items::Column::SizeBytes.is_not_null())
+            .order_by_asc(items::Column::CreatedAt)
+            .order_by_asc(items::Column::Id)
+            .limit(5_000)
+            .select_only()
+            .columns([
+                items::Column::Id,
+                items::Column::LibraryId,
+                items::Column::Title,
+                items::Column::Path,
+                items::Column::SizeBytes,
+                items::Column::CreatedAt,
+            ])
+            .into_tuple::<(String, String, String, Option<String>, Option<i64>, i64)>()
+            .all(self.db.main())
+            .await?;
+
+        let mut buckets: BTreeMap<(String, String, i64), Vec<DuplicateItemEntry>> = BTreeMap::new();
+        for (id, lib_id, title, path, size, created_at) in rows {
+            let Some(lib_name) = libs.get(&lib_id).cloned() else {
+                continue;
+            };
+            let Some(path) = path else { continue };
+            let Some(size) = size.filter(|s| *s > 0) else {
+                continue;
+            };
+            let norm_title = strip_copy_suffix(&title).to_lowercase();
+            let entry = DuplicateItemEntry {
+                id: parse_id(&id, "item id")?,
+                library_id: parse_id(&lib_id, "library id")?,
+                library_name: lib_name,
+                title,
+                path,
+                size_bytes: size,
+                created_at,
+            };
+            buckets
+                .entry((lib_id, norm_title, size))
+                .or_default()
+                .push(entry);
+        }
+
+        let mut groups = Vec::new();
+        for (_, mut list) in buckets {
+            if list.len() < 2 {
+                continue;
+            }
+            list.sort_by(|a, b| {
+                a.created_at
+                    .cmp(&b.created_at)
+                    .then_with(|| a.path.len().cmp(&b.path.len()))
+                    .then_with(|| a.path.cmp(&b.path))
+            });
+            let mut iter = list.into_iter();
+            if let Some(keep) = iter.next() {
+                groups.push(DuplicateGroup {
+                    keep,
+                    extras: iter.collect(),
+                });
+            }
+            if groups.len() >= max_groups {
+                break;
+            }
+        }
+        Ok(groups)
     }
 
     pub async fn pinned_mounts(&self) -> Result<Vec<PinnedMountInfo>, DbError> {
@@ -396,4 +591,220 @@ impl Overview<'_> {
             library_covers,
         })
     }
+
+    /// Searches indexed music tracks across all live music libraries for the Assistant.
+    pub async fn search_music_tracks(
+        &self,
+        query: Option<&str>,
+        limit: u64,
+    ) -> Result<Vec<AssistantTrackHit>, DbError> {
+        let mut select = track_metadata::Entity::find()
+            .join(JoinType::InnerJoin, track_metadata::Relation::Item.def())
+            .join(
+                JoinType::InnerJoin,
+                items::Entity::belongs_to(libraries::Entity)
+                    .from(items::Column::LibraryId)
+                    .to(libraries::Column::Id)
+                    .into(),
+            )
+            .filter(items::Column::DeletedAt.is_null())
+            .filter(libraries::Column::DeletedAt.is_null())
+            .filter(libraries::Column::Kind.eq("music"))
+            .filter(crate::music::visible_recordings());
+
+        if let Some(q) = query.map(str::trim).filter(|s| !s.is_empty()) {
+            let needle = format!("%{}%", escape_like(&q.to_lowercase()));
+            select = select.filter(
+                Condition::any()
+                    .add(Expr::col((items::Entity, items::Column::SearchText)).like(needle.clone()))
+                    .add(
+                        Expr::col((track_metadata::Entity, track_metadata::Column::Title))
+                            .like(format!("%{}%", escape_like(q))),
+                    )
+                    .add(
+                        Expr::col((track_metadata::Entity, track_metadata::Column::Artist))
+                            .like(format!("%{}%", escape_like(q))),
+                    )
+                    .add(
+                        Expr::col((track_metadata::Entity, track_metadata::Column::Album))
+                            .like(format!("%{}%", escape_like(q))),
+                    ),
+            );
+        }
+
+        let rows = select
+            .order_by_desc(items::Column::CreatedAt)
+            .order_by_asc(track_metadata::Column::ItemId)
+            .limit(limit.clamp(1, 100))
+            .select_only()
+            .columns([
+                track_metadata::Column::ItemId,
+                track_metadata::Column::LibraryId,
+                track_metadata::Column::Title,
+                track_metadata::Column::Artist,
+                track_metadata::Column::Album,
+                track_metadata::Column::DurationMs,
+            ])
+            .into_tuple::<(
+                String,
+                String,
+                String,
+                Option<String>,
+                Option<String>,
+                Option<i64>,
+            )>()
+            .all(self.db.main())
+            .await?;
+
+        let mut out = Vec::with_capacity(rows.len());
+        for (item_id, lib_id, title, artist, album, duration_ms) in rows {
+            out.push(AssistantTrackHit {
+                item_id: parse_id(&item_id, "track item id")?,
+                library_id: parse_id(&lib_id, "library id")?,
+                title,
+                artist,
+                album,
+                duration_ms,
+            });
+        }
+        Ok(out)
+    }
+
+    /// Searches video works across all live video libraries for the Assistant.
+    pub async fn search_video_works(
+        &self,
+        user_id: UserId,
+        query: Option<&str>,
+        person: Option<&str>,
+        unwatched_only: bool,
+        limit: usize,
+    ) -> Result<Vec<AssistantVideoHit>, DbError> {
+        let mut select = video_metadata::Entity::find()
+            .join(JoinType::InnerJoin, video_metadata::Relation::Item.def())
+            .join(
+                JoinType::InnerJoin,
+                items::Entity::belongs_to(libraries::Entity)
+                    .from(items::Column::LibraryId)
+                    .to(libraries::Column::Id)
+                    .into(),
+            )
+            .filter(items::Column::DeletedAt.is_null())
+            .filter(libraries::Column::DeletedAt.is_null())
+            .filter(libraries::Column::Kind.eq("video"));
+
+        if let Some(p) = person.map(str::trim).filter(|s| !s.is_empty()) {
+            let matching_items: Vec<String> = video_people::Entity::find()
+                .filter(video_people::Column::Name.like(format!("%{}%", escape_like(p))))
+                .limit(200)
+                .select_only()
+                .column(video_people::Column::ItemId)
+                .into_tuple::<String>()
+                .all(self.db.main())
+                .await?;
+            if matching_items.is_empty() {
+                return Ok(Vec::new());
+            }
+            select = select.filter(video_metadata::Column::ItemId.is_in(matching_items));
+        }
+
+        if let Some(q) = query.map(str::trim).filter(|s| !s.is_empty()) {
+            let pat = format!("%{}%", escape_like(q));
+            let lower_pat = format!("%{}%", escape_like(&q.to_lowercase()));
+            select = select.filter(
+                Condition::any()
+                    .add(video_metadata::Column::WorkTitle.like(pat.clone()))
+                    .add(video_metadata::Column::Title.like(pat))
+                    .add(Expr::col((items::Entity, items::Column::SearchText)).like(lower_pat)),
+            );
+        }
+
+        let rows = select
+            .order_by_desc(items::Column::CreatedAt)
+            .order_by_asc(video_metadata::Column::ItemId)
+            .limit(250)
+            .select_only()
+            .columns([
+                video_metadata::Column::ItemId,
+                video_metadata::Column::LibraryId,
+                video_metadata::Column::WorkKey,
+                video_metadata::Column::WorkTitle,
+                video_metadata::Column::WorkYear,
+                video_metadata::Column::Season,
+                video_metadata::Column::WorkRating,
+                video_metadata::Column::WorkPoster,
+                video_metadata::Column::Thumb,
+            ])
+            .into_model::<VideoWorkRow>()
+            .all(self.db.main())
+            .await?;
+
+        if rows.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let item_ids: Vec<String> = rows.iter().map(|r| r.item_id.clone()).collect();
+        let played_ids: std::collections::HashSet<String> = user_item_state::Entity::find()
+            .filter(user_item_state::Column::UserId.eq(user_id.to_string()))
+            .filter(user_item_state::Column::Completed.eq(true))
+            .filter(user_item_state::Column::ItemId.is_in(item_ids))
+            .select_only()
+            .column(user_item_state::Column::ItemId)
+            .into_tuple::<String>()
+            .all(self.db.main())
+            .await?
+            .into_iter()
+            .collect();
+
+        let mut seen = std::collections::HashSet::new();
+        let mut out = Vec::new();
+        for row in rows {
+            let watched = played_ids.contains(&row.item_id);
+            if unwatched_only && watched {
+                continue;
+            }
+            if !seen.insert((row.library_id.clone(), row.work_key.clone())) {
+                continue;
+            }
+            out.push(AssistantVideoHit {
+                item_id: parse_id(&row.item_id, "video item id")?,
+                library_id: parse_id(&row.library_id, "library id")?,
+                work_key: row.work_key,
+                title: row.work_title,
+                year: row.work_year,
+                is_series: row.season.is_some(),
+                rating: row.work_rating.map(|r| f64::from(r) / 10.0),
+                watched,
+                has_poster: row.work_poster.is_some() || row.thumb.is_some(),
+            });
+            if out.len() >= limit.clamp(1, 60) {
+                break;
+            }
+        }
+        Ok(out)
+    }
+}
+
+fn escape_like(input: &str) -> String {
+    input
+        .replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_")
+}
+
+/// Strips trailing ` (1)`, ` (2)`, ` - Copy`, ` 副本` suffixes when grouping identical-size duplicates.
+fn strip_copy_suffix(title: &str) -> &str {
+    let trimmed = title.trim();
+    if let Some((base, num)) = trimmed.rsplit_once(" (")
+        && let Some(digits) = num.strip_suffix(')')
+        && !digits.is_empty()
+        && digits.bytes().all(|b| b.is_ascii_digit())
+    {
+        return base.trim();
+    }
+    for suffix in [" - copy", " - Copy", "_copy", " 副本"] {
+        if let Some(base) = trimmed.strip_suffix(suffix) {
+            return base.trim();
+        }
+    }
+    trimmed
 }

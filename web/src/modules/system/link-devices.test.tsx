@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw";
 import { expect, it } from "vitest";
 import { M0_FEATURES } from "@/mocks/db";
 import { installMockDb, server } from "@/test/msw-server";
-import { renderLoadedApp, signIn } from "@/test/render-app";
+import { renderApp, signIn } from "@/test/render-app";
 
 it("lets a member cancel or revoke one of two identically named devices", async () => {
   const db = installMockDb({ features: [...M0_FEATURES, "link"] });
@@ -23,7 +23,7 @@ it("lets a member cancel or revoke one of two identically named devices", async 
       return new HttpResponse(null, { status: 204 });
     }),
   );
-  await renderLoadedApp("/system/settings");
+  renderApp("/system/settings");
   const user = userEvent.setup();
   const fingerprint = "b".repeat(12);
   const row = within((await screen.findByText(fingerprint, {}, { timeout: 5000 })).closest("li")!);

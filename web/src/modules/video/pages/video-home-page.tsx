@@ -67,7 +67,7 @@ function FeaturedHero({ items }: { items: VideoEntry[] }) {
   return (
     <section
       aria-label={t("videoApp.home.featured")}
-      className="relative isolate overflow-hidden rounded-panel bg-neutral-950 text-white shadow-raised ring-1 ring-line/60"
+      className="group/hero relative isolate overflow-hidden rounded-[1.25rem] bg-neutral-950 text-white shadow-overlay ring-1 ring-white/12 ring-inset"
     >
       <div className="absolute inset-0 -z-10">
         <VideoImage
@@ -75,22 +75,22 @@ function FeaturedHero({ items }: { items: VideoEntry[] }) {
           alt={title}
           eager
           className="size-full bg-neutral-950"
-          imgClassName="size-full object-cover object-center"
+          imgClassName="size-full object-cover object-center transition-transform duration-700 ease-out group-hover/hero:scale-[1.02]"
         />
       </div>
 
-      {/* Multi-stop gradient scrims ensure high text contrast on the brightest artwork */}
+      {/* Multi-stop cinematic scrims ensure high text contrast on bright artwork */}
       <div
-        className="relative flex min-h-[21rem] flex-col justify-end bg-gradient-to-r from-black/92 via-black/68 to-black/20 p-5 sm:min-h-[25rem] sm:p-8 lg:min-h-[27rem] lg:p-10"
+        className="relative flex min-h-[22rem] flex-col justify-end p-6 sm:min-h-[26rem] sm:p-9 lg:min-h-[29rem] lg:p-11"
         style={{
           backgroundImage:
-            "linear-gradient(90deg, rgba(6,8,12,0.92) 0%, rgba(6,8,12,0.72) 48%, rgba(6,8,12,0.22) 100%), linear-gradient(0deg, rgba(6,8,12,0.88) 0%, rgba(6,8,12,0.18) 55%, rgba(6,8,12,0.28) 100%)",
+            "linear-gradient(95deg, rgba(8,11,17,0.94) 0%, rgba(8,11,17,0.72) 44%, rgba(8,11,17,0.16) 100%), linear-gradient(0deg, rgba(8,11,17,0.92) 0%, rgba(8,11,17,0.22) 52%, rgba(8,11,17,0.18) 100%)",
         }}
       >
-        <div className="grid max-w-xl gap-3">
+        <div className="grid max-w-xl gap-3.5">
           <div className="flex flex-wrap items-center gap-2 text-xs font-mid text-white/85">
             {epCode ? (
-              <span className="rounded-chip bg-white/18 px-2 py-0.5 font-strong text-white backdrop-blur-xs">
+              <span className="rounded-full bg-white/16 px-2.5 py-0.5 font-strong text-white backdrop-blur-md">
                 {epCode}
               </span>
             ) : null}
@@ -111,13 +111,13 @@ function FeaturedHero({ items }: { items: VideoEntry[] }) {
               </>
             ) : null}
             {entry.officialRating ? (
-              <span className="rounded-sm border border-white/35 px-1.5 py-0.5 text-[0.6875rem] leading-none font-strong tracking-wide text-white/95">
+              <span className="rounded-sm border border-white/30 bg-white/8 px-1.5 py-0.5 text-[0.6875rem] leading-none font-strong tracking-wide text-white/95 backdrop-blur-xs">
                 {entry.officialRating}
               </span>
             ) : null}
           </div>
 
-          <h2 className="font-heading text-2xl leading-tight font-title text-white sm:text-4xl">
+          <h2 className="font-heading text-3xl leading-[1.1] font-title tracking-tight text-white sm:text-5xl">
             {title}
           </h2>
 
@@ -126,7 +126,7 @@ function FeaturedHero({ items }: { items: VideoEntry[] }) {
               {entry.genres.slice(0, 4).map((genre) => (
                 <span
                   key={genre}
-                  className="rounded-chip bg-white/14 px-2.5 py-0.5 text-xs text-white/90 backdrop-blur-xs"
+                  className="rounded-full border border-white/12 bg-white/10 px-2.5 py-0.5 text-xs text-white/90 backdrop-blur-md"
                 >
                   {genre}
                 </span>
@@ -135,16 +135,16 @@ function FeaturedHero({ items }: { items: VideoEntry[] }) {
           ) : null}
 
           {entry.overview ? (
-            <p className="line-clamp-2 max-w-prose text-sm leading-relaxed text-white/85 sm:line-clamp-3 sm:text-base">
+            <p className="line-clamp-2 max-w-prose text-sm leading-relaxed text-white/80 sm:line-clamp-3 sm:text-base">
               {entry.overview}
             </p>
           ) : null}
 
-          <div className="mt-1 flex flex-wrap items-center gap-2.5">
+          <div className="mt-1.5 flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={playAction}
-              className="inline-flex h-10 items-center gap-2 rounded-control bg-white px-5 text-sm font-strong text-neutral-950 shadow-raised transition-colors hover:bg-neutral-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-6 text-sm font-strong text-neutral-950 shadow-raised transition-all duration-150 hover:scale-[1.02] hover:bg-white/92 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               <Play className="size-4 fill-current" aria-hidden />
               {hasResume && entry.state
@@ -156,7 +156,7 @@ function FeaturedHero({ items }: { items: VideoEntry[] }) {
               to="/video/$libraryId/works/$workId"
               params={{ libraryId: entry.libraryId, workId }}
               search={entry.seasonNumber != null ? { season: entry.seasonNumber } : {}}
-              className="inline-flex h-10 items-center gap-2 rounded-control border border-white/25 bg-white/14 px-4 text-sm font-mid text-white backdrop-blur-xs transition-colors hover:bg-white/24 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-white/22 bg-white/12 px-5 text-sm font-mid text-white backdrop-blur-md transition-colors hover:bg-white/22 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               <Info className="size-4" aria-hidden />
               {t("videoApp.card.details")}
@@ -171,7 +171,7 @@ function FeaturedHero({ items }: { items: VideoEntry[] }) {
                   toggleFavorite.mutate({ libraryId: entry.libraryId, workId, favorite: !favorite })
                 }
                 className={cn(
-                  "grid size-10 place-items-center rounded-control border border-white/25 bg-white/14 text-white backdrop-blur-xs transition-colors hover:bg-white/24 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
+                  "grid size-11 place-items-center rounded-full border border-white/22 bg-white/12 text-white backdrop-blur-md transition-colors hover:bg-white/22 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
                   favorite && "border-rose-400/60 bg-rose-500/25 text-rose-200",
                 )}
               >
@@ -238,7 +238,7 @@ function LibraryTiles({
               key={lib.id}
               to="/video/$libraryId"
               params={{ libraryId: lib.id }}
-              className="group relative isolate flex h-24 items-end overflow-hidden rounded-tile bg-neutral-900 p-4 text-white shadow-art ring-1 ring-line/70 outline-none transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-raised focus-visible:ring-2 focus-visible:ring-focus"
+              className="group relative isolate flex h-28 items-end overflow-hidden rounded-panel bg-neutral-900 p-5 text-white shadow-art ring-1 ring-white/12 ring-inset outline-none transition-all duration-200 hover:-translate-y-1 hover:shadow-overlay focus-visible:ring-2 focus-visible:ring-focus"
             >
               <div className="absolute inset-0 -z-10">
                 <VideoImage

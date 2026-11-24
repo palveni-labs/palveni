@@ -102,8 +102,33 @@ define_id!(
 );
 
 define_id!(
+    /// A user-managed person profile in the photo library.
+    PhotoPersonId
+);
+
+define_id!(
     /// A personal reading bookmark.
     BookmarkId
+);
+
+define_id!(
+    /// A portable system backup snapshot.
+    BackupId
+);
+
+define_id!(
+    /// A public or password-protected share link.
+    ShareId
+);
+
+define_id!(
+    /// A cross-media collection.
+    CollectionId
+);
+
+define_id!(
+    /// An item membership entry inside a cross-media collection.
+    CollectionEntryId
 );
 
 impl ItemId {

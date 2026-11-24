@@ -2,6 +2,7 @@
 mod images;
 mod nfo;
 mod recognition;
+pub mod strm;
 pub mod subtitles;
 #[cfg(test)]
 mod tests;
@@ -527,8 +528,9 @@ impl Inventory {
             .map_err(|e| ScanError::Metadata(e.to_string()))?;
 
             // Cheap duration fallback when NFO provides no runtime.
+            // Skip ffprobe on `.strm` pointer files so scanning never hangs or fails on external URLs.
             for (meta, root_idx, path, fallback_runtime) in &mut read_rows {
-                if meta.runtime_ms.is_none() {
+                if meta.runtime_ms.is_none() && !strm::is_strm_path(path) {
                     let probed = if let Some(ffprobe) = ffprobe {
                         let root = roots[*root_idx].clone();
                         let path_clone = path.clone();

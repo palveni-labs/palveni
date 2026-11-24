@@ -25,10 +25,15 @@ pub struct LibraryList {
 }
 
 pub async fn list(
-    _user: CurrentUser,
+    user: CurrentUser,
     State(state): State<AppState>,
 ) -> Result<Json<LibraryList>, ApiError> {
     let libraries = state.db.libraries().list().await?;
+    let libraries = state
+        .db
+        .accounts()
+        .filter_libraries(user.user.id, user.user.role, libraries)
+        .await?;
     Ok(Json(LibraryList { libraries }))
 }
 
@@ -140,12 +145,20 @@ pub async fn update(
 }
 
 pub async fn get_one(
-    _user: CurrentUser,
+    user: CurrentUser,
     State(state): State<AppState>,
     path: Result<Path<String>, PathRejection>,
 ) -> Result<Json<Library>, ApiError> {
     let Path(raw) = path?;
     let id: LibraryId = path_id(&raw, "Library")?;
+    if !state
+        .db
+        .accounts()
+        .can_access_library(user.user.id, user.user.role, id)
+        .await?
+    {
+        return Err(ApiError::not_found("Library not found"));
+    }
     let library = state
         .db
         .libraries()

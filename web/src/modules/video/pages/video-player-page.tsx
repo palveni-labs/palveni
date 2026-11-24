@@ -5,10 +5,12 @@ import Hls from "hls.js";
 import {
   AlertCircle,
   ArrowLeft,
+  BookmarkPlus,
   Check,
   Gauge,
   Info,
   Languages,
+  Layers,
   ListOrdered,
   Maximize,
   Minimize,
@@ -20,6 +22,7 @@ import {
   Settings,
   SkipForward,
   Subtitles,
+  Trash2,
   Volume2,
   VolumeX,
   X,
@@ -28,12 +31,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
 import { errorText } from "@/lib/errors";
+import { formatBytes } from "@/lib/format";
 import {
   imagePaths,
   videoApi,
+  type MediaInfo,
   type PlaybackRequest,
   type PlaybackSession,
   type SubtitleTrack,
+  type VideoFile,
+  type VideoSegment,
+  type VideoSegmentKind,
 } from "../api";
 import { VideoImage } from "../components/video-image";
 import { codecLabel, formatBitrate, formatClock, formatEpisodeCode, hdrLabel, resolutionLabel } from "../format";
@@ -41,7 +49,14 @@ import { detectClientCapabilities } from "../player/capabilities";
 import { findNextSeasonNumber, resolveNextEpisode } from "../player/next-episode";
 import { createProgressReporter, type ProgressReporter } from "../player/progress-reporter";
 import { offsetWebVtt, subtitleTrackLabel } from "../player/subtitles";
-import { useMediaInfo, useVideoEpisodes, useVideoWork, videoKeys } from "../queries";
+import {
+  useMediaInfo,
+  useSaveVideoSegments,
+  useVideoEpisodes,
+  useVideoSegments,
+  useVideoWork,
+  videoKeys,
+} from "../queries";
 
 export interface VideoPlaySearch {
   libraryId?: string;
@@ -49,11 +64,41 @@ export interface VideoPlaySearch {
   season?: number;
   startMs?: number;
   fromStart?: boolean;
+  resumeDirect?: boolean;
   title?: string;
 }
 
 type QualityChoice = "auto" | "original" | "1080" | "720" | "480";
-type ActiveMenu = null | "subtitles" | "audio" | "quality" | "speed" | "chapters";
+type ActiveMenu = null | "subtitles" | "audio" | "quality" | "speed" | "chapters" | "versions" | "segments";
+
+const SEGMENT_KINDS: readonly VideoSegmentKind[] = ["intro", "credits", "recap"];
+
+function parseFilenameMeta(title: string): { resolution: string | null; codec: string | null } {
+  const resMatch = /\b(2160p|4K|UHD|1080p|720p|480p)\b/i.exec(title);
+  const resolution = resMatch
+    ? resMatch[1]!.toUpperCase() === "2160P" || resMatch[1]!.toUpperCase() === "UHD"
+      ? "4K"
+      : resMatch[1]!.toLowerCase()
+    : null;
+  const codecMatch = /\b(HEVC|H\.?265|x265|H\.?264|x264|AVC|AV1|VP9)\b/i.exec(title);
+  let codec: string | null = null;
+  if (codecMatch) {
+    const raw = codecMatch[1]!.toLowerCase().replace(".", "");
+    if (raw === "hevc" || raw === "h265" || raw === "x265") codec = "HEVC";
+    else if (raw === "h264" || raw === "x264" || raw === "avc") codec = "H.264";
+    else codec = raw.toUpperCase();
+  }
+  return { resolution, codec };
+}
+
+function formatVersionOption(file: VideoFile, isActive: boolean, mediaInfo: MediaInfo | undefined, locale: string): string {
+  const parsed = parseFilenameMeta(file.title);
+  const res = isActive && mediaInfo?.video ? resolutionLabel(mediaInfo.video) : parsed.resolution;
+  const codec = isActive && mediaInfo?.video ? codecLabel(mediaInfo.video.codec) : parsed.codec;
+  const size = file.sizeBytes != null && file.sizeBytes > 0 ? formatBytes(file.sizeBytes, locale) : null;
+  const specs = [res, codec, size].filter(Boolean);
+  return specs.length > 0 ? `${specs.join(" · ")} — ${file.title}` : file.title;
+}
 
 const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 const QUALITY_OPTIONS: Array<{ id: QualityChoice; labelKey?: string; label?: string }> = [
@@ -91,6 +136,7 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const activeSessionRef = useRef<PlaybackSession | null>(null);
+  const fallbackTriggeredRef = useRef<string | null>(null);
   const reporterRef = useRef<ProgressReporter | null>(null);
   const hideTimerRef = useRef<number | null>(null);
   const lastMediaTimeRef = useRef(0);
@@ -128,8 +174,10 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
     [itemId, seasonEpsQuery.data, nextSeasonEpsQuery.data],
   );
 
-  // Media info, subtitles, personal state
+  // Media info, subtitles, segments, personal state
   const mediaInfoQuery = useMediaInfo(itemId);
+  const segmentsQuery = useVideoSegments(itemId);
+  const saveSegments = useSaveVideoSegments(itemId);
   const subtitlesQuery = useQuery({
     queryKey: videoKeys.subtitles(itemId),
     queryFn: ({ signal }) => videoApi.subtitles(itemId, signal),
@@ -147,6 +195,8 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
   const subtitleTracks = useMemo(() => subtitlesQuery.data?.tracks ?? [], [subtitlesQuery.data]);
   const audioTracks = useMemo(() => mediaInfo?.audio ?? [], [mediaInfo]);
   const chapters = useMemo(() => mediaInfo?.chapters ?? [], [mediaInfo]);
+  const segments = useMemo(() => segmentsQuery.data?.segments ?? [], [segmentsQuery.data]);
+  const versionFiles = useMemo(() => detail?.files ?? [], [detail?.files]);
 
   // Playback session state
   const [session, setSession] = useState<PlaybackSession | null>(null);
@@ -187,16 +237,39 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
   const [controlsVisible, setControlsVisible] = useState(true);
   const [activeMenu, setActiveMenu] = useState<ActiveMenu>(null);
   const [hoverSeek, setHoverSeek] = useState<{ ratio: number; timeSec: number; chapter: string | null } | null>(null);
+  const trickplayCacheRef = useRef<Map<number, string | null>>(new Map());
+  const [hoverPreview, setHoverPreview] = useState<{ bucketMs: number; url: string } | null>(null);
+  const [dismissedSegmentIds, setDismissedSegmentIds] = useState<string[]>([]);
+  const [segKind, setSegKind] = useState<VideoSegmentKind>("intro");
+  const [segStartSec, setSegStartSec] = useState("0");
+  const [segEndSec, setSegEndSec] = useState("90");
+  const [segFormError, setSegFormError] = useState<string | null>(null);
 
   // Resume prompt state (derived cleanly from personal state until user chooses)
-  const [resumeDismissed, setResumeDismissed] = useState(Boolean(search.fromStart));
+  const [resumeDismissed, setResumeDismissed] = useState(Boolean(search.fromStart || search.resumeDirect));
   const resumePromptMs = useMemo(() => {
-    if (resumeDismissed || search.fromStart) return null;
+    if (resumeDismissed || search.fromStart || search.resumeDirect) return null;
     const personal = personalQuery.data;
     if (!personal || personal.completed) return null;
     const saved = search.startMs ?? personal.positionMs;
     return saved > 10_000 ? saved : null;
-  }, [resumeDismissed, search.fromStart, search.startMs, personalQuery.data]);
+  }, [resumeDismissed, search.fromStart, search.resumeDirect, search.startMs, personalQuery.data]);
+  const resumePromptRef = useRef<number | null>(resumePromptMs);
+  useEffect(() => {
+    resumePromptRef.current = resumePromptMs;
+  }, [resumePromptMs]);
+
+  const activeSegment = useMemo<VideoSegment | null>(() => {
+    const posMs = currentTimeSec * 1000;
+    return (
+      segments.find(
+        (seg) =>
+          posMs >= seg.startMs &&
+          posMs < seg.endMs - 500 &&
+          !dismissedSegmentIds.includes(seg.id),
+      ) ?? null
+    );
+  }, [segments, currentTimeSec, dismissedSegmentIds]);
 
   // Next episode countdown state
   const [countdownSec, setCountdownSec] = useState<number | null>(null);
@@ -239,12 +312,13 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
     reporterRef.current = reporter;
   }, [itemId, personalQuery.data, queryClient]);
 
-  // Request playback session helper (for interactive quality/audio/HLS seek switches)
+  // Request playback session helper (for interactive quality/audio/HLS seek switches and automatic fallback)
   const requestSession = useCallback(
     async (opts: {
       startMs?: number;
       qualityChoice?: QualityChoice;
       audioIdx?: number;
+      forceTranscode?: boolean;
       signal?: AbortSignal;
     }) => {
       const qChoice = opts.qualityChoice ?? quality;
@@ -252,7 +326,13 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
       const body: PlaybackRequest = {
         startMs: opts.startMs && opts.startMs > 0 ? Math.floor(opts.startMs) : undefined,
         audioIndex: aIdx,
-        mode: qChoice === "original" ? "direct" : qChoice === "auto" ? "auto" : "transcode",
+        mode: opts.forceTranscode
+          ? "transcode"
+          : qChoice === "original"
+            ? "direct"
+            : qChoice === "auto"
+              ? "auto"
+              : "transcode",
         maxHeight: qChoice === "1080" ? 1080 : qChoice === "720" ? 720 : qChoice === "480" ? 480 : undefined,
         client: clientCaps,
       };
@@ -275,6 +355,10 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
     },
     [itemId, quality, audioIndex, clientCaps],
   );
+  const requestSessionRef = useRef(requestSession);
+  useEffect(() => {
+    requestSessionRef.current = requestSession;
+  }, [requestSession]);
 
   // Initial session startup (async promise avoids synchronous setState inside effect)
   useEffect(() => {
@@ -330,33 +414,55 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
     hlsRef.current = null;
 
     if (session.protocol === "hls") {
-      if (clientCaps.hls === "native" && video.canPlayType("application/vnd.apple.mpegurl")) {
-        video.src = session.url;
-      } else if (Hls.isSupported()) {
+      if (Hls.isSupported() && clientCaps.hls !== "native") {
         const hls = new Hls({ enableWorker: true });
         hlsRef.current = hls;
+        let mediaErrorRetries = 0;
+        let networkErrorRetries = 0;
         hls.loadSource(session.url);
         hls.attachMedia(video);
         hls.on(Hls.Events.ERROR, (_event, data) => {
           if (!data.fatal) return;
-          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
-          else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
-          else {
-            hls.destroy();
-            setSessionError(new Error(data.details || "HLS playback error"));
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR && networkErrorRetries < 2) {
+            networkErrorRetries += 1;
+            hls.startLoad();
+            return;
           }
+          if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            const codecRejected =
+              data.details === Hls.ErrorDetails.BUFFER_ADD_CODEC_ERROR ||
+              data.details === Hls.ErrorDetails.BUFFER_INCOMPATIBLE_CODECS_ERROR;
+            if (!codecRejected && mediaErrorRetries < 1) {
+              mediaErrorRetries += 1;
+              hls.recoverMediaError();
+              return;
+            }
+            if (session.mode !== "transcode" && fallbackTriggeredRef.current !== session.sessionId) {
+              fallbackTriggeredRef.current = session.sessionId;
+              hls.destroy();
+              hlsRef.current = null;
+              void requestSessionRef.current({
+                forceTranscode: true,
+                startMs: Math.round(lastMediaTimeRef.current * 1000),
+              });
+              return;
+            }
+          }
+          hls.destroy();
+          hlsRef.current = null;
+          setSessionError(new Error(data.reason || data.details || "HLS playback error"));
         });
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = session.url;
       } else {
         video.src = session.url;
       }
     } else {
-      video.src = session.url;
+      video.src = session.directUrl ?? session.url;
     }
 
-    video.playbackRate = speed;
-
     // Auto-play unless waiting on the resume prompt
-    if (!resumePromptMs) {
+    if (!resumePromptRef.current) {
       dispatchExclusiveMedia();
       void video.play().catch(() => {
         // Autoplay may be blocked by browser policy; user can click play.
@@ -367,7 +473,14 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
       hlsRef.current?.destroy();
       hlsRef.current = null;
     };
-  }, [session, clientCaps.hls, resumePromptMs, speed]);
+  }, [session, clientCaps.hls]);
+
+  // Apply playback speed independently so changing speed never restarts HLS
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = speed;
+    }
+  }, [speed, session]);
 
   // Active WebVTT subtitle track with HLS `startMs` time offset
   useEffect(() => {
@@ -653,6 +766,118 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
     setActiveMenu(null);
   };
 
+  const handleVersionSwitch = (file: VideoFile) => {
+    setActiveMenu(null);
+    if (file.itemId === itemId) return;
+    const posMs = Math.max(0, Math.round(lastMediaTimeRef.current * 1000));
+    if (lastMediaTimeRef.current > 0) {
+      reporterRef.current?.flush(lastMediaTimeRef.current, false);
+    }
+    void navigate({
+      to: "/video/play/$itemId",
+      params: { itemId: file.itemId },
+      search: {
+        libraryId: search.libraryId,
+        workId: search.workId,
+        season: search.season,
+        startMs: posMs > 0 ? posMs : undefined,
+        fromStart: false,
+        resumeDirect: true,
+        title: search.title,
+      },
+      replace: true,
+    });
+  };
+
+  const handleSkipSegment = (seg: VideoSegment) => {
+    setDismissedSegmentIds((prev) => (prev.includes(seg.id) ? prev : [...prev, seg.id]));
+    seekTo(seg.endMs / 1000);
+    revealControls();
+  };
+
+  const handleSaveSegment = () => {
+    const startSec = Number(segStartSec);
+    const endSec = Number(segEndSec);
+    if (!Number.isFinite(startSec) || !Number.isFinite(endSec) || startSec < 0 || endSec <= startSec) {
+      setSegFormError(t("videoApp.player.segmentInvalidRange"));
+      return;
+    }
+    setSegFormError(null);
+    const nextSegments = [
+      ...segments
+        .filter((s) => s.kind !== segKind)
+        .map((s) => ({
+          kind: s.kind,
+          startMs: s.startMs,
+          endMs: s.endMs,
+          source: s.source,
+        })),
+      {
+        kind: segKind,
+        startMs: Math.round(startSec * 1000),
+        endMs: Math.round(endSec * 1000),
+        source: "manual" as const,
+      },
+    ];
+    saveSegments.mutate({ segments: nextSegments });
+  };
+
+  const handleDeleteSegment = (targetId: string) => {
+    const remaining = segments
+      .filter((s) => s.id !== targetId)
+      .map((s) => ({
+        kind: s.kind,
+        startMs: s.startMs,
+        endMs: s.endMs,
+        source: s.source,
+      }));
+    saveSegments.mutate({ segments: remaining });
+  };
+
+  // Cleanup cached trickplay object URLs when changing item or unmounting
+  useEffect(() => {
+    const cache = trickplayCacheRef.current;
+    return () => {
+      for (const url of cache.values()) {
+        if (url) URL.revokeObjectURL(url);
+      }
+      cache.clear();
+    };
+  }, [itemId]);
+
+  const hoverBucketMs = hoverSeek && totalDurationSec > 0 ? Math.floor(hoverSeek.timeSec) * 1000 : null;
+
+  // Debounced hover scrubbing trickplay preview frame loader
+  useEffect(() => {
+    if (hoverBucketMs === null) return;
+    const cache = trickplayCacheRef.current;
+    const cached = cache.get(hoverBucketMs);
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      if (cached !== undefined) {
+        if (cached) setHoverPreview({ bucketMs: hoverBucketMs, url: cached });
+        return;
+      }
+      void videoApi
+        .image(imagePaths.trickplay(itemId, hoverBucketMs), controller.signal)
+        .then((blob) => {
+          if (controller.signal.aborted) return;
+          const objectUrl = URL.createObjectURL(blob);
+          cache.set(hoverBucketMs, objectUrl);
+          setHoverPreview({ bucketMs: hoverBucketMs, url: objectUrl });
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            cache.set(hoverBucketMs, null);
+          }
+        });
+    }, 120);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [itemId, hoverBucketMs]);
+
   // Next-episode countdown tick
   useEffect(() => {
     if (countdownSec === null) return;
@@ -888,6 +1113,19 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
             setCountdownSec(10);
           }
         }}
+        onError={(e) => {
+          if (!session || hlsRef.current) return;
+          if (session.mode !== "transcode" && fallbackTriggeredRef.current !== session.sessionId) {
+            fallbackTriggeredRef.current = session.sessionId;
+            void requestSessionRef.current({
+              forceTranscode: true,
+              startMs: Math.round(lastMediaTimeRef.current * 1000),
+            });
+            return;
+          }
+          const mediaErr = e.currentTarget.error;
+          setSessionError(new Error(mediaErr?.message || `Media error (${mediaErr?.code ?? "unknown"})`));
+        }}
       />
 
       {/* Buffering / Loading overlay */}
@@ -969,6 +1207,24 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
               {t("videoApp.player.resumeRestart")}
             </button>
           </div>
+        </div>
+      ) : null}
+
+      {/* Floating Skip Intro / Skip Credits / Skip Recap pill */}
+      {activeSegment && !sessionError && resumePromptMs === null ? (
+        <div className="absolute right-5 bottom-24 z-20 flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => handleSkipSegment(activeSegment)}
+            className="inline-flex h-10 items-center gap-2 rounded-full border border-white/25 bg-white px-4 text-sm font-strong text-neutral-950 shadow-raised transition-transform hover:scale-[1.02] hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-white"
+          >
+            <SkipForward className="size-4" aria-hidden />
+            {activeSegment.kind === "intro"
+              ? t("videoApp.player.skipIntro")
+              : activeSegment.kind === "credits"
+                ? t("videoApp.player.skipCredits")
+                : t("videoApp.player.skipRecap")}
+          </button>
         </div>
       ) : null}
 
@@ -1113,6 +1369,14 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
                 <dd className="truncate text-white/90">{session.reason}</dd>
               </>
             ) : null}
+            {session?.directUrl ? (
+              <>
+                <dt className="text-white/65">{t("videoApp.player.infoDirectUrl")}</dt>
+                <dd className="truncate font-mono text-white/90" title={session.directUrl}>
+                  {session.directUrl}
+                </dd>
+              </>
+            ) : null}
             {mediaInfo?.container ? (
               <>
                 <dt className="text-white/65">{t("videoApp.player.infoContainer")}</dt>
@@ -1208,17 +1472,24 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
           }}
           className="group/seek relative flex h-6 cursor-pointer items-center outline-none focus-visible:ring-2 focus-visible:ring-white"
         >
-          {/* Hover preview tooltip */}
+          {/* Hover preview tooltip (with optional debounced trickplay frame) */}
           {hoverSeek && totalDurationSec > 0 ? (
             <div
-              className="pointer-events-none absolute bottom-7 -translate-x-1/2 rounded-control border border-white/15 bg-neutral-950/92 px-2.5 py-1 text-center shadow-raised backdrop-blur-xs"
-              style={{ left: `${Math.max(5, Math.min(95, hoverSeek.ratio * 100))}%` }}
+              className="pointer-events-none absolute bottom-7 -translate-x-1/2 rounded-control border border-white/15 bg-neutral-950/95 p-1.5 text-center shadow-raised backdrop-blur-xs"
+              style={{ left: `${Math.max(10, Math.min(90, hoverSeek.ratio * 100))}%` }}
             >
-              <div data-num className="text-xs font-strong text-white tabular-nums">
+              {hoverPreview && hoverBucketMs !== null && hoverPreview.bucketMs === hoverBucketMs ? (
+                <img
+                  src={hoverPreview.url}
+                  alt={t("videoApp.player.trickplayAlt")}
+                  className="mb-1.5 aspect-video w-40 rounded-control bg-neutral-900 object-cover"
+                />
+              ) : null}
+              <div data-num className="px-1 text-xs font-strong text-white tabular-nums">
                 {formatClock(hoverSeek.timeSec * 1000)}
               </div>
               {hoverSeek.chapter ? (
-                <div className="max-w-44 truncate text-[0.6875rem] text-white/75">{hoverSeek.chapter}</div>
+                <div className="max-w-44 truncate px-1 text-[0.6875rem] text-white/75">{hoverSeek.chapter}</div>
               ) : null}
             </div>
           ) : null}
@@ -1230,6 +1501,23 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
               className="absolute inset-y-0 left-0 bg-white/35"
               style={{ width: `${bufferedPct}%` }}
             />
+            {/* Intro / Credits / Recap segment highlights */}
+            {totalDurationSec > 0
+              ? segments
+                  .filter((seg) => seg.endMs > seg.startMs && seg.startMs / 1000 < totalDurationSec)
+                  .map((seg) => {
+                    const leftPct = Math.max(0, Math.min(100, (seg.startMs / 1000 / totalDurationSec) * 100));
+                    const rightPct = Math.max(leftPct, Math.min(100, (seg.endMs / 1000 / totalDurationSec) * 100));
+                    return (
+                      <span
+                        key={seg.id}
+                        aria-hidden
+                        className="absolute inset-y-0 bg-amber-400/75"
+                        style={{ left: `${leftPct}%`, width: `${Math.max(0.5, rightPct - leftPct)}%` }}
+                      />
+                    );
+                  })
+              : null}
             {/* Played */}
             <div
               className="absolute inset-y-0 left-0 bg-white"
@@ -1331,6 +1619,36 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
 
           {/* Right group */}
           <div className="relative flex items-center gap-0.5 sm:gap-1.5">
+            {/* Multi-Version Switcher */}
+            {versionFiles.length > 1 ? (
+              <button
+                type="button"
+                aria-expanded={activeMenu === "versions"}
+                aria-label={t("videoApp.player.versions")}
+                onClick={() => setActiveMenu((m) => (m === "versions" ? null : "versions"))}
+                className={cn(
+                  "grid size-8 place-items-center rounded-control text-white hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-white sm:size-9",
+                  activeMenu === "versions" && "bg-white/20",
+                )}
+              >
+                <Layers className="size-4" aria-hidden />
+              </button>
+            ) : null}
+
+            {/* Intro / Credits Segment Markers */}
+            <button
+              type="button"
+              aria-expanded={activeMenu === "segments"}
+              aria-label={t("videoApp.player.segments")}
+              onClick={() => setActiveMenu((m) => (m === "segments" ? null : "segments"))}
+              className={cn(
+                "grid size-8 place-items-center rounded-control text-white hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-white sm:size-9",
+                (activeMenu === "segments" || segments.length > 0) && "bg-white/20",
+              )}
+            >
+              <BookmarkPlus className="size-4" aria-hidden />
+            </button>
+
             {/* Chapters */}
             {chapters.length > 0 ? (
               <button
@@ -1443,10 +1761,139 @@ function VideoPlayerSession({ itemId, search }: { itemId: string; search: VideoP
                         ? "videoApp.player.quality"
                         : activeMenu === "chapters"
                           ? "videoApp.player.chapters"
-                          : "videoApp.player.speed",
+                          : activeMenu === "versions"
+                            ? "videoApp.player.versions"
+                            : activeMenu === "segments"
+                              ? "videoApp.player.segments"
+                              : "videoApp.player.speed",
                 )}
-                className="absolute right-0 bottom-12 z-30 max-h-72 min-w-52 overflow-y-auto rounded-panel border border-white/15 bg-neutral-950/95 p-1.5 shadow-raised backdrop-blur-md"
+                className="absolute right-0 bottom-12 z-30 max-h-80 min-w-60 overflow-y-auto rounded-panel border border-white/15 bg-neutral-950/95 p-1.5 shadow-raised backdrop-blur-md"
               >
+                {activeMenu === "versions"
+                  ? versionFiles.map((file) => (
+                      <MenuOption
+                        key={file.itemId}
+                        selected={file.itemId === itemId}
+                        label={formatVersionOption(file, file.itemId === itemId, mediaInfo, locale)}
+                        onSelect={() => handleVersionSwitch(file)}
+                      />
+                    ))
+                  : null}
+
+                {activeMenu === "segments" ? (
+                  <div className="grid w-72 gap-2.5 p-2 text-xs text-white">
+                    <div className="font-strong text-white">{t("videoApp.player.segments")}</div>
+                    {segments.length === 0 ? (
+                      <p className="text-white/65">{t("videoApp.player.segmentsEmpty")}</p>
+                    ) : (
+                      <ul className="grid gap-1">
+                        {segments.map((seg) => (
+                          <li
+                            key={seg.id}
+                            className="flex items-center justify-between gap-2 rounded-control bg-white/8 px-2 py-1.5"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                seekTo(seg.startMs / 1000);
+                                setActiveMenu(null);
+                              }}
+                              className="min-w-0 flex-1 truncate text-start text-white hover:underline"
+                            >
+                              <span className="font-strong">{t(`videoApp.player.segmentKinds.${seg.kind}`)}</span>
+                              <span className="ms-1.5 font-mono text-white/75 tabular-nums">
+                                {formatClock(seg.startMs)} – {formatClock(seg.endMs)}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={t("videoApp.player.deleteSegment")}
+                              disabled={saveSegments.isPending}
+                              onClick={() => handleDeleteSegment(seg.id)}
+                              className="grid size-6 shrink-0 place-items-center rounded-control text-white/70 hover:bg-white/15 hover:text-white"
+                            >
+                              <Trash2 className="size-3.5" aria-hidden />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    <div className="grid gap-2 border-t border-white/15 pt-2">
+                      <select
+                        aria-label={t("videoApp.player.segments")}
+                        value={segKind}
+                        onChange={(e) => setSegKind(e.target.value as VideoSegmentKind)}
+                        className="h-8 rounded-control border border-white/20 bg-neutral-900 px-2 text-xs text-white"
+                      >
+                        {SEGMENT_KINDS.map((k) => (
+                          <option key={k} value={k}>
+                            {t(`videoApp.player.segmentKinds.${k}`)}
+                          </option>
+                        ))}
+                      </select>
+
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <label className="grid gap-1 text-[0.7rem] text-white/75">
+                          <span>{t("videoApp.player.segmentStart")}</span>
+                          <div className="flex gap-1">
+                            <input
+                              type="number"
+                              min={0}
+                              value={segStartSec}
+                              aria-label={t("videoApp.player.segmentStart")}
+                              onChange={(e) => setSegStartSec(e.target.value)}
+                              className="h-7 w-full rounded-control border border-white/20 bg-neutral-900 px-2 font-mono text-xs text-white"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setSegStartSec(String(Math.floor(lastMediaTimeRef.current)))}
+                              className="shrink-0 rounded-control border border-white/20 bg-white/10 px-1.5 text-[0.65rem] text-white hover:bg-white/20"
+                            >
+                              {t("videoApp.player.useCurrentTime")}
+                            </button>
+                          </div>
+                        </label>
+                        <label className="grid gap-1 text-[0.7rem] text-white/75">
+                          <span>{t("videoApp.player.segmentEnd")}</span>
+                          <div className="flex gap-1">
+                            <input
+                              type="number"
+                              min={1}
+                              value={segEndSec}
+                              aria-label={t("videoApp.player.segmentEnd")}
+                              onChange={(e) => setSegEndSec(e.target.value)}
+                              className="h-7 w-full rounded-control border border-white/20 bg-neutral-900 px-2 font-mono text-xs text-white"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setSegEndSec(String(Math.ceil(lastMediaTimeRef.current)))}
+                              className="shrink-0 rounded-control border border-white/20 bg-white/10 px-1.5 text-[0.65rem] text-white hover:bg-white/20"
+                            >
+                              {t("videoApp.player.useCurrentTime")}
+                            </button>
+                          </div>
+                        </label>
+                      </div>
+
+                      {segFormError ? (
+                        <p role="alert" className="text-[0.7rem] text-red-300">
+                          {segFormError}
+                        </p>
+                      ) : null}
+
+                      <button
+                        type="button"
+                        disabled={saveSegments.isPending}
+                        onClick={handleSaveSegment}
+                        className="inline-flex h-8 items-center justify-center rounded-control bg-white px-3 text-xs font-strong text-neutral-950 hover:bg-neutral-200 disabled:opacity-50"
+                      >
+                        {t("videoApp.player.addSegment")}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
                 {activeMenu === "chapters"
                   ? chapters.map((ch, idx) => {
                       const nextStart = chapters[idx + 1]?.startMs ?? Number.POSITIVE_INFINITY;

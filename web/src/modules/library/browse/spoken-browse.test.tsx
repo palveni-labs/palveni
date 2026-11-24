@@ -95,4 +95,4 @@ it.each([
   await user.click(await screen.findByRole("link", { name: "Birdsong" }));
   await screen.findByRole("button", { name: "播放《Dawn chorus》" });
   expect(container.querySelector("audio")).toBeNull();
-}, 15_000);
+});

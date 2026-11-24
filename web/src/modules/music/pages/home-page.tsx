@@ -38,16 +38,16 @@ function AlbumShelf({
   if (!isPending && !isError && albums.length === 0) return null;
 
   return (
-    <section aria-label={title} className="grid min-w-0 gap-3">
+    <section aria-label={title} className="grid min-w-0 gap-4">
       <header className="flex items-center gap-2">
-        <h2 className="font-heading text-lg font-title text-heading">{title}</h2>
+        <h2 className="font-heading text-xl font-title text-heading">{title}</h2>
         <span className="flex-1" />
         {extraAction}
         {seeAllSearch ? (
           <Link
             to="/music/albums"
             search={seeAllSearch}
-            className="inline-flex items-center gap-0.5 rounded-control px-2 py-1 text-sm text-fg-muted transition-colors hover:bg-hover hover:text-fg"
+            className="inline-flex items-center gap-0.5 rounded-control px-2.5 py-1 text-sm text-link transition-colors hover:bg-hover hover:text-fg"
           >
             {t("musicApp.home.seeAll")}
             <ChevronRight className="size-3.5" aria-hidden />
@@ -60,9 +60,9 @@ function AlbumShelf({
       ) : isError ? (
         <ErrorState compact error={error} onRetry={onRetry} />
       ) : (
-        <div className="no-scrollbar -mx-1 flex gap-4 overflow-x-auto px-1 pb-1 sm:grid sm:grid-cols-3 sm:overflow-visible md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        <div className="no-scrollbar -mx-1 flex gap-5 overflow-x-auto px-1 pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {albums.map((album) => (
-            <AlbumCard key={album.id} album={album} className="w-36 shrink-0 sm:w-auto sm:shrink" />
+            <AlbumCard key={album.id} album={album} className="w-40 shrink-0 sm:w-auto sm:shrink" />
           ))}
         </div>
       )}
@@ -105,16 +105,16 @@ function HomeContent({ libraryId }: { libraryId: string }) {
   };
 
   return (
-    <div className="grid gap-8">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="grid gap-9">
+      <div className="pv-glass-panel flex flex-wrap items-center justify-between gap-3 rounded-panel border px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <Button size="sm" variant="primary" isDisabled={shufflingAll} onPress={() => void handleShuffleAll()}>
             <Shuffle aria-hidden />
             {t("musicApp.home.shuffleAll")}
           </Button>
           <Link
             to="/music/search"
-            className="inline-flex h-(--pv-control-h-sm) items-center gap-1.5 rounded-control border border-line-control bg-surface px-3 text-sm font-mid text-fg-muted transition-colors hover:bg-hover hover:text-fg"
+            className="inline-flex h-(--pv-control-h-sm) items-center gap-1.5 rounded-control border border-line/80 bg-sunken/70 px-3 text-sm font-mid text-fg-muted transition-colors hover:border-line-strong hover:bg-hover hover:text-fg"
           >
             <Search className="size-3.5" aria-hidden />
             {t("musicApp.search.placeholder")}

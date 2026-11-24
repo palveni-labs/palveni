@@ -30,6 +30,10 @@ export interface NavEntry extends Availability {
   icon?: LucideIcon;
 }
 
+/**
+ * Where an overview section sits. The overview's order is fixed by "what needs me first"
+ *: the main column holds the work, the aside the state of the house.
+ */
 export type WidgetRegion = "main" | "aside";
 
 export interface WidgetDefinition extends Availability {
@@ -55,6 +59,7 @@ export interface WidgetDefinition extends Availability {
 
 export interface CommandContext {
   navigate: (to: AppPath, search?: Record<string, unknown>) => void;
+  openAssistant: (prompt?: string) => void;
   queryClient: QueryClient;
   t: TFunction;
 }
@@ -116,6 +121,11 @@ export interface ActivitySummary {
   to: AppPath;
 }
 
+export interface PanelDefinition extends Availability {
+  titleKey: MessageKey;
+  component: ComponentType<{ onClose: () => void }>;
+}
+
 /** Handles one server-sent event name for this module. */
 export type EventHandler = (queryClient: QueryClient, data: unknown) => void;
 
@@ -135,12 +145,14 @@ export interface ModuleDefinition extends Availability {
   inbox?: InboxSource;
   /** Hook returning a count shown on the module's navigation item (0 hides it). */
   badge?: () => number;
-  /** Navigation group in a sidebar: the main destinations, or management (apps, system). */
-  group?: "main" | "manage";
+  /** Navigation group in a sidebar: main destinations, media, space (home/tasks), or management. */
+  group?: "main" | "media" | "space" | "manage";
   /** Hook summarising the most important running work (shown by the shell's status display). */
   activity?: () => ActivitySummary | null;
   /** A titled list the module adds to a sidebar navigation (e.g. the libraries). */
   sidebar?: { titleKey: MessageKey; component: ComponentType; menu?: ComponentType<NavMenuProps> };
+  /** Side panel the shell can open on every page (⌘J). At most one module provides it. */
+  panel?: PanelDefinition;
   events?: Record<string, EventHandler>;
 }
 

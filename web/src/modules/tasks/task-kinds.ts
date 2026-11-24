@@ -1,12 +1,22 @@
-import { AudioLines, ScanSearch, type LucideIcon } from "lucide-react";
+import {
+  Download,
+  Film,
+  ScanSearch,
+  AudioLines,
+  Sparkles,
+  Wand2,
+  Workflow,
+  type LucideIcon,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { Task, TaskState } from "./task";
+import type { Task, TaskState } from "@/provisional/types";
 import type { StatusTone } from "@/ui/marks";
 
 /** How each state is marked (StatusLabel / Lamp tone). */
 export const STATE_TONE: Record<TaskState, StatusTone> = {
   queued: "idle",
   running: "active",
+  awaiting_approval: "attention",
   succeeded: "ok",
   failed: "failed",
   cancelled: "idle",
@@ -15,13 +25,23 @@ export const STATE_TONE: Record<TaskState, StatusTone> = {
 export const KIND_ICONS: Record<string, LucideIcon> = {
   "music.loudness": AudioLines,
   "library.scan": ScanSearch,
+  download: Download,
+  transcode: Film,
+  ai: Wand2,
+  "assistant.run": Sparkles,
+  automation: Workflow,
 };
 
-export const TASK_KINDS = ["library.scan", "music.loudness"] as const;
+export const TASK_KINDS = ["library.scan", "music.loudness", "download", "transcode", "ai", "assistant.run", "automation"] as const;
 
 const KIND_LABEL_KEYS = {
   "music.loudness": "music.loudness",
   "library.scan": "tasks.kinds.libraryScan",
+  download: "tasks.kinds.download",
+  transcode: "tasks.kinds.transcode",
+  ai: "tasks.kinds.ai",
+  "assistant.run": "tasks.kinds.assistantRun",
+  automation: "tasks.kinds.automation",
 } as const;
 
 export function useTaskLabels() {

@@ -1,9 +1,11 @@
 import { Film, Heart, Home, Search } from "lucide-react";
 import type { ModuleDefinition } from "../types";
 
+/** 影视: Emby-level home, poster wall, work details, search, favorites and fullscreen cinema player. */
 const video: ModuleDefinition = {
   id: "video",
-  order: 28,
+  order: 22,
+  group: "media",
   titleKey: "kinds.video",
   icon: Film,
   home: "/video",

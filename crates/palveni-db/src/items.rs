@@ -3,8 +3,8 @@
 use palveni_core::{Item, ItemId, ItemKind, LibraryId, LibraryKind, clock};
 use sea_orm::sea_query::{Expr, OnConflict};
 use sea_orm::{
-    ActiveValue, ColumnTrait, Condition, EntityTrait, InsertMany, JoinType, QueryFilter,
-    QueryOrder, QuerySelect, TransactionTrait,
+    ActiveValue, ColumnTrait, Condition, EntityTrait, InsertMany, JoinType, PaginatorTrait,
+    QueryFilter, QueryOrder, QuerySelect, TransactionTrait,
 };
 use serde::{Deserialize, Serialize};
 
@@ -111,6 +111,28 @@ pub fn sort_group_for(kind: ItemKind) -> i32 {
 }
 
 impl Items<'_> {
+    pub async fn count_live(&self) -> Result<u64, DbError> {
+        Ok(items::Entity::find()
+            .filter(items::Column::DeletedAt.is_null())
+            .filter(items::Column::SortGroup.eq(SORT_GROUP_LEAF))
+            .count(self.db.main())
+            .await?)
+    }
+
+    pub async fn list_webdav_items(&self, library_id: LibraryId) -> Result<Vec<Item>, DbError> {
+        let rows = items::Entity::find()
+            .filter(items::Column::LibraryId.eq(library_id.to_string()))
+            .filter(items::Column::DeletedAt.is_null())
+            .filter(items::Column::SortGroup.lte(SORT_GROUP_LEAF))
+            .filter(items::Column::Path.is_not_null())
+            .order_by_asc(items::Column::SortGroup)
+            .order_by_asc(items::Column::SortTitle)
+            .order_by_asc(items::Column::Id)
+            .all(self.db.main())
+            .await?;
+        rows.into_iter().map(to_item).collect()
+    }
+
     pub async fn get(&self, id: ItemId) -> Result<Option<Item>, DbError> {
         items::Entity::find_by_id(id.to_string())
             .filter(items::Column::DeletedAt.is_null())

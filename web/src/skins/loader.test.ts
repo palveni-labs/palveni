@@ -97,7 +97,7 @@ describe("the skin store", () => {
     setSkinLoader((id) => fetchInstalledSkin(id, { fetchImpl: respond(skin) }));
     await setSkin("paper");
     const root = document.documentElement;
-    expect(root.dataset).toMatchObject({ navSide: "right", slotNav: "sidebar", slotNavPhone: "top-scroll", slotPageTitle: "toolbar" });
+    expect(root.dataset).toMatchObject({ navSide: "right", slotNav: "sidebar", slotNavPhone: "top-scroll", slotPageTitle: "content" });
     resetSkinStore();
     setSkinLoader((id) => fetchInstalledSkin(id, { fetchImpl: respond(skin) }));
     await initSkin();

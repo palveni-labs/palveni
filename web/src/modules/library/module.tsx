@@ -1,4 +1,4 @@
-import { FolderOpen, Library, Search } from "lucide-react";
+import { FolderOpen, Images, Layers, Library, Link2, Search } from "lucide-react";
 import { lazy } from "react";
 import { useLibraries } from "@/api/queries/libraries";
 import type { ModuleDefinition } from "../types";
@@ -10,11 +10,17 @@ function useLibraryCount(): number | undefined {
 /** 资料: libraries grouped by kind and file-level browsing (M0 API). */
 const library: ModuleDefinition = {
   id: "library",
-  order: 30,
+  order: 32,
+  group: "media",
   titleKey: "modules.library.title",
   icon: FolderOpen,
   home: "/library",
   feature: "libraries",
+  nav: [
+    { to: "/library", titleKey: "nav.allLibraries", icon: FolderOpen },
+    { to: "/library/collections", titleKey: "nav.collections", icon: Layers, feature: "collections" },
+    { to: "/library/shares", titleKey: "nav.shares", icon: Link2, feature: "shares" },
+  ],
   commands: [{
     id: "library.searchMusic",
     feature: "globalMusicSearch",
@@ -38,6 +44,17 @@ const library: ModuleDefinition = {
       count: useLibraryCount,
       more: { labelKey: "widgets.manageLibraries", to: "/system/libraries", adminOnly: true },
       component: lazy(() => import("./widgets/libraries-widget")),
+    },
+    {
+      id: "library.recent",
+      titleKey: "widgets.recent",
+      icon: Images,
+      region: "main",
+      rank: 40,
+      feature: "artwork",
+      tiles: true,
+      more: { labelKey: "widgets.viewInLibrary", to: "/library" },
+      component: lazy(() => import("./widgets/recent-widget")),
     },
   ],
 };

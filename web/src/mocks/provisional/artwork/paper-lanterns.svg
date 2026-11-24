@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" width="200" height="300" font-family="Figtree, 'Noto Sans SC', sans-serif">
+      <rect width="200" height="300" fill="#0f3a41"/>
+      <rect y="206" width="200" height="94" fill="#0a2b31"/>
+      <path d="M58 0 V66 M128 0 V104 M88 0 V138" stroke="#e48c3a" stroke-width="1"/>
+      <rect x="40" y="66" width="36" height="46" rx="12" fill="#e8913b"/>
+      <rect x="44" y="62" width="28" height="6" rx="2" fill="#a9561c"/><rect x="44" y="110" width="28" height="6" rx="2" fill="#a9561c"/>
+      <rect x="114" y="104" width="28" height="36" rx="10" fill="#efa555"/>
+      <rect x="117" y="100" width="22" height="5" rx="2" fill="#a9561c"/><rect x="117" y="138" width="22" height="5" rx="2" fill="#a9561c"/>
+      <rect x="77" y="138" width="22" height="28" rx="8" fill="#f2b56d"/>
+      <path d="M44 222 h28 M50 232 h16 M118 226 h22 M121 236 h14 M80 242 h16" stroke="#e8913b" stroke-width="3" stroke-linecap="round" opacity=".55"/>
+      <text x="100" y="272" font-size="21" font-weight="700" fill="#f7e3c6" text-anchor="middle">Paper Lanterns</text>
+      <text x="100" y="290" font-size="9" font-weight="500" fill="#8fb3b5" text-anchor="middle" letter-spacing="3">2019</text></svg>

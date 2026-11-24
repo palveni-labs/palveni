@@ -21,19 +21,19 @@ export function rng(seed: number) {
 interface ArtistSeed {
   name: string;
   genres: string[];
-  albums: Array<[name: string, year: number]>;
+  albums: Array<[name: string, year: number, cover?: string]>;
   zh: boolean;
 }
 
 const ARTISTS: ArtistSeed[] = [
-  { name: "林间信号", genres: ["民谣", "独立"], zh: true, albums: [["松针与电波", 2016], ["午后的收音机", 2018], ["雾中的站台", 2021], ["回声练习", 2024]] },
-  { name: "Harbor Lights", genres: ["流行"], zh: false, albums: [["Paper Satellites", 2014], ["Low Tide Letters", 2017], ["Neon Orchard", 2020], ["Glass Weather", 2023]] },
-  { name: "北纬三十度", genres: ["摇滚"], zh: true, albums: [["长江以南", 2009], ["失眠城市", 2013], ["铁轨尽头", 2019]] },
-  { name: "The Quiet Engines", genres: ["电子"], zh: false, albums: [["Signal Bloom", 2015], ["Night Freight", 2018], ["Soft Machines", 2022], ["Afterimage", 2025]] },
-  { name: "夏夜有风", genres: ["流行", "R&B"], zh: true, albums: [["晚风邮局", 2019], ["橘子汽水", 2021], ["慢一点也没关系", 2024]] },
-  { name: "Mira Okafor", genres: ["爵士"], zh: false, albums: [["Blue Hour Sessions", 2011], ["Velvet Corners", 2016], ["Late Train Home", 2022]] },
-  { name: "灰鲸乐团", genres: ["后摇"], zh: true, albums: [["深海以北", 2012], ["冰川移动的声音", 2017], ["没有名字的岛", 2023]] },
-  { name: "Copper & Salt", genres: ["民谣"], zh: false, albums: [["Kitchen Table Hymns", 2010], ["Wild Barley", 2015], ["The Long Field", 2020]] },
+  { name: "林间信号", genres: ["民谣", "独立"], zh: true, albums: [["松针与电波", 2016, "album1"], ["午后的收音机", 2018], ["雾中的站台", 2021], ["回声练习", 2024]] },
+  { name: "Harbor Lights", genres: ["流行"], zh: false, albums: [["Paper Satellites", 2014, "album5"], ["Low Tide Letters", 2017], ["Neon Orchard", 2020], ["Glass Weather", 2023]] },
+  { name: "北纬三十度", genres: ["摇滚"], zh: true, albums: [["长江以南", 2009, "album6"], ["失眠城市", 2013], ["铁轨尽头", 2019]] },
+  { name: "The Quiet Engines", genres: ["电子"], zh: false, albums: [["Signal Bloom", 2015, "album3"], ["Night Freight", 2018], ["Soft Machines", 2022], ["Afterimage", 2025]] },
+  { name: "夏夜有风", genres: ["流行", "R&B"], zh: true, albums: [["晚风邮局", 2019, "album2"], ["橘子汽水", 2021], ["慢一点也没关系", 2024]] },
+  { name: "Mira Okafor", genres: ["爵士"], zh: false, albums: [["Blue Hour Sessions", 2011, "album4"], ["Velvet Corners", 2016], ["Late Train Home", 2022]] },
+  { name: "灰鲸乐团", genres: ["后摇"], zh: true, albums: [["深海以北", 2012, "album7"], ["冰川移动的声音", 2017], ["没有名字的岛", 2023]] },
+  { name: "Copper & Salt", genres: ["民谣"], zh: false, albums: [["Kitchen Table Hymns", 2010, "album8"], ["Wild Barley", 2015], ["The Long Field", 2020]] },
   { name: "城市漫游者", genres: ["嘻哈"], zh: true, albums: [["末班地铁", 2018], ["霓虹方言", 2022]] },
   { name: "云端弦乐团", genres: ["古典"], zh: true, albums: [["四季素描", 1998], ["夜曲集", 2005], ["山水组曲", 2014]] },
   { name: "Neon Tide", genres: ["电子", "流行"], zh: false, albums: [["Chrome Lagoon", 2019], ["Pulse Garden", 2024]] },
@@ -61,6 +61,8 @@ const LYRIC_EN = [
 ];
 
 export interface MockAlbum extends MusicAlbum {
+  /** Bundled cover file name, or null for a generated cover. */
+  cover: string | null;
   coverSeed: number;
 }
 
@@ -128,7 +130,7 @@ export function buildCatalogue(libraryId: string, now: number): MockCatalogue {
   ARTISTS.forEach((seed, artistIndex) => {
     const artistId = `ar-${hashString(`${libraryId}:${seed.name}`).toString(36)}`;
     const artistAlbums: MockAlbum[] = [];
-    seed.albums.forEach(([name, year], albumIndex) => {
+    seed.albums.forEach(([name, year, cover], albumIndex) => {
       const random = rng(hashString(`${seed.name}/${name}`));
       const albumId = `al-${hashString(`${libraryId}:${seed.name}:${name}`).toString(36)}`;
       const count = 7 + Math.floor(random() * 7);
@@ -204,6 +206,7 @@ export function buildCatalogue(libraryId: string, now: number): MockCatalogue {
         stars: rated.length ? Math.round(rated.reduce((sum, track) => sum + track.state.stars, 0) / rated.length) : 0,
         playCount: albumTracks.reduce((sum, track) => sum + track.state.playCount, 0),
         lastPlayedAt: lastPlayed,
+        cover: cover ?? null,
         coverSeed: hashString(albumId),
       };
       for (const track of albumTracks) albumOfTrack.set(track.id, album);

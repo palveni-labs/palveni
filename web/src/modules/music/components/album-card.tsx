@@ -40,9 +40,9 @@ export function AlbumCard({
   return (
     <article
       onContextMenu={onContextMenu}
-      className={cn("group flex min-w-0 flex-col gap-2", className)}
+      className={cn("group flex min-w-0 flex-col gap-2.5", className)}
     >
-      <div className="relative aspect-square w-full overflow-hidden rounded-tile shadow-art ring-1 ring-line/50">
+      <div className="relative aspect-square w-full overflow-hidden rounded-2xl shadow-art ring-1 ring-white/12 ring-inset transition-all duration-200 ease-out group-hover:-translate-y-1.5 group-hover:shadow-overlay group-hover:ring-white/25">
         <Link
           to="/music/albums/$libraryId/$albumId"
           params={{ libraryId: album.libraryId, albumId: album.id }}
@@ -56,7 +56,7 @@ export function AlbumCard({
             className="size-full rounded-none transition-transform duration-300 ease-skin group-hover:scale-[1.03]"
           />
         </Link>
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/55 via-black/15 to-transparent p-2.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/65 via-black/18 to-transparent p-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
           <button
             type="button"
             disabled={loadingPlay}
@@ -66,7 +66,7 @@ export function AlbumCard({
               void playAlbum();
             }}
             aria-label={`${t("musicApp.actions.play")} ${albumTitle}`}
-            className="pointer-events-auto grid size-10 place-items-center rounded-full bg-white text-[#121316] shadow-overlay transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-white"
+            className="pv-nav-pill-active pointer-events-auto grid size-10 place-items-center rounded-full transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-white"
           >
             <Play className="ms-0.5 size-4.5 fill-current" aria-hidden />
           </button>

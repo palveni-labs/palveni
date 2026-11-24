@@ -47,6 +47,13 @@ export type MediaInfo = Schemas["MediaInfo"];
 export type ClientCapabilities = Schemas["ClientProfile"];
 export type PlaybackRequest = Schemas["VideoPlaybackRequest"];
 export type PlaybackSession = Schemas["VideoPlaybackResponse"];
+export type VideoFile = Schemas["VideoFile"];
+export type VideoSegmentKind = Schemas["VideoSegmentKind"];
+export type VideoSegmentSource = Schemas["VideoSegmentSource"];
+export type VideoSegment = Schemas["VideoSegment"];
+export type VideoSegmentInput = Schemas["VideoSegmentInput"];
+export type VideoSegmentList = Schemas["VideoSegmentList"];
+export type PutVideoSegmentsRequest = Schemas["PutVideoSegmentsRequest"];
 
 const enc = encodeURIComponent;
 const lib = (id: string) => `/libraries/${enc(id)}/videos`;
@@ -57,6 +64,7 @@ export const imagePaths = {
     `/items/${enc(itemId)}/poster?level=${level}${size ? `&size=${size}` : ""}`,
   backdrop: (itemId: string, size: number) => `/items/${enc(itemId)}/backdrop?size=${size}`,
   thumb: (itemId: string, size: number) => `/items/${enc(itemId)}/thumb?size=${size}`,
+  trickplay: (itemId: string, atMs: number) => `/items/${enc(itemId)}/trickplay?atMs=${Math.max(0, Math.round(atMs))}`,
   /** People images come as server-relative URLs; strip the API base the client adds back. */
   person: (imageUrl: string, size: number) => {
     const path = imageUrl.startsWith(API_BASE) ? imageUrl.slice(API_BASE.length) : imageUrl;
@@ -89,6 +97,9 @@ export const videoApi = {
   subtitles: (itemId: string, signal?: AbortSignal) => request<SubtitleList>(`/items/${enc(itemId)}/subtitles`, { signal }),
   subtitle: (itemId: string, track: string, signal?: AbortSignal) =>
     requestBlob(`/items/${enc(itemId)}/subtitles/${enc(track)}`, { signal }),
+  segments: (itemId: string, signal?: AbortSignal) => request<VideoSegmentList>(`/items/${enc(itemId)}/segments`, { signal }),
+  saveSegments: (itemId: string, body: PutVideoSegmentsRequest) =>
+    request<VideoSegmentList>(`/items/${enc(itemId)}/segments`, { method: "PUT", body }),
   image: (path: string, signal?: AbortSignal) => requestBlob(path, { signal }),
 };
 

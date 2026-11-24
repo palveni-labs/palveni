@@ -6,6 +6,12 @@ export type BroadcastKind = Schemas["BroadcastKind"];
 export type BroadcastSource = Schemas["BroadcastSource"];
 export type BroadcastImport = Schemas["BroadcastImport"];
 export type BroadcastEntry = Schemas["BroadcastEntry"];
+export type VirtualChannel = Schemas["VirtualChannel"];
+export type VirtualChannelList = Schemas["VirtualChannelList"];
+export type CreateVirtualChannelRequest = Schemas["CreateVirtualChannelRequest"];
+export type VirtualProgramme = Schemas["VirtualProgramme"];
+export type VirtualChannelGuide = Schemas["VirtualChannelGuide"];
+export type VirtualTvGuide = Schemas["VirtualTvGuide"];
 
 const root = "/broadcast/sources";
 const path = (id: string) => root + "/" + encodeURIComponent(id);
@@ -26,6 +32,19 @@ export const broadcastApi = {
     request<void>(path(source) + "/favorites/" + encodeURIComponent(entry), {
       method: "PUT",
       body: { favorite },
+    }),
+};
+
+export const virtualTvApi = {
+  list: (signal?: AbortSignal) => request<VirtualChannelList>("/virtual-channels", { signal }),
+  create: (body: CreateVirtualChannelRequest) =>
+    request<VirtualChannel>("/virtual-channels", { method: "POST", body }),
+  remove: (id: string) =>
+    request<void>("/virtual-channels/" + encodeURIComponent(id), { method: "DELETE" }),
+  guide: (at?: string, signal?: AbortSignal) =>
+    request<VirtualTvGuide>("/virtual-channels/guide", {
+      query: at ? { at } : undefined,
+      signal,
     }),
 };
 

@@ -1,4 +1,5 @@
-import { Drawer } from "@heroui/react";
+import { Button, Drawer } from "@heroui/react";
+import { Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
@@ -7,6 +8,7 @@ import { ItemArtwork } from "@/components/artwork";
 import { formatBytes, formatDateTime } from "@/lib/format";
 import { LIBRARY_KIND_META } from "@/lib/kinds";
 import { useFeature } from "@/modules/access";
+import { shell } from "@/shell/shell-store";
 import { Measure } from "@/ui/marks";
 import { BookDownloadButton } from "./book-download";
 import { TrackLoudness } from "./music-loudness";
@@ -29,6 +31,7 @@ export function ItemDetailsSheet({ item, library, onClose }: { item: Item | null
   const downloads = useFeature("bookDownloads");
   const canDownload = downloads && item?.kind === "book" && library.kind === "book";
   const loudness = useFeature("musicLoudness");
+  const assistantEnabled = useFeature("assistant");
 
   return (
     <Drawer.Backdrop isOpen={item !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
@@ -70,11 +73,21 @@ export function ItemDetailsSheet({ item, library, onClose }: { item: Item | null
                   </Fact>
                 </dl>
               </Drawer.Body>
-              {canDownload && (
+              {assistantEnabled || canDownload ? (
                 <Drawer.Footer className="border-t border-line px-6 py-4">
-                  <BookDownloadButton key={item.id} id={item.id} />
+                  {canDownload && <BookDownloadButton key={item.id} id={item.id} />}
+                  {assistantEnabled && <Button
+                    variant="primary"
+                    onPress={() => {
+                      shell.openAssistant({ label: t("browse.handoffOne", { title: item.title, library: library.name }), itemIds: [item.id] });
+                      onClose();
+                    }}
+                  >
+                    <Sparkles aria-hidden />
+                    {t("browse.handToAssistant")}
+                  </Button>}
                 </Drawer.Footer>
-              )}
+              ) : null}
             </>
           ) : null}
         </Drawer.Dialog>

@@ -133,6 +133,9 @@ impl VideoImages {
         {
             return Ok(img);
         }
+        if super::strm::is_strm_path(&loc.video.relative_path) {
+            return Err(Error::not_found("thumb"));
+        }
 
         let Some(ffmpeg) = &self.ffmpeg else {
             return Err(Error::not_found("thumb"));
@@ -236,6 +239,90 @@ impl VideoImages {
         open_cached_jpeg(&base_path)
             .await
             .map_err(|_| Error::not_found("thumb"))
+    }
+
+    /// Extracts and caches a 320px-wide JPEG trickplay frame for timeline hover scrubbing.
+    /// Gracefully falls back to existing thumbnails or returns `NotFound` for `.strm` or
+    /// when FFmpeg is unavailable.
+    pub async fn grab_trickplay_frame(
+        &self,
+        loc: VideoThumbLocation,
+        at_ms: u64,
+    ) -> Result<(&'static str, u64, ByteStream)> {
+        if super::strm::is_strm_path(&loc.video.relative_path) {
+            if let Some(local) = loc.local_thumb
+                && let Ok(img) = self.open_image(local, Some(320)).await
+            {
+                return Ok(img);
+            }
+            return Err(Error::not_found("trickplay"));
+        }
+
+        let Some(ffmpeg) = &self.ffmpeg else {
+            return self.open_or_grab_thumb(loc, Some(320)).await;
+        };
+
+        let clamped_sec = (at_ms / 1000).min(7 * 24 * 3600);
+        let key_prefix = format!(
+            "trickplay-v1\0{}\0{}",
+            loc.video.root.display(),
+            loc.video.relative_path.display()
+        );
+        let local_thumb = loc.local_thumb;
+        let (root, path) = crate::local::track_path(loc.video).await?;
+        let (file, video_size, modified_ms) = tokio::task::spawn_blocking(move || {
+            let f = root.open_file_blocking(&path)?;
+            let meta = f.metadata()?;
+            let modified_ms = meta
+                .modified()
+                .ok()
+                .map(|t| clock::to_millis(clock::from_system_time(t)))
+                .unwrap_or(0);
+            Ok::<_, Error>((f, meta.len(), modified_ms))
+        })
+        .await
+        .map_err(|e| Error::internal(e.to_string()))??;
+
+        let cache_key = sidecar_fingerprint(&format!(
+            "{key_prefix}\0{video_size}\0{modified_ms}\0{clamped_sec}"
+        ));
+        let cache_path = self.cache_path("trickplay", &cache_key);
+        if let Ok(cached) = open_cached_jpeg(&cache_path).await {
+            return Ok(cached);
+        }
+
+        let _permit = self
+            .workers
+            .acquire()
+            .await
+            .map_err(|e| Error::internal(e.to_string()))?;
+        if let Ok(cached) = open_cached_jpeg(&cache_path).await {
+            return Ok(cached);
+        }
+
+        match grab_frame_scaled(ffmpeg, file, clamped_sec as f64, 320, "6").await {
+            Ok(bytes) => {
+                let len = bytes.len() as u64;
+                if write_atomic(&cache_path, &bytes).await.is_ok()
+                    && let Ok(cached) = open_cached_jpeg(&cache_path).await
+                {
+                    return Ok(cached);
+                }
+                Ok((
+                    "image/jpeg",
+                    len,
+                    Box::pin(io::Cursor::new(bytes)) as ByteStream,
+                ))
+            }
+            Err(_) => {
+                if let Some(local) = local_thumb
+                    && let Ok(img) = self.open_image(local, Some(320)).await
+                {
+                    return Ok(img);
+                }
+                Err(Error::not_found("trickplay"))
+            }
+        }
     }
 
     pub async fn open_photo(
@@ -506,7 +593,17 @@ async fn grab_frame_with_fallback(
 }
 
 async fn grab_frame(ffmpeg: &Path, file: File, seek_secs: f64) -> io::Result<Vec<u8>> {
-    let vf = format!("scale=min(iw\\,{BASE_THUMB_WIDTH}):-2,format=yuvj420p");
+    grab_frame_scaled(ffmpeg, file, seek_secs, BASE_THUMB_WIDTH, "4").await
+}
+
+async fn grab_frame_scaled(
+    ffmpeg: &Path,
+    file: File,
+    seek_secs: f64,
+    max_width: u16,
+    quality: &str,
+) -> io::Result<Vec<u8>> {
+    let vf = format!("scale=min(iw\\,{max_width}):-2,format=yuvj420p");
     let seek = format!("{seek_secs:.3}");
     let input = format!("{FILE_INPUT}:");
     let mut cmd = Command::new(ffmpeg);
@@ -542,7 +639,7 @@ async fn grab_frame(ffmpeg: &Path, file: File, seek_secs: f64) -> io::Result<Vec
         "-c:v",
         "mjpeg",
         "-q:v",
-        "4",
+        quality,
         "-f",
         "image2pipe",
         "pipe:1",

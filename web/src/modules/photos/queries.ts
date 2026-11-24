@@ -2,9 +2,11 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import {
   photosApi,
   type CreatePhotoAlbumRequest,
+  type CreatePhotoPersonRequest,
   type PhotoTimelineFilter,
   type PhotoUploadRequest,
   type UpdatePhotoAlbumRequest,
+  type UpdatePhotoPersonRequest,
 } from "./api";
 
 export const photoKeys = {
@@ -14,6 +16,10 @@ export const photoKeys = {
   info: (itemId: string) => ["photos", "info", itemId] as const,
   albums: () => ["photos", "albums"] as const,
   album: (albumId: string) => ["photos", "album", albumId] as const,
+  search: (q: string, personId?: string) => ["photos", "search", q, personId ?? ""] as const,
+  duplicates: (threshold: number) => ["photos", "duplicates", threshold] as const,
+  people: () => ["photos", "people"] as const,
+  itemPeople: (itemId: string) => ["photos", "item-people", itemId] as const,
 };
 
 export function usePhotoTimeline(filter: Omit<PhotoTimelineFilter, "cursor"> = {}) {
@@ -153,6 +159,112 @@ export function useUploadPhoto() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["photos"] });
       void qc.invalidateQueries({ queryKey: ["libraries"] });
+    },
+  });
+}
+
+export function useAnalyzePhotos() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => photosApi.analyze(),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["photos", "search"] });
+      void qc.invalidateQueries({ queryKey: ["photos", "duplicates"] });
+    },
+  });
+}
+
+export function usePhotoSearch(
+  params: { q?: string; personId?: string; limit?: number },
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: photoKeys.search(params.q ?? "", params.personId),
+    queryFn: ({ signal }) => photosApi.search(params, signal),
+    enabled,
+  });
+}
+
+export function usePhotoDuplicates(threshold = 6) {
+  return useQuery({
+    queryKey: photoKeys.duplicates(threshold),
+    queryFn: ({ signal }) => photosApi.duplicates(threshold, signal),
+  });
+}
+
+export function usePhotoPeople(enabled = true) {
+  return useQuery({
+    queryKey: photoKeys.people(),
+    queryFn: ({ signal }) => photosApi.listPeople(signal),
+    enabled,
+  });
+}
+
+export function useCreatePhotoPerson() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreatePhotoPersonRequest) => photosApi.createPerson(body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: photoKeys.people() });
+    },
+  });
+}
+
+export function useUpdatePhotoPerson() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ personId, body }: { personId: string; body: UpdatePhotoPersonRequest }) =>
+      photosApi.updatePerson(personId, body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: photoKeys.people() });
+      void qc.invalidateQueries({ queryKey: ["photos", "item-people"] });
+      void qc.invalidateQueries({ queryKey: ["photos", "search"] });
+    },
+  });
+}
+
+export function useDeletePhotoPerson() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (personId: string) => photosApi.deletePerson(personId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: photoKeys.people() });
+      void qc.invalidateQueries({ queryKey: ["photos", "item-people"] });
+      void qc.invalidateQueries({ queryKey: ["photos", "search"] });
+    },
+  });
+}
+
+export function usePhotoItemPeople(itemId: string | null | undefined, enabled = true) {
+  return useQuery({
+    queryKey: photoKeys.itemPeople(itemId ?? ""),
+    queryFn: ({ signal }) => photosApi.listItemPeople(itemId ?? "", signal),
+    enabled: Boolean(itemId) && enabled,
+  });
+}
+
+export function useTagPhotoPerson() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, personId }: { itemId: string; personId: string }) =>
+      photosApi.tagPerson(itemId, personId),
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({ queryKey: photoKeys.people() });
+      void qc.invalidateQueries({ queryKey: photoKeys.itemPeople(vars.itemId) });
+      void qc.invalidateQueries({ queryKey: ["photos", "search"] });
+    },
+  });
+}
+
+export function useUntagPhotoPerson() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, personId }: { itemId: string; personId: string }) =>
+      photosApi.untagPerson(itemId, personId),
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({ queryKey: photoKeys.people() });
+      void qc.invalidateQueries({ queryKey: photoKeys.itemPeople(vars.itemId) });
+      void qc.invalidateQueries({ queryKey: ["photos", "search"] });
     },
   });
 }

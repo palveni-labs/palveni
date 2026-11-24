@@ -40,6 +40,8 @@ pub enum PlaybackMode {
 pub struct PlaybackInfo {
     mode: PlaybackMode,
     url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    direct_url: Option<String>,
     expires_at: DateTime<Utc>,
 }
 
@@ -81,6 +83,7 @@ pub(super) fn direct_playback(url: String, expires_at: DateTime<Utc>) -> Playbac
     PlaybackInfo {
         mode: PlaybackMode::Direct,
         url,
+        direct_url: None,
         expires_at,
     }
 }
@@ -134,6 +137,7 @@ pub(super) fn verify_ticket(
 pub(super) enum Media {
     Original(TrackFile),
     Cue(cue::Audio),
+    StrmRedirect(String),
 }
 
 pub(super) async fn open_audio(
@@ -153,13 +157,20 @@ async fn open_media(state: &AppState, id: ItemId) -> Result<Media, ApiError> {
     let file = if let Some(location) = state.db.music().audio_location(id).await? {
         open_audio(location).await
     } else if let Some(location) = state.db.video().location(id).await? {
-        palveni_library::local::open_video(location)
-            .await
-            .map(Media::Original)
+        if palveni_library::video::strm::is_strm_path(&location.relative_path) {
+            palveni_library::video::strm::read_strm_location(location)
+                .await
+                .map(Media::StrmRedirect)
+        } else {
+            palveni_library::local::open_video(location)
+                .await
+                .map(Media::Original)
+        }
     } else {
         return Err(ApiError::not_found("Media item not found"));
     };
     file.map_err(|err| match err {
+        palveni_core::Error::Invalid(msg) => ApiError::validation(msg),
         palveni_core::Error::Internal(_) => ApiError::internal(err),
         _ => ApiError::not_found("Media file unavailable"),
     })
@@ -175,7 +186,8 @@ pub async fn prepare(
     if let Some(profile) = query?.profile()? {
         return transcode::prepare(&state, id, current.session_id, profile).await;
     }
-    if matches!(open_media(&state, id).await?, Media::Cue(_)) {
+    let opened = open_media(&state, id).await?;
+    if matches!(opened, Media::Cue(_)) {
         state
             .hardware
             .audio
@@ -186,7 +198,11 @@ pub async fn prepare(
             .await
             .map_err(transcode::problem)?;
     }
-    let info = issue(&state.identity, id, current.session_id, clock::now());
+    let mut info = issue(&state.identity, id, current.session_id, clock::now());
+    if let Media::StrmRedirect(target_url) = opened {
+        info.direct_url = Some(target_url);
+    }
+    super::home::trigger_media_event(&state, "music.play");
     Ok(([(header::CACHE_CONTROL, PRIVATE_CACHE)], Json(info)).into_response())
 }
 
@@ -245,6 +261,13 @@ pub(super) async fn serve_track(
 ) -> Result<Response, ApiError> {
     match track {
         Media::Original(file) => serve_original(file, method, headers).await,
+        Media::StrmRedirect(target_url) => Response::builder()
+            .status(StatusCode::FOUND)
+            .header(header::LOCATION, target_url)
+            .header(header::CACHE_CONTROL, PRIVATE_CACHE)
+            .header(header::REFERRER_POLICY, "no-referrer")
+            .body(Body::empty())
+            .map_err(ApiError::internal),
         Media::Cue(track) => {
             serve_range(
                 method,
@@ -297,7 +320,7 @@ pub(super) async fn serve_original(
     .await
 }
 
-async fn serve_range<F: Future<Output = Result<Body, ApiError>>>(
+pub(super) async fn serve_range<F: Future<Output = Result<Body, ApiError>>>(
     method: Method,
     headers: &HeaderMap,
     size: u64,

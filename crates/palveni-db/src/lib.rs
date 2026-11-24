@@ -15,7 +15,7 @@
 //! database. Nothing joins or spans a transaction across the two stores.
 //!
 //! Business code never writes SQL; it goes through the repositories exposed
-//! by [`Db`].
+//! by [`Db`] (architecture §4).
 
 #[cfg(test)]
 mod conformance;
@@ -25,25 +25,38 @@ mod error;
 mod migration;
 mod revision;
 
+pub mod accounts;
+pub mod assistant;
 pub mod audit;
 pub mod broadcast;
+pub mod collections;
 pub mod connections;
+pub mod downloads;
 pub mod health;
+pub mod home;
 pub mod items;
+pub mod jellyfin;
 pub mod jobs;
 pub mod libraries;
+pub mod metadata_overrides;
 pub mod music;
+pub mod notifications;
 pub mod overview;
 pub mod personal;
 pub mod photos;
 pub mod playlists;
 pub mod plugin_kv;
+pub mod plugins_photo_ai;
 pub mod reading;
 pub mod scan_reviews;
+pub mod search;
 pub mod sessions;
 pub mod settings;
+pub mod shares;
+pub mod sync_cast;
 pub mod users;
 pub mod video;
+pub mod virtual_tv;
 
 use std::fmt;
 use std::path::PathBuf;
@@ -184,10 +197,6 @@ impl Db {
         personal::PersonalMedia { db: self }
     }
 
-    pub fn overview(&self) -> overview::Overview<'_> {
-        overview::Overview { db: self }
-    }
-
     pub fn photos(&self) -> photos::Photos<'_> {
         photos::Photos { db: self }
     }
@@ -198,6 +207,10 @@ impl Db {
 
     pub fn users(&self) -> users::Users<'_> {
         users::Users { db: self }
+    }
+
+    pub fn accounts(&self) -> accounts::Accounts<'_> {
+        accounts::Accounts { db: self }
     }
 
     pub fn sessions(&self) -> sessions::Sessions<'_> {
@@ -242,6 +255,58 @@ impl Db {
 
     pub fn plugin_kv(&self) -> plugin_kv::PluginKv<'_> {
         plugin_kv::PluginKv { db: self }
+    }
+
+    pub fn home(&self) -> home::Home<'_> {
+        home::Home { db: self }
+    }
+
+    pub fn assistant(&self) -> assistant::Assistant<'_> {
+        assistant::Assistant { db: self }
+    }
+
+    pub fn overview(&self) -> overview::Overview<'_> {
+        overview::Overview { db: self }
+    }
+
+    pub fn shares(&self) -> shares::Shares<'_> {
+        shares::Shares { db: self }
+    }
+
+    pub fn collections(&self) -> collections::Collections<'_> {
+        collections::Collections { db: self }
+    }
+
+    pub fn global_search(&self) -> search::GlobalSearch<'_> {
+        search::GlobalSearch { db: self }
+    }
+
+    pub fn notifications(&self) -> notifications::Notifications<'_> {
+        notifications::Notifications { db: self }
+    }
+
+    pub fn virtual_tv(&self) -> virtual_tv::VirtualTv<'_> {
+        virtual_tv::VirtualTv { db: self }
+    }
+
+    pub fn downloads(&self) -> downloads::Downloads<'_> {
+        downloads::Downloads { db: self }
+    }
+
+    pub fn jellyfin(&self) -> jellyfin::Jellyfin<'_> {
+        jellyfin::Jellyfin { db: self }
+    }
+
+    pub fn metadata_overrides(&self) -> metadata_overrides::MetadataOverrides<'_> {
+        metadata_overrides::MetadataOverrides { db: self }
+    }
+
+    pub fn sync_cast(&self) -> sync_cast::SyncCast<'_> {
+        sync_cast::SyncCast { db: self }
+    }
+
+    pub fn plugins_photo_ai(&self) -> plugins_photo_ai::PluginsPhotoAi<'_> {
+        plugins_photo_ai::PluginsPhotoAi { db: self }
     }
 }
 

@@ -1,17 +1,115 @@
 {
   "title": "Photos",
   "nav": {
+    "subNavLabel": "Photos sections",
     "timeline": "Timeline",
     "albums": "Albums",
     "places": "Places",
     "memories": "Memories",
+    "people": "People",
+    "cleanup": "Cleanup",
     "favorites": "Favorites"
   },
   "search": {
     "commandLabel": "Search photos in library",
     "commandQuery": "Search photos for “{{query}}”",
-    "placeholder": "Search filename or date (e.g. 2025-11)…",
-    "clear": "Clear filters"
+    "placeholder": "Smart search: e.g. “blue sky”, “sunset sony”, “last year autumn night”…",
+    "clear": "Clear filters",
+    "suggestionsLabel": "Try a smart query",
+    "resultCount": "{{count}} matching photos",
+    "parsedLabel": "Parsed filters"
+  },
+  "ai": {
+    "runAnalysis": "Run local smart analysis",
+    "analyzing": "Analyzing…",
+    "analyzeDone": "Analyzed {{analyzed}} photos ({{total}} tagged, {{remaining}} remaining)",
+    "filter": {
+      "year": "Year {{value}}",
+      "month": "Month {{value}}",
+      "season": {
+        "spring": "Spring",
+        "summer": "Summer",
+        "autumn": "Autumn",
+        "winter": "Winter"
+      },
+      "timeOfDay": {
+        "morning": "Morning",
+        "afternoon": "Afternoon",
+        "sunset": "Sunset",
+        "night": "Night"
+      },
+      "color": {
+        "red": "Red",
+        "orange": "Orange",
+        "yellow": "Yellow",
+        "green": "Green",
+        "blue": "Blue",
+        "warm": "Warm",
+        "dark": "Dark",
+        "bright": "Bright"
+      },
+      "orientation": {
+        "portrait": "Portrait",
+        "landscape": "Landscape"
+      },
+      "geotagged": "Geotagged"
+    }
+  },
+  "people": {
+    "title": "People",
+    "count": "{{count}} people",
+    "photoCount": "{{count}} photos",
+    "create": "New person",
+    "createTitle": "Create person profile",
+    "rename": "Rename",
+    "renameTitle": "Rename person",
+    "delete": "Delete person",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Alex, Mom, Travel buddy",
+    "save": "Save",
+    "cancel": "Cancel",
+    "backToList": "All people",
+    "emptyTitle": "No people profiles yet",
+    "emptyDetail": "Create a person profile, then tag photos from the lightbox to browse by person.",
+    "emptyPersonTitle": "No tagged photos yet",
+    "emptyPersonDetail": "Open any photo in the lightbox and click Tag people to link it here.",
+    "createdToast": "Created person “{{name}}”",
+    "updatedToast": "Person renamed",
+    "deletedToast": "Deleted person “{{name}}”",
+    "untaggedToast": "Removed person tag",
+    "untagItem": "Remove {{title}}",
+    "tagTitle": "Tag people",
+    "quickCreatePlaceholder": "Create & tag a new person…",
+    "quickCreateAdd": "Create & tag",
+    "taggedToast": "Tagged “{{name}}”",
+    "noPeopleYet": "No people yet — create one below."
+  },
+  "cleanup": {
+    "title": "Duplicate & Similar Cleanup",
+    "summary": "{{clusters}} duplicate groups ({{photos}} redundant photos), est. {{bytes}} reclaimable",
+    "thresholdLabel": "Similarity threshold",
+    "thresholdExact": "Exact only (dHash = 0)",
+    "thresholdValue": "Similar (dHash ≤ {{value}})",
+    "selectNonKeep": "Mark all non-keep",
+    "statClusters": "Duplicate groups",
+    "statDuplicates": "Redundant photos",
+    "statReclaimable": "Reclaimable space",
+    "kindExact": "Exact match",
+    "kindSimilar": "Similar · dHash ≤ {{distance}}",
+    "clusterMeta": "{{count}} photos · {{bytes}} reclaimable",
+    "keepBadge": "Recommended keep",
+    "markedBadge": "Marked for review",
+    "markButton": "Mark",
+    "unmarkButton": "Unmark",
+    "preview": "Preview",
+    "markedCount": "{{count}} photos marked for cleanup",
+    "clearMarked": "Clear marks",
+    "stageToAlbum": "Collect into Cleanup album",
+    "reviewAlbumName": "Cleanup Review",
+    "reviewAlbumDesc": "Safely collected by the duplicate cleanup assistant for final review.",
+    "stagedToast": "Safely collected {{count}} photos into “{{album}}”",
+    "emptyTitle": "No duplicate or similar photos found",
+    "emptyDetail": "Your library looks clean. Run local smart analysis to compute perceptual hashes for newly indexed photos."
   },
   "timeline": {
     "title": "Timeline",
@@ -120,6 +218,7 @@
     "favorite": "Favorite",
     "favorited": "Favorited",
     "addToAlbum": "Add to album",
+    "tagPeople": "Tag people",
     "downloadOriginal": "Download original",
     "infoToggle": "EXIF info",
     "counter": "{{index}} / {{total}}",
@@ -139,6 +238,7 @@
       "focalLength": "Focal length",
       "coordinates": "GPS coordinates",
       "albums": "Albums",
+      "people": "Tagged people",
       "none": "Not recorded"
     }
   }

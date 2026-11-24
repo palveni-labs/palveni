@@ -27,6 +27,7 @@ pub async fn stream(
     let events = event_stream(
         state.bus.subscribe(),
         after,
+        current.user.id,
         current.is_admin(),
         state.shutdown.clone(),
     );
@@ -51,6 +52,7 @@ struct StreamState {
     batch: Replay,
     initial_ping: bool,
     ping: Interval,
+    user_id: palveni_core::UserId,
     is_admin: bool,
     shutdown: CancellationToken,
 }
@@ -58,6 +60,7 @@ struct StreamState {
 fn event_stream(
     mut subscription: Subscription,
     after: Option<i64>,
+    user_id: palveni_core::UserId,
     is_admin: bool,
     shutdown: CancellationToken,
 ) -> impl Stream<Item = Result<Event, Infallible>> + Send + 'static {
@@ -68,6 +71,7 @@ fn event_stream(
         subscription,
         initial_ping: true,
         ping,
+        user_id,
         is_admin,
         shutdown,
     };
@@ -87,7 +91,7 @@ fn event_stream(
                 return Some((Ok(reset), st));
             }
             while let Some(event) = st.batch.entries.pop_front() {
-                if let Some(sse) = to_sse(&event, st.is_admin) {
+                if let Some(sse) = to_sse(&event, st.user_id, st.is_admin) {
                     return Some((Ok(sse), st));
                 }
             }
@@ -103,9 +107,18 @@ fn event_stream(
     })
 }
 
-fn to_sse(numbered: &NumberedEvent, is_admin: bool) -> Option<Event> {
+fn to_sse(
+    numbered: &NumberedEvent,
+    user_id: palveni_core::UserId,
+    is_admin: bool,
+) -> Option<Event> {
     let event = &numbered.event;
     if event.admin_only() && !is_admin {
+        return None;
+    }
+    if let Some(owner) = event.owner_user()
+        && owner != user_id
+    {
         return None;
     }
     match event.data_json() {
@@ -155,6 +168,8 @@ mod tests {
 
     #[test]
     fn nonadmins_do_not_receive_private_events() {
+        let user = palveni_core::UserId::generate();
+        let other = palveni_core::UserId::generate();
         let event = NumberedEvent {
             revision: 12,
             event: ServerEvent::SettingsUpdated {
@@ -162,7 +177,28 @@ mod tests {
                 perf_tier: None,
             },
         };
-        assert!(to_sse(&event, false).is_none());
-        assert!(to_sse(&event, true).is_some());
+        assert!(to_sse(&event, user, false).is_none());
+        assert!(to_sse(&event, user, true).is_some());
+
+        let run_event = NumberedEvent {
+            revision: 13,
+            event: ServerEvent::AssistantRunUpdated {
+                user_id: user,
+                run: Box::new(palveni_core::assistant::AssistantRun {
+                    id: "r1".into(),
+                    title: None,
+                    subject: None,
+                    request: None,
+                    previews: None,
+                    state: palveni_core::assistant::RunState::Succeeded,
+                    steps: Vec::new(),
+                    blocks: Vec::new(),
+                    task_id: None,
+                    created_at: palveni_core::clock::now(),
+                }),
+            },
+        };
+        assert!(to_sse(&run_event, user, false).is_some());
+        assert!(to_sse(&run_event, other, true).is_none());
     }
 }

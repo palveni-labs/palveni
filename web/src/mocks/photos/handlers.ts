@@ -1,8 +1,10 @@
 import { delay, http, HttpResponse } from "msw";
 import type {
   CreatePhotoAlbumRequest,
+  CreatePhotoPersonRequest,
   PhotoUploadRequest,
   UpdatePhotoAlbumRequest,
+  UpdatePhotoPersonRequest,
 } from "@/modules/photos/api";
 import type { MockDb } from "../db";
 import type { HandlerOptions } from "../handlers";
@@ -229,6 +231,93 @@ export function createPhotosHandlers(db: MockDb, options: HandlerOptions = {}) {
       );
       library.itemCount += 1;
       return HttpResponse.json(info, { status: 201 });
+    }),
+
+    http.post(`${BASE}/photos/analyze`, async ({ request }) => {
+      await wait();
+      const auth = authUser(request);
+      if ("error" in auth) return auth.error;
+      return HttpResponse.json(state.analyze());
+    }),
+
+    http.get(`${BASE}/photos/search`, async ({ request }) => {
+      await wait();
+      const auth = authUser(request);
+      if ("error" in auth) return auth.error;
+      const q = new URL(request.url).searchParams;
+      const query = q.get("q") ?? "";
+      const personId = q.get("personId") ?? undefined;
+      const limit = q.has("limit") ? Number(q.get("limit")) : 60;
+      return HttpResponse.json(state.search(auth.user.id, query, personId, limit));
+    }),
+
+    http.get(`${BASE}/photos/duplicates`, async ({ request }) => {
+      await wait();
+      const auth = authUser(request);
+      if ("error" in auth) return auth.error;
+      const q = new URL(request.url).searchParams;
+      const threshold = q.has("threshold") ? Number(q.get("threshold")) : 6;
+      return HttpResponse.json(state.duplicates(auth.user.id, threshold));
+    }),
+
+    http.get(`${BASE}/me/photo-people`, async ({ request }) => {
+      await wait();
+      const auth = authUser(request);
+      if ("error" in auth) return auth.error;
+      return HttpResponse.json({ people: state.listPeople(auth.user.id) });
+    }),
+
+    http.post(`${BASE}/me/photo-people`, async ({ request }) => {
+      await wait();
+      const auth = authUser(request);
+      if ("error" in auth) return auth.error;
+      const body = (await request.json().catch(() => null)) as CreatePhotoPersonRequest | null;
+      if (!body?.name?.trim()) return fail(400, "validation_failed", "name is required");
+      return HttpResponse.json(state.createPerson(auth.user.id, body), { status: 201 });
+    }),
+
+    http.patch(`${BASE}/me/photo-people/:id`, async ({ request, params }) => {
+      await wait();
+      const auth = authUser(request);
+      if ("error" in auth) return auth.error;
+      const body = (await request.json().catch(() => ({}))) as UpdatePhotoPersonRequest;
+      const updated = state.updatePerson(auth.user.id, String(params.id), body);
+      return updated ? HttpResponse.json(updated) : fail(404, "not_found", "Photo person not found");
+    }),
+
+    http.delete(`${BASE}/me/photo-people/:id`, async ({ request, params }) => {
+      await wait();
+      const auth = authUser(request);
+      if ("error" in auth) return auth.error;
+      return state.deletePerson(auth.user.id, String(params.id))
+        ? new HttpResponse(null, { status: 204 })
+        : fail(404, "not_found", "Photo person not found");
+    }),
+
+    http.get(`${BASE}/items/:id/photo-people`, async ({ request, params }) => {
+      await wait();
+      const auth = authUser(request);
+      if ("error" in auth) return auth.error;
+      const itemId = String(params.id);
+      if (!state.hasPhoto(itemId)) return fail(404, "not_found", "Photo not found");
+      return HttpResponse.json({ people: state.listItemPeople(auth.user.id, itemId) });
+    }),
+
+    http.post(`${BASE}/items/:id/photo-people/:personId`, async ({ request, params }) => {
+      await wait();
+      const auth = authUser(request);
+      if ("error" in auth) return auth.error;
+      const updated = state.tagPerson(auth.user.id, String(params.id), String(params.personId));
+      return updated ? HttpResponse.json(updated) : fail(404, "not_found", "Photo or person not found");
+    }),
+
+    http.delete(`${BASE}/items/:id/photo-people/:personId`, async ({ request, params }) => {
+      await wait();
+      const auth = authUser(request);
+      if ("error" in auth) return auth.error;
+      return state.untagPerson(auth.user.id, String(params.id), String(params.personId))
+        ? new HttpResponse(null, { status: 204 })
+        : fail(404, "not_found", "Photo person tag not found");
     }),
   ];
 }

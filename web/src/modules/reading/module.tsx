@@ -4,7 +4,8 @@ import type { ModuleDefinition } from "../types";
 /** 阅读: Ebook, PDF & Manga/Comic shelves and immersive readers. */
 const reading: ModuleDefinition = {
   id: "reading",
-  order: 30,
+  order: 28,
+  group: "media",
   titleKey: "readingApp.title",
   icon: BookOpen,
   home: "/reading",

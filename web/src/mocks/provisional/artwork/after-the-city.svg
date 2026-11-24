@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" font-family="Figtree, 'Noto Sans SC', sans-serif">
+      <rect width="200" height="200" fill="#a8581d"/>
+      <circle cx="150" cy="54" r="26" fill="#f2d3a0"/>
+      <path d="M0 200 V128 H22 V104 H40 V120 H56 V86 H78 V112 H92 V96 H112 V122 H128 V80 H150 V110 H166 V100 H184 V124 H200 V200 Z" fill="#2c1609"/>
+      <g fill="#f3b55c">
+        <rect x="26" y="112" width="4" height="4"/><rect x="62" y="96" width="4" height="4"/><rect x="70" y="110" width="4" height="4"/>
+        <rect x="132" y="90" width="4" height="4"/><rect x="140" y="104" width="4" height="4"/><rect x="100" y="106" width="4" height="4"/>
+        <rect x="172" y="112" width="4" height="4"/><rect x="62" y="140" width="4" height="4"/><rect x="138" y="132" width="4" height="4"/>
+      </g>
+      <text x="16" y="34" font-size="16" font-weight="800" fill="#2c1609" >After the City</text>
+      <text x="16" y="50" font-size="9" font-weight="600" fill="#4a2610" letter-spacing="1">Quiet Hours</text></svg>

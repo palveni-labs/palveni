@@ -35,7 +35,7 @@ export function effectiveSlots(skin: SkinManifest, nav: NavSetting): Slots {
   return {
     ...skin.slots,
     nav: resolvedNav,
-    pageTitle: resolvedNav === "sidebar" ? "toolbar" : "content",
+    pageTitle: resolvedNav === "topbar" ? "content" : skin.slots.pageTitle,
   };
 }
 

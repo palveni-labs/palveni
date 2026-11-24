@@ -1,9 +1,10 @@
 import { toast } from "@heroui/react";
-import { Cpu, FolderCog, FolderPlus, RefreshCw, ScanSearch, Server, Settings2 } from "lucide-react";
+import { Bell, Cpu, FolderCog, FolderPlus, RefreshCw, ScanSearch, Server, Settings2, ShieldCheck, Users } from "lucide-react";
 import { lazy } from "react";
 import { api } from "@/api/endpoints";
 import { queryKeys } from "@/api/query-keys";
 import type { ModuleDefinition } from "../types";
+import { useStorageAlerts } from "./use-storage-alerts";
 
 /** 系统: library management, hardware & transcoding, settings (M0 API). */
 const system: ModuleDefinition = {
@@ -13,9 +14,13 @@ const system: ModuleDefinition = {
   icon: Settings2,
   home: "/system",
   group: "manage",
+  inbox: useStorageAlerts,
   nav: [
     { to: "/system/libraries", titleKey: "nav.manageLibraries", icon: FolderCog, adminOnly: true, feature: "libraries" },
+    { to: "/system/users", titleKey: "nav.users", icon: Users, adminOnly: true, feature: "users" },
+    { to: "/system/maintenance", titleKey: "nav.maintenance", icon: ShieldCheck, adminOnly: true, feature: "audit" },
     { to: "/system/hardware", titleKey: "nav.hardware", icon: Cpu, adminOnly: true, feature: "hardware" },
+    { to: "/system/notifications", titleKey: "nav.notifications", icon: Bell, feature: "notifications" },
     { to: "/system/settings", titleKey: "nav.settings", icon: Settings2 },
   ],
   widgets: [

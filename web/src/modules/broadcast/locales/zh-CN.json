@@ -39,5 +39,30 @@
   "subRequired": "请填写订阅地址或提供清单内容。",
   "playerUnsupported": "浏览器无法播放这条线路，可切换线路或用播放器打开媒体地址。",
   "chooseLine": "播放线路",
-  "noStreams": "没有可播放的 HTTP 或 HTTPS 线路。"
+  "noStreams": "没有可播放的 HTTP 或 HTTPS 线路。",
+  "virtualTv": {
+    "nav": "虚拟轮播台",
+    "title": "24×7 虚拟轮播台",
+    "copyM3u": "复制 M3U 列表地址",
+    "copyXmltv": "复制 XMLTV 节目单地址",
+    "copiedM3u": "已复制 M3U 播放列表地址",
+    "copiedXmltv": "已复制 XMLTV 节目单地址",
+    "addChannel": "新建频道",
+    "channelNumber": "频道号",
+    "channelName": "频道名称",
+    "channelNamePlaceholder": "例如：科幻电影轮播台",
+    "videoLibrary": "片源影视库",
+    "genreFilter": "流派筛选（可选）",
+    "genrePlaceholder": "例如：科幻",
+    "createSubmit": "创建频道",
+    "deleteChannel": "移除频道",
+    "confirmDelete": "移除虚拟频道「{{name}}」？",
+    "tuneInNow": "立即调台观看",
+    "liveNow": "直播中",
+    "upcomingSchedule": "未来 12 小时节目单",
+    "noChannels": "还没有虚拟轮播频道",
+    "noVideoLibraries": "请先添加并扫描一个影视媒体库",
+    "noPlayableItems": "该频道下暂无匹配的可播放视频",
+    "cycleSummary": "{{items}} 部片源 · 轮播周期 {{minutes}} 分钟"
+  }
 }

@@ -12,6 +12,7 @@ import { FeatureGate } from "./feature-gate";
 import { InboxCollectors } from "./inbox-store";
 import { ModuleTabs } from "./module-tabs";
 import { BottomTabBar, Sidebar } from "./nav";
+import { PanelHost } from "./panel-host";
 import { useShellEvents } from "./server-events";
 import { Toolbar, TopBar } from "./topbar";
 
@@ -52,7 +53,7 @@ export function AppShell() {
   return (
     <ScrollContainerContext value={scrollRef}>
       <InboxCollectors />
-      <div className="flex h-svh flex-col overflow-hidden bg-page text-fg">
+      <div className="pv-ambient-canvas flex h-svh flex-col overflow-hidden text-fg">
         <div className="flex min-h-0 flex-1 overflow-hidden">
           {navSide === "left" ? sidebarNode : null}
           <div className="flex min-w-0 flex-1 flex-col">
@@ -79,6 +80,7 @@ export function AppShell() {
               </div>
             </main>
           </div>
+          <PanelHost />
           {navSide === "right" ? sidebarNode : null}
         </div>
         <PlayerHost />

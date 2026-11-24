@@ -8,25 +8,125 @@ import {
   Images,
   LayoutGrid,
   Search,
+  Sparkles,
   Upload,
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLibraries } from "@/api/queries/libraries";
+import { currentLanguage } from "@/i18n";
 import { cn } from "@/lib/cn";
 import { errorText } from "@/lib/errors";
 import { PageHeader } from "@/ui/page";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
+import type { PhotoQueryFilter } from "../api";
 import { AddToAlbumModal } from "../components/add-to-album-modal";
 import { PhotoGrid } from "../components/photo-image";
 import { PhotoLightbox } from "../components/photo-lightbox";
 import { UploadPhotoModal } from "../components/upload-photo-modal";
 import { groupPhotosByDay } from "../format";
-import { useBatchPhotoFavorite, usePhotoMemories, usePhotoTimeline } from "../queries";
+import {
+  useAnalyzePhotos,
+  useBatchPhotoFavorite,
+  usePhotoMemories,
+  usePhotoSearch,
+  usePhotoTimeline,
+} from "../queries";
 import type { PhotosTimelineSearch } from "../routes/index";
 
 const routeApi = getRouteApi("/_app/photos/");
+
+const SMART_SUGGESTIONS_ZH = ["去年秋天的夜景", "蓝色天空", "索尼竖拍"] as const;
+const SMART_SUGGESTIONS_EN = ["last year autumn night", "blue sky", "sony portrait"] as const;
+
+const COLOR_DOT_STYLE: Record<string, string> = {
+  red: "#c83b3b",
+  orange: "#d9752b",
+  yellow: "#d6a428",
+  green: "#2f8f5b",
+  blue: "#2b6cb0",
+  warm: "#b87a3d",
+  dark: "#333942",
+  bright: "#d6dbe0",
+};
+
+function ParsedFilterChips({ filter }: { filter: PhotoQueryFilter }) {
+  const { t } = useTranslation();
+  const chips: Array<{ key: string; label: string; dot?: string }> = [];
+
+  if (filter.year !== null) {
+    chips.push({ key: "year", label: t("photosApp.ai.filter.year", { value: filter.year }) });
+  }
+  if (filter.month !== null) {
+    chips.push({ key: "month", label: t("photosApp.ai.filter.month", { value: filter.month }) });
+  }
+  if (filter.season) {
+    chips.push({
+      key: "season",
+      label: t(`photosApp.ai.filter.season.${filter.season}` as "photosApp.ai.filter.season.autumn"),
+    });
+  }
+  if (filter.timeOfDay) {
+    chips.push({
+      key: "timeOfDay",
+      label: t(
+        `photosApp.ai.filter.timeOfDay.${filter.timeOfDay}` as "photosApp.ai.filter.timeOfDay.night",
+      ),
+    });
+  }
+  if (filter.color) {
+    chips.push({
+      key: "color",
+      label: t(`photosApp.ai.filter.color.${filter.color}` as "photosApp.ai.filter.color.blue"),
+      dot: COLOR_DOT_STYLE[filter.color],
+    });
+  }
+  if (filter.orientation) {
+    chips.push({
+      key: "orientation",
+      label: t(
+        `photosApp.ai.filter.orientation.${filter.orientation}` as "photosApp.ai.filter.orientation.portrait",
+      ),
+    });
+  }
+  if (filter.cameraBrand) {
+    chips.push({ key: "camera", label: filter.cameraBrand.toUpperCase() });
+  }
+  if (filter.geotagged) {
+    chips.push({ key: "geo", label: t("photosApp.ai.filter.geotagged") });
+  }
+  for (const kw of filter.keywords) {
+    chips.push({ key: `kw:${kw}`, label: kw });
+  }
+
+  if (chips.length === 0) return null;
+
+  return (
+    <div
+      role="region"
+      aria-label={t("photosApp.search.parsedLabel")}
+      className="flex flex-wrap items-center gap-1.5"
+    >
+      <span className="text-xs text-fg-muted">{t("photosApp.search.parsedLabel")}:</span>
+      {chips.map((chip) => (
+        <span
+          key={chip.key}
+          className="inline-flex items-center gap-1.5 rounded-full border border-line-strong bg-surface px-2.5 py-0.5 text-xs font-mid text-fg"
+        >
+          {chip.dot ? (
+            <span
+              aria-hidden
+              className="size-2.5 rounded-full border border-black/15"
+              style={{ backgroundColor: chip.dot }}
+            />
+          ) : null}
+          {chip.label}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 export function PhotosTimelinePage() {
   const { t } = useTranslation();
@@ -40,6 +140,9 @@ export function PhotosTimelinePage() {
   );
   const { data: memories } = usePhotoMemories();
 
+  const smartQueryText = search.q?.trim() ?? "";
+  const isSmartSearch = smartQueryText.length > 0;
+
   const timeline = usePhotoTimeline({
     libraryId: search.libraryId,
     camera: search.camera,
@@ -47,10 +150,22 @@ export function PhotosTimelinePage() {
     q: search.q,
   });
 
+  const smartSearch = usePhotoSearch({ q: smartQueryText, limit: 200 }, isSmartSearch);
+  const analyze = useAnalyzePhotos();
+
   const allItems = useMemo(
     () => timeline.data?.pages.flatMap((page) => page.items) ?? [],
     [timeline.data?.pages],
   );
+  const smartItems = useMemo(() => {
+    const raw = smartSearch.data?.items ?? [];
+    return raw.filter((item) => {
+      if (search.libraryId && item.libraryId !== search.libraryId) return false;
+      if (search.month && item.monthBucket !== search.month) return false;
+      return true;
+    });
+  }, [smartSearch.data?.items, search.libraryId, search.month]);
+
   const months = timeline.data?.pages[0]?.months ?? [];
   const total = timeline.data?.pages[0]?.total ?? 0;
   const dayGroups = useMemo(() => groupPhotosByDay(allItems), [allItems]);
@@ -70,6 +185,8 @@ export function PhotosTimelinePage() {
   const batchFavorite = useBatchPhotoFavorite();
   const gridMode = search.grid ?? "square";
   const hasActiveFilter = Boolean(search.libraryId || search.camera || search.month || search.q);
+  const suggestions = currentLanguage() === "zh-CN" ? SMART_SUGGESTIONS_ZH : SMART_SUGGESTIONS_EN;
+  const lightboxItems = isSmartSearch ? smartItems : allItems;
 
   const updateSearch = (patch: Partial<PhotosTimelineSearch>) => {
     void navigate({
@@ -101,13 +218,32 @@ export function PhotosTimelinePage() {
     });
   };
 
+  const handleRunAnalysis = () => {
+    analyze.mutate(undefined, {
+      onSuccess: (res) => {
+        toast.success(
+          t("photosApp.ai.analyzeDone", {
+            analyzed: res.analyzedCount,
+            total: res.totalTagged,
+            remaining: res.remaining,
+          }),
+        );
+      },
+      onError: (err) => toast.danger(errorText(t, err)),
+    });
+  };
+
   const selectedArray = useMemo(() => [...selectedIds], [selectedIds]);
 
   return (
     <div className="grid gap-5">
       <PageHeader
         title={t("photosApp.timeline.title")}
-        summary={t("photosApp.timeline.totalCount", { count: total })}
+        summary={
+          isSmartSearch && smartSearch.data
+            ? t("photosApp.search.resultCount", { count: smartItems.length })
+            : t("photosApp.timeline.totalCount", { count: total })
+        }
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <div className="inline-flex rounded-control border border-line bg-sunken p-0.5">
@@ -139,6 +275,16 @@ export function PhotosTimelinePage() {
 
             <Button
               size="sm"
+              variant="outline"
+              isDisabled={analyze.isPending}
+              onPress={handleRunAnalysis}
+            >
+              <Sparkles className="size-4" aria-hidden />
+              {analyze.isPending ? t("photosApp.ai.analyzing") : t("photosApp.ai.runAnalysis")}
+            </Button>
+
+            <Button
+              size="sm"
               variant={selectMode ? "primary" : "outline"}
               onPress={() => {
                 setSelectMode((prev) => {
@@ -159,63 +305,89 @@ export function PhotosTimelinePage() {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-48 flex-1 sm:max-w-xs">
-          <Search className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-fg-subtle" aria-hidden />
-          <input
-            type="search"
-            aria-label={t("photosApp.search.placeholder")}
-            value={search.q ?? ""}
-            onChange={(e) => updateSearch({ q: e.target.value || undefined })}
-            placeholder={t("photosApp.search.placeholder")}
-            className="h-9 w-full rounded-control border border-line-strong bg-surface ps-8 pe-3 text-sm text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
-          />
+      <div className="grid gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-56 flex-1 sm:max-w-md">
+            <Search
+              className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-fg-subtle"
+              aria-hidden
+            />
+            <input
+              type="search"
+              aria-label={t("photosApp.search.placeholder")}
+              value={search.q ?? ""}
+              onChange={(e) => updateSearch({ q: e.target.value || undefined })}
+              placeholder={t("photosApp.search.placeholder")}
+              className="h-9 w-full rounded-control border border-line-strong bg-surface ps-8 pe-3 text-sm text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+            />
+          </div>
+
+          <select
+            aria-label={t("photosApp.timeline.allLibraries")}
+            value={search.libraryId ?? ""}
+            onChange={(e) => updateSearch({ libraryId: e.target.value || undefined })}
+            className="h-9 rounded-control border border-line-strong bg-surface px-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+          >
+            <option value="">{t("photosApp.timeline.allLibraries")}</option>
+            {photoLibraries.map((lib) => (
+              <option key={lib.id} value={lib.id}>
+                {lib.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            aria-label={t("photosApp.timeline.allCameras")}
+            value={search.camera ?? ""}
+            onChange={(e) => updateSearch({ camera: e.target.value || undefined })}
+            className="h-9 max-w-56 rounded-control border border-line-strong bg-surface px-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+          >
+            <option value="">{t("photosApp.timeline.allCameras")}</option>
+            {(memories?.cameras ?? []).map((cam) => (
+              <option key={cam.name} value={cam.name}>
+                {cam.name} ({cam.count})
+              </option>
+            ))}
+          </select>
+
+          {hasActiveFilter ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              onPress={() =>
+                updateSearch({
+                  libraryId: undefined,
+                  camera: undefined,
+                  month: undefined,
+                  q: undefined,
+                })
+              }
+            >
+              <X className="size-3.5" aria-hidden />
+              {t("photosApp.search.clear")}
+            </Button>
+          ) : null}
         </div>
 
-        <select
-          aria-label={t("photosApp.timeline.allLibraries")}
-          value={search.libraryId ?? ""}
-          onChange={(e) => updateSearch({ libraryId: e.target.value || undefined })}
-          className="h-9 rounded-control border border-line-strong bg-surface px-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+        <div
+          aria-label={t("photosApp.search.suggestionsLabel")}
+          className="flex flex-wrap items-center gap-1.5"
         >
-          <option value="">{t("photosApp.timeline.allLibraries")}</option>
-          {photoLibraries.map((lib) => (
-            <option key={lib.id} value={lib.id}>
-              {lib.name}
-            </option>
+          <span className="text-xs text-fg-subtle">{t("photosApp.search.suggestionsLabel")}:</span>
+          {suggestions.map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => updateSearch({ q: preset })}
+              className="rounded-full border border-line bg-sunken px-2.5 py-0.5 text-xs text-fg-muted transition-colors hover:border-line-strong hover:text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+            >
+              {preset}
+            </button>
           ))}
-        </select>
+        </div>
 
-        <select
-          aria-label={t("photosApp.timeline.allCameras")}
-          value={search.camera ?? ""}
-          onChange={(e) => updateSearch({ camera: e.target.value || undefined })}
-          className="h-9 max-w-56 rounded-control border border-line-strong bg-surface px-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
-        >
-          <option value="">{t("photosApp.timeline.allCameras")}</option>
-          {(memories?.cameras ?? []).map((cam) => (
-            <option key={cam.name} value={cam.name}>
-              {cam.name} ({cam.count})
-            </option>
-          ))}
-        </select>
-
-        {hasActiveFilter ? (
-          <Button
-            size="sm"
-            variant="ghost"
-            onPress={() =>
-              updateSearch({
-                libraryId: undefined,
-                camera: undefined,
-                month: undefined,
-                q: undefined,
-              })
-            }
-          >
-            <X className="size-3.5" aria-hidden />
-            {t("photosApp.search.clear")}
-          </Button>
+        {isSmartSearch && smartSearch.data ? (
+          <ParsedFilterChips filter={smartSearch.data.parsedFilters} />
         ) : null}
       </div>
 
@@ -257,7 +429,33 @@ export function PhotosTimelinePage() {
         </div>
       ) : null}
 
-      {timeline.isLoading ? (
+      {isSmartSearch ? (
+        smartSearch.isLoading ? (
+          <LoadingRows rows={4} />
+        ) : smartSearch.isError ? (
+          <ErrorState error={smartSearch.error} onRetry={() => void smartSearch.refetch()} />
+        ) : smartItems.length === 0 ? (
+          <EmptyState
+            icon={Images}
+            title={t("photosApp.timeline.filteredEmptyTitle")}
+            detail={t("photosApp.timeline.filteredEmptyDetail")}
+            action={
+              <Button size="sm" variant="outline" onPress={() => updateSearch({ q: undefined })}>
+                {t("photosApp.search.clear")}
+              </Button>
+            }
+          />
+        ) : (
+          <PhotoGrid
+            items={smartItems}
+            mode={gridMode}
+            selectMode={selectMode}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
+            onOpenPhoto={(idx) => setLightboxIndex(idx)}
+          />
+        )
+      ) : timeline.isLoading ? (
         <LoadingRows rows={5} />
       ) : timeline.isError ? (
         <ErrorState error={timeline.error} onRetry={() => void timeline.refetch()} />
@@ -361,7 +559,9 @@ export function PhotosTimelinePage() {
                 onClick={() => updateSearch({ month: undefined })}
                 className={cn(
                   "flex items-center justify-between rounded-control px-2 py-1 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-(--pv-focus)",
-                  !search.month ? "bg-nav-active font-strong text-nav-active-fg" : "text-fg-muted hover:bg-hover hover:text-fg",
+                  !search.month
+                    ? "bg-nav-active font-strong text-nav-active-fg"
+                    : "text-fg-muted hover:bg-hover hover:text-fg",
                 )}
               >
                 <span className="truncate">{t("photosApp.timeline.allMonths")}</span>
@@ -392,7 +592,7 @@ export function PhotosTimelinePage() {
       )}
 
       <PhotoLightbox
-        items={allItems}
+        items={lightboxItems}
         index={lightboxIndex}
         onIndexChange={setLightboxIndex}
         onClose={() => setLightboxIndex(null)}

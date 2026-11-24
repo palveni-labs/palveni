@@ -7,6 +7,23 @@ export const queryKeys = {
   },
   auth: {
     me: ["auth", "me"] as const,
+    sessions: (userId: string) => ["auth", "sessions", userId] as const,
+  },
+  users: {
+    all: ["users"] as const,
+    list: ["users", "list"] as const,
+  },
+  maintenance: {
+    auditAll: ["maintenance", "audit"] as const,
+    audit: (action?: string) => ["maintenance", "audit", action ?? ""] as const,
+    backups: ["maintenance", "backups"] as const,
+    doctor: ["maintenance", "doctor"] as const,
+    logsAll: ["maintenance", "logs"] as const,
+    logs: (level?: string) => ["maintenance", "logs", level ?? "all"] as const,
+    metadataConfig: ["maintenance", "metadata-config"] as const,
+  },
+  metadata: {
+    override: (itemId: string) => ["metadata", "override", itemId] as const,
   },
   libraries: {
     all: ["libraries"] as const,
@@ -38,6 +55,14 @@ export const queryKeys = {
     registry: ["skins", "registry"] as const,
   },
   plugins: {
+    all: ["plugins"] as const,
     list: ["plugins", "list"] as const,
+    catalog: ["plugins", "catalog"] as const,
+  },
+  cast: {
+    sessions: ["cast", "sessions"] as const,
+  },
+  mqtt: {
+    bridges: ["home", "mqtt", "bridges"] as const,
   },
 };

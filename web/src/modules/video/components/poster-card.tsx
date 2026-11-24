@@ -134,8 +134,8 @@ export function PosterCard({
   }
 
   return (
-    <article className={cn("group relative flex min-w-0 flex-col gap-2", className)}>
-      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-tile bg-sunken shadow-art ring-1 ring-line/70 transition-shadow duration-200 group-hover:shadow-raised">
+    <article className={cn("group relative flex min-w-0 flex-col gap-2.5", className)}>
+      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-2xl bg-sunken shadow-art ring-1 ring-white/12 ring-inset transition-all duration-200 ease-out group-hover:-translate-y-1.5 group-hover:shadow-overlay group-hover:ring-white/25">
         <VideoImage
           path={posterPath}
           alt={entry.title}
@@ -165,15 +165,26 @@ export function PosterCard({
           <Play className="ms-0.5 size-5 fill-current" aria-hidden />
         </button>
 
-        {/* Top-left favorite indicator */}
-        {favorite ? (
-          <span
-            aria-label={t("videoApp.detail.favorite")}
-            className="pointer-events-none absolute top-2 left-2 z-[2] grid size-6 place-items-center rounded-full bg-black/70 text-rose-400 backdrop-blur-xs ring-1 ring-white/15"
-          >
-            <Heart className="size-3.5 fill-current" aria-hidden />
-          </span>
-        ) : null}
+        {/* Top-left floating rating & favorite pills */}
+        <div className="pointer-events-none absolute top-2 left-2 z-[2] flex items-center gap-1.5">
+          {entry.communityRating != null ? (
+            <span
+              data-num
+              className="inline-flex items-center gap-1 rounded-full bg-black/68 px-2 py-0.5 text-[0.7rem] leading-tight font-strong text-amber-300 tabular-nums ring-1 ring-white/15 backdrop-blur-md"
+            >
+              <Star className="size-3 fill-amber-400 text-amber-400" aria-hidden />
+              {entry.communityRating.toFixed(1)}
+            </span>
+          ) : null}
+          {favorite ? (
+            <span
+              aria-label={t("videoApp.detail.favorite")}
+              className="grid size-6 place-items-center rounded-full bg-black/68 text-rose-400 ring-1 ring-white/15 backdrop-blur-md"
+            >
+              <Heart className="size-3.5 fill-current" aria-hidden />
+            </span>
+          ) : null}
+        </div>
 
         {/* Top-right played / unplayed count badge */}
         <div className="pointer-events-none absolute top-2 right-2 z-[2] flex items-center gap-1">
@@ -203,7 +214,7 @@ export function PosterCard({
         {/* Bottom watch progress bar */}
         {progress !== null ? (
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-1 bg-black/55">
-            <div className="h-full bg-white" style={{ width: `${Math.round(progress * 100)}%` }} />
+            <div className="h-full bg-progress-done" style={{ width: `${Math.round(progress * 100)}%` }} />
           </div>
         ) : null}
       </div>
@@ -301,8 +312,8 @@ export function VideoWideCard({
       : epCode ?? formatRuntime(entry.runtimeMs, t, true);
 
   return (
-    <article className={cn("group relative flex min-w-0 flex-col gap-2", className)}>
-      <div className="relative aspect-video w-full overflow-hidden rounded-tile bg-sunken shadow-art ring-1 ring-line/70 transition-shadow duration-200 group-hover:shadow-raised">
+    <article className={cn("group relative flex min-w-0 flex-col gap-2.5", className)}>
+      <div className="relative aspect-video w-full overflow-hidden rounded-tile bg-sunken shadow-art ring-1 ring-white/10 ring-inset transition-all duration-200 ease-out group-hover:-translate-y-1 group-hover:shadow-overlay">
         <VideoImage
           path={imagePath}
           alt={primaryTitle}
@@ -358,7 +369,7 @@ export function VideoWideCard({
         {/* Watch progress bar */}
         {progress !== null ? (
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] h-1 bg-white/25">
-            <div className="h-full bg-white" style={{ width: `${Math.round(progress * 100)}%` }} />
+            <div className="h-full bg-progress-done" style={{ width: `${Math.round(progress * 100)}%` }} />
           </div>
         ) : null}
       </div>

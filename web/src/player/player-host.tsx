@@ -8,6 +8,7 @@ import { useEffect, useRef } from "react";
 import { lookupTracks } from "@/modules/music/api";
 import { useFeature } from "@/modules/access";
 import { useAudioEngine } from "./audio-engine";
+import { usePlaybackSessionSync } from "./cast-sync";
 import { NowPlayingOverlay } from "./now-playing";
 import { PlayerBar } from "./player-bar";
 import { QueueDrawer } from "./queue-drawer";
@@ -29,6 +30,7 @@ export function PlayerHost() {
   const musicEnabled = useFeature("music");
   const hydratedRef = useRef(false);
   useAudioEngine();
+  usePlaybackSessionSync();
 
   // Restore saved queue + position from localStorage via POST /music/tracks/lookup.
   useEffect(() => {

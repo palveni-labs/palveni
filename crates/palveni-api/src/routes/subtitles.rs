@@ -45,21 +45,24 @@ pub async fn list(
     path: Result<Path<String>, PathRejection>,
 ) -> Result<Response, ApiError> {
     let location = source(&state, &path?.0).await?;
+    let is_strm = palveni_library::video::strm::is_strm_path(&location.relative_path);
     let (mut list, input) = subtitles::list(location).await.map_err(subtitle_error)?;
-    match state.hardware.subtitles.list(input).await {
-        Ok(embedded) => {
-            for track in embedded {
-                subtitles::append_embedded(
-                    &mut list,
-                    track.index,
-                    track.language.as_deref(),
-                    track.forced,
-                    track.hearing_impaired,
-                );
+    if !is_strm {
+        match state.hardware.subtitles.list(input).await {
+            Ok(embedded) => {
+                for track in embedded {
+                    subtitles::append_embedded(
+                        &mut list,
+                        track.index,
+                        track.language.as_deref(),
+                        track.forced,
+                        track.hearing_impaired,
+                    );
+                }
             }
+            Err(_) if !list.tracks.is_empty() => {}
+            Err(error) => return Err(embedded_error(error)),
         }
-        Err(_) if !list.tracks.is_empty() => {}
-        Err(error) => return Err(embedded_error(error)),
     }
     Ok(([(header::CACHE_CONTROL, "private, no-store")], Json(list)).into_response())
 }

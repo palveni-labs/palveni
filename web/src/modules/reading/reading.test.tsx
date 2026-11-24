@@ -40,8 +40,8 @@ describe("reading module", () => {
     expect(screen.getByRole("region", { name: "最新漫画" })).toBeInTheDocument();
 
     const seriesRegion = screen.getByRole("region", { name: "系列合集" });
-    expect(within(seriesRegion).getByRole("link", { name: /北湾手记/ })).toBeInTheDocument();
-    expect(within(seriesRegion).getByRole("link", { name: /云梯集市/ })).toBeInTheDocument();
+    expect(within(seriesRegion).getByRole("link", { name: /地球往事/ })).toBeInTheDocument();
+    expect(within(seriesRegion).getByRole("link", { name: /迷宫饭/ })).toBeInTheDocument();
   });
 
   it("routes book and comic libraries from /library to /reading while keeping Files view", async () => {
@@ -76,13 +76,13 @@ describe("reading module", () => {
     // Favorites shelf includes seeded favorite book + comic
     const favs = await renderLoadedApp("/reading/favorites");
     expect(await screen.findByText("共 2 本", {}, { timeout: 5000 })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "雾灯" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "云梯集市 第1卷" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "三体" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "迷宫饭 第1卷" })).toBeInTheDocument();
     favs.unmount();
 
     // Search shelf
-    await renderLoadedApp("/reading/search?q=巡岸");
-    expect(await screen.findByRole("link", { name: "白礁航线" }, { timeout: 5000 })).toBeInTheDocument();
+    await renderLoadedApp("/reading/search?q=面壁");
+    expect(await screen.findByRole("link", { name: "黑暗森林" }, { timeout: 5000 })).toBeInTheDocument();
   });
 
   it("drives ebook reader TOC, typography themes, keyboard chapter turn, bookmarks and inline PDF viewer", async () => {
@@ -91,19 +91,19 @@ describe("reading module", () => {
     const user = userEvent.setup();
 
     const ebook = await renderLoadedApp(`/reading/book/${SAMPLE_EPUB_ID}`);
-    // Resumes on saved chapter index 1 ("第二章 潮汐图")
-    expect(await screen.findByRole("heading", { level: 2, name: "第二章 潮汐图" }, { timeout: 5000 })).toBeInTheDocument();
-    expect(screen.getByText(/两段潮汐恰好重合/)).toBeInTheDocument();
+    // Resumes on saved chapter index 1 ("第二章 台球")
+    expect(await screen.findByRole("heading", { level: 2, name: "第二章 台球" }, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getByText(/物理规律在时间和空间上是均匀的/)).toBeInTheDocument();
 
-    // Open TOC drawer and jump to chapter 0 ("第一章 夜灯初亮")
+    // Open TOC drawer and jump to chapter 0 ("第一章 科学边界")
     await user.click(screen.getByRole("button", { name: "目录" }));
     const tocDialog = await screen.findByRole("dialog", { name: "目录" });
-    await user.click(within(tocDialog).getByRole("button", { name: /第一章 夜灯初亮/ }));
-    expect(await screen.findByRole("heading", { level: 2, name: "第一章 夜灯初亮" })).toBeInTheDocument();
+    await user.click(within(tocDialog).getByRole("button", { name: /第一章 科学边界/ }));
+    expect(await screen.findByRole("heading", { level: 2, name: "第一章 科学边界" })).toBeInTheDocument();
 
     // Keyboard ArrowRight advances to chapter 1
     fireEvent.keyDown(window, { key: "ArrowRight" });
-    expect(await screen.findByRole("heading", { level: 2, name: "第二章 潮汐图" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 2, name: "第二章 台球" })).toBeInTheDocument();
 
     // Typography drawer: switch to Warm Sepia theme
     await user.click(screen.getByRole("button", { name: "排版与主题" }));
@@ -119,16 +119,16 @@ describe("reading module", () => {
     const bmDialog = await screen.findByRole("dialog", { name: "书签" });
     await user.type(
       within(bmDialog).getByPlaceholderText("书签标题（默认当前章节）"),
-      "阿岑的潮汐记录",
+      "丁仪的台球思想实验",
     );
     await user.click(within(bmDialog).getByRole("button", { name: "保存书签" }));
-    expect(await within(bmDialog).findByText("阿岑的潮汐记录")).toBeInTheDocument();
+    expect(await within(bmDialog).findByText("丁仪的台球思想实验")).toBeInTheDocument();
 
     await user.click(
-      within(bmDialog).getByRole("button", { name: "删除书签 阿岑的潮汐记录" }),
+      within(bmDialog).getByRole("button", { name: "删除书签 丁仪的台球思想实验" }),
     );
     await waitFor(() =>
-      expect(within(bmDialog).queryByText("阿岑的潮汐记录")).not.toBeInTheDocument(),
+      expect(within(bmDialog).queryByText("丁仪的台球思想实验")).not.toBeInTheDocument(),
     );
     ebook.unmount();
 

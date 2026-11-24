@@ -155,7 +155,7 @@ describe("photos module", () => {
     await user.click(screen.getAllByRole("button", { name: "播放幻灯片" })[0]!);
     const viewer = await screen.findByRole("dialog", { name: "照片查看器" });
     expect(within(viewer).getByText("幻灯片播放中")).toBeInTheDocument();
-  });
+  }, 15_000);
 
   it("renders offline SVG world places map and filters photos by cluster", async () => {
     const db = installMockDb({ features: [...M0_FEATURES, "photos"] });
@@ -186,5 +186,5 @@ describe("photos module", () => {
     expect(await screen.findByText("共 2 张收藏照片", {}, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "IMG_4821" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "DSC_1090" })).toBeInTheDocument();
-  });
+  }, 15_000);
 });

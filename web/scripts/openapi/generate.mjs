@@ -8,7 +8,7 @@ const root = fileURLToPath(new URL("../../../", import.meta.url));
 const destination = new URL("../../src/api/generated.ts", import.meta.url);
 const json = execFileSync("cargo", [
   "run", "--locked", "--quiet", "-p", "palveni-server", "--", "openapi",
-], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+], { cwd: root, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, stdio: ["ignore", "pipe", "inherit"] });
 const types = astToString(await openapiTS(JSON.parse(json)));
 if (process.argv.includes("--check")) {
   if (types !== await readFile(destination, "utf8")) {

@@ -66,8 +66,8 @@ export function Section({ title, count, more, actions, bare = false, raised = fa
         data-section={variant}
         className={cn(
           "min-w-0",
-          variant === "panel" && !raised && "overflow-hidden rounded-panel border border-line bg-surface shadow-panel",
-          raised && "overflow-hidden rounded-panel border border-line bg-raised shadow-raised",
+          variant === "panel" && !raised && "pv-glass-panel overflow-hidden rounded-panel border",
+          raised && "pv-glass-panel overflow-hidden rounded-panel border border-line-strong/80 shadow-raised",
           variant === "rule" && "border-t border-line-strong",
           className,
         )}
@@ -75,16 +75,16 @@ export function Section({ title, count, more, actions, bare = false, raised = fa
       >
         <header
           className={cn(
-            "flex min-h-11 items-center gap-2",
-            variant === "panel" && "px-(--pv-pad-panel) pt-4 pb-3",
-            variant === "rule" && "pt-3.5 pb-2.5",
-            variant === "plain" && "pb-2",
+            "flex min-h-12 items-center gap-2",
+            variant === "panel" && "px-(--pv-pad-panel) pt-4.5 pb-3.5",
+            variant === "rule" && "pt-4 pb-3",
+            variant === "plain" && "pb-2.5",
             bare && "sr-only",
           )}
         >
           <h2 className="truncate font-heading text-lg font-title text-heading">{title}</h2>
           {count !== undefined ? (
-            <span className="text-sm font-mid text-fg-subtle tabular-nums">
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sunken px-1.5 text-xs font-mid text-fg-muted tabular-nums">
               {count}
             </span>
           ) : null}
@@ -110,8 +110,8 @@ export function SectionRows({ className, children, ...props }: ComponentProps<"u
   return (
     <ul
       className={cn(
-        variant === "plain" ? "grid gap-0.5 [&>li:nth-child(odd)]:bg-sunken [&>li]:rounded-tile" : "divide-y divide-line",
-        variant === "panel" && "border-t border-line",
+        variant === "plain" ? "grid gap-0.5 [&>li:nth-child(odd)]:bg-sunken [&>li]:rounded-tile" : "divide-y divide-line/65",
+        variant === "panel" && "border-t border-line/70",
         className,
       )}
       {...props}

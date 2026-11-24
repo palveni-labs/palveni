@@ -20,7 +20,20 @@ const routeFiles = import.meta.glob("./*/routes/*.tsx");
 describe("module registry", () => {
   it("discovers every module folder, ordered and with unique ids", () => {
     const ids = MODULES.map((module) => module.id);
-    expect(ids).toEqual(["overview", "music", "video", "library", "reading", "photos", "broadcast", "tasks", "apps", "system"]);
+    expect(ids).toEqual([
+      "overview",
+      "assistant",
+      "video",
+      "music",
+      "photos",
+      "reading",
+      "broadcast",
+      "library",
+      "home",
+      "tasks",
+      "apps",
+      "system",
+    ]);
     expect(new Set(ids).size).toBe(ids.length);
     const withRoutes = new Set(Object.keys(routeFiles).map((file) => file.split("/")[1]));
     expect([...withRoutes].sort()).toEqual([...ids].sort());
@@ -42,6 +55,7 @@ describe("module registry", () => {
       ...(module.nav ?? []).map((entry) => entry.titleKey),
       ...(module.widgets ?? []).map((widget) => widget.titleKey),
       ...(module.commands ?? []).map((command) => command.titleKey),
+      ...(module.panel ? [module.panel.titleKey] : []),
     ]);
     for (const key of keys) {
       expect(hasKey(zhBundle, key), `zh-CN is missing ${key}`).toBe(true);
@@ -58,6 +72,7 @@ describe("module registry", () => {
     }
     const widgetIds = allWidgets().map((widget) => widget.id);
     expect(new Set(widgetIds).size).toBe(widgetIds.length);
+    expect(MODULES.filter((module) => module.panel)).toHaveLength(1);
   });
 
   it("maps paths to their owning module", () => {
@@ -72,12 +87,20 @@ describe("module registry", () => {
     const admin = { features: ["libraries", "jobs"], user: { role: "admin" as const } };
     expect(isVisible({ adminOnly: true }, member)).toBe(false);
     expect(isVisible({ adminOnly: true }, admin)).toBe(true);
-    expect(isEnabled({ feature: "unknown-feature" }, admin)).toBe(false);
+    expect(isEnabled({ feature: "assistant" }, admin)).toBe(false);
     expect(isEnabled({ feature: "jobs" }, member)).toBe(true);
-    for (const id of ["broadcast", "music", "video", "photos"]) {
-      const module = MODULES.find((entry) => entry.id === id)!;
-      expect(module.feature).toBe(id);
-      expect(isEnabled(module, member)).toBe(false);
-    }
+    // Feature-gated modules declare the feature the M0 server does not report.
+    const m0 = { features: ["libraries", "jobs", "hardware", "plugins"], user: { role: "admin" as const } };
+    expect(MODULES.filter((module) => !isEnabled(module, m0)).map((module) => module.id).sort()).toEqual([
+      "assistant",
+      "broadcast",
+      "home",
+      "music",
+      "photos",
+      "reading",
+      "video",
+    ]);
+    // Widgets inherit their module's feature unless they declare one.
+    expect(allWidgets().find((widget) => widget.id === "home.quick")?.feature).toBe("home");
   });
 });

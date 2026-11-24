@@ -1,15 +1,25 @@
 import type {
   CreatePhotoAlbumRequest,
+  CreatePhotoPersonRequest,
   PhotoAlbumSummary,
+  PhotoAnalyzeResponse,
   PhotoCameraBucket,
+  PhotoDuplicateCluster,
+  PhotoDuplicatesResponse,
   PhotoInfo,
   PhotoMemories,
   PhotoMonthBucket,
+  PhotoPersonRef,
+  PhotoPersonSummary,
   PhotoPlaceCluster,
+  PhotoQueryFilter,
+  PhotoSearchHit,
+  PhotoSearchResponse,
   PhotoTimelineFilter,
   PhotoTimelineItem,
   PhotoTimelinePage,
   UpdatePhotoAlbumRequest,
+  UpdatePhotoPersonRequest,
 } from "@/modules/photos/api";
 import { formatCameraLabel } from "@/modules/photos/format";
 import { stableUuid } from "../fixtures";
@@ -29,6 +39,149 @@ interface StoredAlbum {
   itemIds: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+interface StoredAiTag {
+  dhash: number;
+  dominantColor: string;
+  dominantHex: string;
+  sceneTags: string[];
+  timeOfDay: string;
+  season: string;
+}
+
+interface StoredPerson {
+  id: string;
+  ownerId: string;
+  name: string;
+  coverItemId: string | null;
+  itemIds: string[];
+  createdAt: string;
+}
+
+function popcount32(n: number): number {
+  let x = n >>> 0;
+  let c = 0;
+  while (x !== 0) {
+    x &= x - 1;
+    c += 1;
+  }
+  return c;
+}
+
+function parseMockQuery(raw: string, nowYear: number): PhotoQueryFilter {
+  let text = raw.trim().toLowerCase();
+  const filter: PhotoQueryFilter = {
+    year: null,
+    month: null,
+    season: null,
+    timeOfDay: null,
+    color: null,
+    orientation: null,
+    cameraBrand: null,
+    geotagged: null,
+    keywords: [],
+  };
+  if (!text) return filter;
+
+  const strip = (term: string): boolean => {
+    if (/^[a-z0-9_ ]+$/.test(term)) {
+      const re = new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g");
+      if (re.test(text)) {
+        text = text.replace(re, " ");
+        return true;
+      }
+      return false;
+    }
+    if (text.includes(term)) {
+      text = text.split(term).join(" ");
+      return true;
+    }
+    return false;
+  };
+
+  if (strip("去年") || strip("last year")) filter.year = nowYear - 1;
+  else if (strip("今年") || strip("this year")) filter.year = nowYear;
+  else {
+    const ym = text.match(/(?:^|[^0-9])(20[0-3][0-9])年?/);
+    if (ym?.[1]) {
+      filter.year = Number(ym[1]);
+      text = text.replace(ym[0], " ");
+    }
+  }
+
+  for (let m = 12; m >= 1; m -= 1) {
+    if (strip(`${m}月`)) {
+      filter.month = m;
+      break;
+    }
+  }
+
+  const matchCat = (rules: Array<[string, string[]]>): string | null => {
+    for (const [canon, syns] of rules) {
+      let hit = false;
+      for (const s of syns) {
+        if (strip(s)) hit = true;
+      }
+      if (hit) return canon;
+    }
+    return null;
+  };
+
+  filter.season = matchCat([
+    ["spring", ["春季", "春天", "春", "spring"]],
+    ["summer", ["夏季", "夏天", "夏", "summer"]],
+    ["autumn", ["秋季", "秋天", "秋", "autumn", "fall"]],
+    ["winter", ["冬季", "冬天", "冬", "winter"]],
+  ]);
+
+  filter.timeOfDay = matchCat([
+    ["morning", ["清晨", "早上", "早晨", "上午", "morning"]],
+    ["afternoon", ["下午", "午后", "中午", "afternoon"]],
+    ["sunset", ["日落", "黄昏", "夕阳", "傍晚", "sunset"]],
+    ["night", ["夜景", "夜晚", "晚上", "夜间", "夜", "night"]],
+  ]);
+
+  filter.color = matchCat([
+    ["blue", ["蓝色", "蓝天", "天空", "海洋", "大海", "蓝", "海", "blue", "sky", "ocean", "sea"]],
+    ["red", ["红色", "红", "red"]],
+    ["orange", ["橙色", "橘色", "橙", "orange"]],
+    ["green", ["绿色", "草地", "森林", "绿", "草", "树", "green", "grass", "tree"]],
+    ["warm", ["暖色", "暖调", "暖", "warm"]],
+    ["yellow", ["黄色", "金色", "黄", "yellow"]],
+    ["dark", ["暗调", "深色", "黑色", "暗", "黑", "dark", "black"]],
+    ["bright", ["明亮", "白色", "亮", "白", "bright", "white"]],
+  ]);
+
+  filter.orientation = matchCat([
+    ["portrait", ["竖拍", "竖图", "竖屏", "portrait", "vertical"]],
+    ["landscape", ["横拍", "横图", "横屏", "landscape", "horizontal"]],
+  ]);
+
+  filter.cameraBrand = matchCat([
+    ["sony", ["索尼", "sony"]],
+    ["apple", ["苹果", "iphone", "apple"]],
+    ["canon", ["佳能", "canon"]],
+    ["nikon", ["尼康", "nikon"]],
+    ["fuji", ["富士", "fujifilm", "fuji"]],
+    ["huawei", ["华为", "huawei"]],
+    ["xiaomi", ["小米", "xiaomi"]],
+  ]);
+
+  if (strip("带定位") || strip("有定位") || strip("geotagged") || strip("gps")) {
+    filter.geotagged = true;
+  }
+
+  for (const stop of ["拍的", "拍摄", "照片", "图片", "的", "在", "里", "中"]) {
+    strip(stop);
+  }
+  const enStops = new Set(["in", "of", "the", "with", "from", "a", "an", "photo", "photos"]);
+  filter.keywords = text
+    .split(/[\s,，、;；|]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && !enStops.has(s));
+
+  return filter;
 }
 
 function latCell(lat: number): number {
@@ -52,6 +205,8 @@ function placeLabelOf(lat: number, lon: number): string {
 export class PhotosMockState {
   private photos: StoredPhoto[] = [];
   private albums: StoredAlbum[] = [];
+  private aiTags = new Map<string, StoredAiTag>();
+  private people: StoredPerson[] = [];
   private readonly now: () => number;
 
   constructor(now: () => number = () => Date.now()) {
@@ -201,7 +356,49 @@ export class PhotosMockState {
         createdAt: "2026-11-19T10:00:00Z",
         updatedAt: "2026-11-19T10:00:00Z",
       });
+      this.people.push({
+        id: stableUuid(`photo-person:xiaoming:${userId}`),
+        ownerId: userId,
+        name: "小明",
+        coverItemId: seeds[0]!.id,
+        itemIds: [seeds[0]!.id],
+        createdAt: "2026-11-19T10:00:00Z",
+      });
     }
+
+    // Seed local AI tags (IMG_4821 & IMG_4822 share similar dHash dist=2 for Cleanup view)
+    this.aiTags.set(seeds[0]!.id, {
+      dhash: 0b1111_0000_1010_0101,
+      dominantColor: "blue",
+      dominantHex: "#2B6CB0",
+      sceneTags: ["landscape", "geotagged", "sony", "morning", "autumn", "blue"],
+      timeOfDay: "morning",
+      season: "autumn",
+    });
+    this.aiTags.set(seeds[1]!.id, {
+      dhash: 0b1111_0000_1010_0110,
+      dominantColor: "warm",
+      dominantHex: "#B87A3D",
+      sceneTags: ["portrait", "geotagged", "sony", "sunset", "autumn", "warm"],
+      timeOfDay: "sunset",
+      season: "autumn",
+    });
+    this.aiTags.set(seeds[2]!.id, {
+      dhash: 0b0000_1111_0011_1100,
+      dominantColor: "blue",
+      dominantHex: "#3176B8",
+      sceneTags: ["landscape", "geotagged", "apple", "afternoon", "autumn", "blue"],
+      timeOfDay: "afternoon",
+      season: "autumn",
+    });
+    this.aiTags.set(seeds[3]!.id, {
+      dhash: 0b1010_0101_0000_1111,
+      dominantColor: "blue",
+      dominantHex: "#1F3A56",
+      sceneTags: ["landscape", "geotagged", "fuji", "night", "autumn", "blue"],
+      timeOfDay: "night",
+      season: "autumn",
+    });
   }
 
   hasPhoto(itemId: string): boolean {
@@ -564,5 +761,303 @@ export class PhotosMockState {
     };
     this.photos.unshift(stored);
     return this.photoInfo(userId, id, isAdmin)!;
+  }
+
+  // -------------------------------------------------------------------------
+  // Local AI Analysis, Smart Search, People & Duplicate Cleanup
+  // -------------------------------------------------------------------------
+
+  analyze(): PhotoAnalyzeResponse {
+    let analyzedCount = 0;
+    for (const photo of this.photos) {
+      if (!this.aiTags.has(photo.id)) {
+        analyzedCount += 1;
+        this.aiTags.set(photo.id, {
+          dhash: 0b0101_1010_1100_0011,
+          dominantColor: "blue",
+          dominantHex: "#2F6BA8",
+          sceneTags: ["landscape", "morning", "autumn", "blue"],
+          timeOfDay: "morning",
+          season: "autumn",
+        });
+      }
+    }
+    return {
+      analyzedCount,
+      totalTagged: this.aiTags.size,
+      remaining: Math.max(0, this.photos.length - this.aiTags.size),
+    };
+  }
+
+  private peopleForItem(userId: string, itemId: string): PhotoPersonRef[] {
+    return this.people
+      .filter((p) => p.ownerId === userId && p.itemIds.includes(itemId))
+      .map((p) => ({ id: p.id, name: p.name }));
+  }
+
+  search(
+    userId: string,
+    q = "",
+    personId?: string,
+    limit = 60,
+  ): PhotoSearchResponse {
+    const nowYear = new Date(this.now()).getUTCFullYear();
+    const parsedFilters = parseMockQuery(q, nowYear);
+
+    const hits: PhotoSearchHit[] = [];
+    for (const photo of this.photos) {
+      const tag = this.aiTags.get(photo.id);
+      const itemPeople = this.peopleForItem(userId, photo.id);
+      if (personId && !itemPeople.some((p) => p.id === personId)) continue;
+
+      const takenYear = Number(photo.dayBucket.slice(0, 4));
+      const takenMonth = Number(photo.dayBucket.slice(5, 7));
+      if (parsedFilters.year !== null && takenYear !== parsedFilters.year) continue;
+      if (parsedFilters.month !== null && takenMonth !== parsedFilters.month) continue;
+      if (parsedFilters.season && tag?.season !== parsedFilters.season) continue;
+      if (parsedFilters.timeOfDay && tag?.timeOfDay !== parsedFilters.timeOfDay) continue;
+      if (parsedFilters.color) {
+        const dc = tag?.dominantColor ?? "";
+        const matchColor =
+          parsedFilters.color === "warm"
+            ? ["warm", "orange", "yellow"].includes(dc)
+            : dc === parsedFilters.color;
+        if (!matchColor) continue;
+      }
+      if (parsedFilters.orientation) {
+        const effPortrait =
+          photo.width && photo.height
+            ? photo.orientation >= 5 && photo.orientation <= 8
+              ? photo.width > photo.height
+              : photo.height > photo.width
+            : false;
+        const actual = effPortrait ? "portrait" : "landscape";
+        if (actual !== parsedFilters.orientation && !tag?.sceneTags.includes(parsedFilters.orientation)) {
+          continue;
+        }
+      }
+      if (parsedFilters.cameraBrand) {
+        const cam = `${photo.cameraMake ?? ""} ${photo.cameraModel ?? ""}`.toLowerCase();
+        const brand = parsedFilters.cameraBrand;
+        const ok =
+          cam.includes(brand) ||
+          (brand === "apple" && cam.includes("iphone")) ||
+          (brand === "fuji" && cam.includes("fujifilm"));
+        if (!ok) continue;
+      }
+      if (parsedFilters.geotagged && (photo.latitude === null || photo.longitude === null)) {
+        continue;
+      }
+
+      const albumTitles = this.albums
+        .filter((a) => a.userId === userId && a.itemIds.includes(photo.id))
+        .map((a) => a.title.toLowerCase());
+      const haystack = [
+        photo.title,
+        photo.fileName,
+        photo.dayBucket,
+        photo.cameraMake ?? "",
+        photo.cameraModel ?? "",
+        ...albumTitles,
+        ...itemPeople.map((p) => p.name),
+        ...(tag?.sceneTags ?? []),
+      ]
+        .join(" ")
+        .toLowerCase();
+      if (parsedFilters.keywords.some((kw) => !haystack.includes(kw.toLowerCase()))) {
+        continue;
+      }
+
+      hits.push({
+        ...this.toTimelineItem(photo, userId),
+        dominantColor: tag?.dominantColor ?? null,
+        dominantHex: tag?.dominantHex ?? null,
+        timeOfDay: tag?.timeOfDay ?? null,
+        season: tag?.season ?? null,
+        sceneTags: tag?.sceneTags ?? [],
+        people: itemPeople,
+      });
+      if (hits.length >= limit) break;
+    }
+
+    return {
+      query: q,
+      parsedFilters,
+      items: hits,
+    };
+  }
+
+  duplicates(userId: string, threshold = 6): PhotoDuplicatesResponse {
+    const clusters: PhotoDuplicateCluster[] = [];
+    const exactUsed = new Set<string>();
+
+    const byHash = new Map<string, StoredPhoto[]>();
+    for (const p of this.photos) {
+      if (!p.contentHash) continue;
+      const list = byHash.get(p.contentHash) ?? [];
+      list.push(p);
+      byHash.set(p.contentHash, list);
+    }
+
+    const rankOf = (p: StoredPhoto) =>
+      ((p.width ?? 0) * (p.height ?? 0)) * 1000 + (p.sizeBytes ?? 0);
+
+    for (const [hash, group] of byHash.entries()) {
+      if (group.length < 2) continue;
+      const sorted = [...group].sort((a, b) => rankOf(b) - rankOf(a));
+      const keep = sorted[0]!;
+      let reclaimable = 0;
+      const items = sorted.map((p, idx) => {
+        exactUsed.add(p.id);
+        if (idx > 0) reclaimable += p.sizeBytes ?? 0;
+        return {
+          ...this.toTimelineItem(p, userId),
+          fileName: p.fileName,
+          sizeBytes: p.sizeBytes,
+          recommendedKeep: idx === 0,
+          distance: 0,
+        };
+      });
+      clusters.push({
+        clusterId: `exact:${hash.slice(0, 12)}`,
+        kind: "exact",
+        keepItemId: keep.id,
+        reclaimableBytes: reclaimable,
+        maxDistance: 0,
+        items,
+      });
+    }
+
+    const remaining = this.photos.filter((p) => !exactUsed.has(p.id) && this.aiTags.has(p.id));
+    const visited = new Set<string>();
+    for (let i = 0; i < remaining.length; i += 1) {
+      const seed = remaining[i]!;
+      if (visited.has(seed.id)) continue;
+      const seedHash = this.aiTags.get(seed.id)!.dhash;
+      const group = [seed];
+      visited.add(seed.id);
+      for (let j = i + 1; j < remaining.length; j += 1) {
+        const other = remaining[j]!;
+        if (visited.has(other.id)) continue;
+        const otherHash = this.aiTags.get(other.id)!.dhash;
+        if (popcount32(seedHash ^ otherHash) <= threshold) {
+          group.push(other);
+          visited.add(other.id);
+        }
+      }
+      if (group.length < 2) continue;
+      const sorted = [...group].sort((a, b) => rankOf(b) - rankOf(a));
+      const keep = sorted[0]!;
+      const keepHash = this.aiTags.get(keep.id)!.dhash;
+      let reclaimable = 0;
+      let maxDistance = 0;
+      const items = sorted.map((p, idx) => {
+        const dist = idx === 0 ? 0 : popcount32(keepHash ^ this.aiTags.get(p.id)!.dhash);
+        maxDistance = Math.max(maxDistance, dist);
+        if (idx > 0) reclaimable += p.sizeBytes ?? 0;
+        return {
+          ...this.toTimelineItem(p, userId),
+          fileName: p.fileName,
+          sizeBytes: p.sizeBytes,
+          recommendedKeep: idx === 0,
+          distance: dist,
+        };
+      });
+      clusters.push({
+        clusterId: `similar:${keep.id}`,
+        kind: "similar",
+        keepItemId: keep.id,
+        reclaimableBytes: reclaimable,
+        maxDistance,
+        items,
+      });
+    }
+
+    const totalDuplicatePhotos = clusters.reduce((acc, c) => acc + Math.max(0, c.items.length - 1), 0);
+    const totalReclaimableBytes = clusters.reduce((acc, c) => acc + c.reclaimableBytes, 0);
+
+    return {
+      threshold,
+      totalClusters: clusters.length,
+      totalDuplicatePhotos,
+      totalReclaimableBytes,
+      clusters,
+    };
+  }
+
+  private toPersonSummary(person: StoredPerson): PhotoPersonSummary {
+    return {
+      id: person.id,
+      name: person.name,
+      coverItemId: person.coverItemId ?? person.itemIds[0] ?? null,
+      previewItemIds: person.itemIds.slice(0, 4),
+      photoCount: person.itemIds.length,
+      createdAt: person.createdAt,
+    };
+  }
+
+  listPeople(userId: string): PhotoPersonSummary[] {
+    return this.people
+      .filter((p) => p.ownerId === userId)
+      .map((p) => this.toPersonSummary(p));
+  }
+
+  createPerson(userId: string, body: CreatePhotoPersonRequest): PhotoPersonSummary {
+    const person: StoredPerson = {
+      id: stableUuid(`photo-person:${userId}:${body.name}:${this.now()}:${Math.random()}`),
+      ownerId: userId,
+      name: body.name.trim(),
+      coverItemId: body.coverItemId ?? null,
+      itemIds: [],
+      createdAt: this.iso(),
+    };
+    this.people.push(person);
+    return this.toPersonSummary(person);
+  }
+
+  updatePerson(
+    userId: string,
+    personId: string,
+    body: UpdatePhotoPersonRequest,
+  ): PhotoPersonSummary | null {
+    const person = this.people.find((p) => p.id === personId && p.ownerId === userId);
+    if (!person) return null;
+    if (body.name !== undefined) person.name = body.name.trim();
+    if (body.coverItemId !== undefined) person.coverItemId = body.coverItemId;
+    return this.toPersonSummary(person);
+  }
+
+  deletePerson(userId: string, personId: string): boolean {
+    const before = this.people.length;
+    this.people = this.people.filter((p) => !(p.id === personId && p.ownerId === userId));
+    return this.people.length < before;
+  }
+
+  listItemPeople(userId: string, itemId: string): PhotoPersonRef[] {
+    return this.peopleForItem(userId, itemId);
+  }
+
+  tagPerson(userId: string, itemId: string, personId: string): PhotoPersonSummary | null {
+    if (!this.hasPhoto(itemId)) return null;
+    const person = this.people.find((p) => p.id === personId && p.ownerId === userId);
+    if (!person) return null;
+    if (!person.itemIds.includes(itemId)) {
+      person.itemIds.push(itemId);
+    }
+    if (!person.coverItemId) {
+      person.coverItemId = itemId;
+    }
+    return this.toPersonSummary(person);
+  }
+
+  untagPerson(userId: string, itemId: string, personId: string): boolean {
+    const person = this.people.find((p) => p.id === personId && p.ownerId === userId);
+    if (!person) return false;
+    const before = person.itemIds.length;
+    person.itemIds = person.itemIds.filter((id) => id !== itemId);
+    if (person.coverItemId === itemId) {
+      person.coverItemId = person.itemIds[0] ?? null;
+    }
+    return person.itemIds.length < before;
   }
 }

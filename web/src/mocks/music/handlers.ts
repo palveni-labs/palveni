@@ -1,3 +1,8 @@
+/**
+ * MSW handlers for the music app plus the existing personal-state,
+ * playlist, lyrics, loudness, search and playback endpoints the app uses, over an in-memory
+ * catalogue per music library. Registered by the dev mock (`npm run dev:mock`) and by tests.
+ */
 import { delay, http, HttpResponse } from "msw";
 import type { MusicAlbum, MusicArtist, MusicTrack } from "@/modules/music/api";
 import type { MockDb } from "../db";
@@ -6,7 +11,15 @@ import { coverSvg, rasterise, synthesise } from "./media";
 
 const BASE = "/api/v1";
 
+/** Features a server with the music app reports (added to the mock's list unless it runs as M0). */
 export const MUSIC_MOCK_FEATURES = ["music", "musicArtwork", "personal", "playlists", "musicLoudness", "musicSearch", "globalMusicSearch"] as const;
+
+const BUNDLED = Object.fromEntries(
+  Object.entries(import.meta.glob<string>("../provisional/artwork/album*.png", { eager: true, import: "default", query: "?url" })).map(([path, url]) => [
+    path.slice("../provisional/artwork/".length, -".png".length),
+    url,
+  ]),
+);
 
 function fail(status: number, code: string, message: string) {
   return HttpResponse.json({ error: { code, message } }, { status });
@@ -80,13 +93,16 @@ function sortRows<T>(rows: T[], url: URL, keys: Record<string, (row: T) => strin
 }
 
 function publicAlbum(album: MockAlbum): MusicAlbum {
-  const { coverSeed: _seed, ...rest } = album;
+  const { cover: _cover, coverSeed: _seed, ...rest } = album;
   return rest;
 }
 
 export function createMusicHandlers(db: MockDb, options: { latency?: number } = {}) {
   const latency = options.latency ?? 0;
   const wait = () => (latency > 0 ? delay(latency + Math.round(Math.random() * latency)) : Promise.resolve());
+  if (db.features.includes("assistant") && db.features.includes("home") && db.features.includes("tasks")) {
+    Object.assign(db, { features: [...new Set([...db.features, ...MUSIC_MOCK_FEATURES])] });
+  }
 
   const catalogues = new Map<string, MockCatalogue>();
   const catalogue = (libraryId: string): MockCatalogue | null => {
@@ -379,6 +395,16 @@ export function createMusicHandlers(db: MockDb, options: { latency?: number } = 
       const album = found?.cat.albumOfTrack.get(found.track.id);
       if (!album) return fail(404, "not_found", "No artwork");
       const size = Math.min(1920, Math.max(48, Number(new URL(request.url).searchParams.get("size") ?? 480) || 480));
+      if (album.cover && BUNDLED[album.cover]) {
+        try {
+          const response = await fetch(BUNDLED[album.cover]!);
+          if (response.ok) {
+            return new HttpResponse(await response.arrayBuffer(), { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=3600" } });
+          }
+        } catch {
+          // Node/jsdom tests cannot fetch dev-server relative URLs; fall through to generated SVG.
+        }
+      }
       const svg = coverSvg(album.coverSeed, album.name ?? "");
       const png = await rasterise(album.id, svg, size <= 120 ? 128 : size <= 300 ? 320 : 640);
       if (png) return new HttpResponse(png, { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=3600" } });

@@ -8,15 +8,17 @@ use axum::{
     http::{StatusCode, header},
     response::Response,
 };
+use palveni_core::jellyfin::{PutVideoSegmentsRequest, VideoSegmentList};
 use palveni_core::video::{
     SortDir, VideoGenreList, VideoHome, VideoOrder, VideoPage, VideoWorkDetail, WorkKind,
 };
+use palveni_db::jellyfin::{ChapterMarker, infer_segments_from_chapters};
 use palveni_db::video::{PosterLevel, StartsWith, VideoCursor, VideoFilters};
 use serde::Deserialize;
 use tokio_util::io::ReaderStream;
 
 use super::{MAX_PAGE_SIZE, parse_limit, path_id, query_id};
-use crate::{AppState, auth::CurrentUser, error::ApiError};
+use crate::{AppState, auth::CurrentUser, error::ApiError, json::ApiJson};
 
 const DEFAULT_VIDEO_PAGE_SIZE: u32 = 60;
 
@@ -503,6 +505,149 @@ pub async fn person_image(
         .open_image(loc, size)
         .await
         .map_err(|e| map_image_error(e, "Person image unavailable"))?;
+    image_response(mime, len, reader)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrickplayQuery {
+    at_ms: Option<String>,
+}
+
+const MAX_TRICKPLAY_AT_MS: u64 = 7 * 24 * 3600 * 1000;
+
+fn parse_at_ms(raw: Option<&str>) -> Result<u64, ApiError> {
+    match raw.map(str::trim).filter(|s| !s.is_empty()) {
+        None => Ok(0),
+        Some(text) => text
+            .parse::<u64>()
+            .ok()
+            .filter(|&v| v <= MAX_TRICKPLAY_AT_MS)
+            .ok_or_else(|| {
+                ApiError::validation("atMs must be an integer between 0 and 604800000")
+                    .field("atMs")
+            }),
+    }
+}
+
+/// `GET /api/v1/items/{id}/segments`
+pub async fn segments(
+    user: CurrentUser,
+    State(state): State<AppState>,
+    path: Result<Path<String>, PathRejection>,
+) -> Result<Json<VideoSegmentList>, ApiError> {
+    let id = path_id(&path?.0, "Video")?;
+    let meta = state
+        .db
+        .jellyfin()
+        .get_item_meta(id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Video not found"))?;
+    if !state
+        .db
+        .accounts()
+        .can_access_library(user.user.id, user.user.role, meta.library_id)
+        .await?
+    {
+        return Err(ApiError::not_found("Video not found"));
+    }
+    let mut segments = state.db.jellyfin().list_video_segments(id).await?;
+    if segments.is_empty()
+        && let Some(location) = state.db.video().location(id).await?
+        && !palveni_library::video::strm::is_strm_path(&location.relative_path)
+    {
+        let ext = location
+            .relative_path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(str::to_owned);
+        if let Ok(file) = palveni_library::local::open_audio_input(location).await
+            && let Ok(probed) = state
+                .hardware
+                .video
+                .probe_media(id, &file, ext.as_deref())
+                .await
+        {
+            let chapters: Vec<ChapterMarker> = probed
+                .info
+                .chapters
+                .into_iter()
+                .map(|ch| ChapterMarker {
+                    start_ms: ch.start_ms,
+                    title: ch.title,
+                })
+                .collect();
+            segments = infer_segments_from_chapters(id, &chapters, probed.info.duration_ms);
+        }
+    }
+    Ok(Json(VideoSegmentList { segments }))
+}
+
+/// `PUT /api/v1/items/{id}/segments`
+pub async fn save_segments(
+    user: CurrentUser,
+    State(state): State<AppState>,
+    path: Result<Path<String>, PathRejection>,
+    body: Result<ApiJson<PutVideoSegmentsRequest>, ApiError>,
+) -> Result<Json<VideoSegmentList>, ApiError> {
+    let id = path_id(&path?.0, "Video")?;
+    let ApiJson(req) = body?;
+    let meta = state
+        .db
+        .jellyfin()
+        .get_item_meta(id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Video not found"))?;
+    if !state
+        .db
+        .accounts()
+        .can_access_library(user.user.id, user.user.role, meta.library_id)
+        .await?
+    {
+        return Err(ApiError::not_found("Video not found"));
+    }
+    let segments = state
+        .db
+        .jellyfin()
+        .replace_video_segments(id, &req.segments)
+        .await?;
+    Ok(Json(VideoSegmentList { segments }))
+}
+
+/// `GET /api/v1/items/{id}/trickplay?atMs=<u64>`
+pub async fn trickplay(
+    user: CurrentUser,
+    State(state): State<AppState>,
+    path: Result<Path<String>, PathRejection>,
+    params: Result<Query<TrickplayQuery>, QueryRejection>,
+) -> Result<Response, ApiError> {
+    let id = path_id(&path?.0, "Video")?;
+    let at_ms = parse_at_ms(params?.0.at_ms.as_deref())?;
+    let meta = state
+        .db
+        .jellyfin()
+        .get_item_meta(id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Video not found"))?;
+    if !state
+        .db
+        .accounts()
+        .can_access_library(user.user.id, user.user.role, meta.library_id)
+        .await?
+    {
+        return Err(ApiError::not_found("Video not found"));
+    }
+    let loc = state
+        .db
+        .video()
+        .thumb_location(id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Video not found"))?;
+    let (mime, len, reader) = state
+        .video_images
+        .grab_trickplay_frame(loc, at_ms)
+        .await
+        .map_err(|e| map_image_error(e, "Trickplay frame unavailable"))?;
     image_response(mime, len, reader)
 }
 

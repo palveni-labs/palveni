@@ -1,10 +1,12 @@
 import { Button, toast } from "@heroui/react";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import { CheckSquare, FolderHeart, Pencil, Play, Trash2, X } from "lucide-react";
+import { CheckSquare, FolderHeart, Pencil, Play, Share2, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { errorText } from "@/lib/errors";
+import { useFeature } from "@/modules/access";
 import { PageHeader } from "@/ui/page";
+import { ShareDialog } from "@/ui/share-dialog";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import { PhotoGrid } from "../components/photo-image";
 import { PhotoLightbox } from "../components/photo-lightbox";
@@ -38,8 +40,10 @@ export function PhotoAlbumDetailPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [lightboxState, setLightboxState] = useState<{ index: number; slideshow: boolean } | null>(null);
   const [renameOpen, setRenameOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
+  const sharesEnabled = useFeature("shares");
 
   if (albumQuery.isLoading || timeline.isLoading) {
     return <LoadingRows rows={4} />;
@@ -141,6 +145,13 @@ export function PhotoAlbumDetailPage() {
               </>
             ) : null}
 
+            {sharesEnabled ? (
+              <Button size="sm" variant="outline" onPress={() => setShareOpen(true)}>
+                <Share2 className="size-3.5" aria-hidden />
+                {t("sharesApp.button")}
+              </Button>
+            ) : null}
+
             <Button
               size="sm"
               variant="outline"
@@ -204,6 +215,14 @@ export function PhotoAlbumDetailPage() {
           setLightboxState((prev) => (prev ? { ...prev, index: nextIndex } : null))
         }
         onClose={() => setLightboxState(null)}
+      />
+
+      <ShareDialog
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        targetKind="photo_album"
+        targetId={albumId}
+        defaultTitle={album.title}
       />
 
       {renameOpen ? (

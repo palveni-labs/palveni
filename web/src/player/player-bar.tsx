@@ -27,6 +27,7 @@ import { StarRating } from "@/modules/music/components/star-rating";
 import { formatSeconds } from "@/modules/music/format";
 import { useRateTrack, useToggleTrackFavorite } from "@/modules/music/queries";
 import { useSlot } from "@/skins/scope";
+import { CastDevicesPopover } from "./cast-devices-popover";
 import { Scrubber } from "./scrubber";
 import {
   formatPlaybackRate,
@@ -82,17 +83,17 @@ export function PlayerBar() {
       {/* Desktop dock */}
       <section
         aria-label={t("musicApp.player.region")}
-        className="relative z-30 hidden h-[4.75rem] shrink-0 grid-cols-[minmax(0,1fr)_minmax(18rem,1.45fr)_minmax(0,1fr)] items-center gap-4 border-t border-line bg-surface/88 px-4 backdrop-blur-xl md:grid"
+        className="pv-glass-shell relative z-30 hidden h-[5rem] shrink-0 grid-cols-[minmax(0,1fr)_minmax(18rem,1.45fr)_minmax(0,1fr)] items-center gap-5 border-t px-5 shadow-overlay md:grid"
       >
         {/* Left: Artwork + Title/Artist + Favorite + Rating */}
-        <div className="group/meta flex min-w-0 items-center gap-3">
+        <div className="group/meta flex min-w-0 items-center gap-3.5">
           <button
             type="button"
             onClick={() => playerStore.openNowPlaying("lyrics")}
             aria-label={t("musicApp.player.openNowPlaying")}
-            className="group relative shrink-0 rounded-tile outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            className="group relative shrink-0 rounded-control outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
-            <MusicArtwork itemId={track.artworkItemId ?? track.id} size={96} eager className="size-12 shadow-art ring-1 ring-line/60" />
+            <MusicArtwork itemId={track.artworkItemId ?? track.id} size={96} eager className="size-12 rounded-control shadow-art ring-1 ring-white/12" />
             <span
               aria-hidden
               className="absolute inset-0 grid place-items-center rounded-tile bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100"
@@ -170,8 +171,8 @@ export function PlayerBar() {
               aria-pressed={player.shuffle}
               onClick={() => playerStore.toggleShuffle()}
               className={cn(
-                "grid size-8 place-items-center rounded-control transition-colors focus-visible:outline-2 focus-visible:outline-(--pv-focus)",
-                player.shuffle ? "bg-selected/15 text-fg" : "text-fg-muted hover:bg-hover hover:text-fg",
+                "grid size-8 place-items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-(--pv-focus)",
+                player.shuffle ? "bg-active-soft text-active" : "text-fg-muted hover:bg-hover hover:text-fg",
               )}
             >
               <Shuffle className="size-3.5" aria-hidden />
@@ -180,7 +181,7 @@ export function PlayerBar() {
               type="button"
               aria-label={t("musicApp.player.previous")}
               onClick={() => playerStore.previous()}
-              className="grid size-8 place-items-center rounded-control text-fg transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+              className="grid size-8 place-items-center rounded-full text-fg transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
             >
               <SkipBack className="size-4 fill-current" aria-hidden />
             </button>
@@ -188,7 +189,7 @@ export function PlayerBar() {
               type="button"
               aria-label={player.playing ? t("musicApp.player.pause") : t("musicApp.player.play")}
               onClick={() => playerStore.togglePlay()}
-              className="grid size-9 place-items-center rounded-full bg-action text-action-fg shadow-panel transition-transform hover:bg-action-hover active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--pv-focus)"
+              className="pv-nav-pill-active grid size-10 place-items-center rounded-full transition-all duration-150 hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--pv-focus)"
             >
               {player.status === "loading" ? (
                 <Spinner size="sm" color="current" />
@@ -202,7 +203,7 @@ export function PlayerBar() {
               type="button"
               aria-label={t("musicApp.player.next")}
               onClick={() => playerStore.next(true)}
-              className="grid size-8 place-items-center rounded-control text-fg transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+              className="grid size-8 place-items-center rounded-full text-fg transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
             >
               <SkipForward className="size-4 fill-current" aria-hidden />
             </button>
@@ -212,8 +213,8 @@ export function PlayerBar() {
               aria-pressed={player.repeat !== "off"}
               onClick={() => playerStore.cycleRepeat()}
               className={cn(
-                "grid size-8 place-items-center rounded-control transition-colors focus-visible:outline-2 focus-visible:outline-(--pv-focus)",
-                player.repeat !== "off" ? "bg-selected/15 text-fg" : "text-fg-muted hover:bg-hover hover:text-fg",
+                "grid size-8 place-items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-(--pv-focus)",
+                player.repeat !== "off" ? "bg-active-soft text-active" : "text-fg-muted hover:bg-hover hover:text-fg",
               )}
             >
               <RepeatIcon className="size-3.5" aria-hidden />
@@ -421,6 +422,8 @@ export function PlayerBar() {
             <ListMusic className="size-4" aria-hidden />
             <span data-num className="tabular-nums">{player.queue.length}</span>
           </button>
+
+          <CastDevicesPopover tone="player" placement="top end" />
 
           <div className="flex items-center gap-1.5 ps-1 max-lg:hidden">
             <button

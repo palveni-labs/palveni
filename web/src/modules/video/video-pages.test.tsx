@@ -24,7 +24,7 @@ describe("video module", () => {
     expect(flattenKeys(enLocale).sort()).toEqual(flattenKeys(zhLocale).sort());
   });
 
-  it("renders the video home with hero, rails and library tiles", async () => {
+  it("renders Emby-style video home with hero, rails and library tiles", async () => {
     const db = installMockDb({ features: [...M0_FEATURES, "video", "videoSubtitles"] });
     signIn(db, MOCK_ACCOUNTS.user.username);
 

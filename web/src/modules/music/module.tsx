@@ -1,9 +1,11 @@
 import { BookAudio, Disc3, Heart, Home, ListMusic, Music, Music2, Search, Tag, UsersRound } from "lucide-react";
 import type { ModuleDefinition } from "../types";
 
+/** 音乐: Navidrome-level music library browser, playlists and search. */
 const music: ModuleDefinition = {
   id: "music",
   order: 24,
+  group: "media",
   titleKey: "musicApp.title",
   icon: Music,
   home: "/music",

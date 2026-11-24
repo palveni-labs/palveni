@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" width="200" height="300" font-family="Figtree, 'Noto Sans SC', sans-serif">
+      <rect width="200" height="300" fill="#3d7834"/>
+      <rect width="200" height="150" fill="#8fbf6a"/>
+      <circle cx="146" cy="70" r="24" fill="#f3ecb0"/>
+      <ellipse cx="40" cy="176" rx="120" ry="44" fill="#4f8d42"/>
+      <ellipse cx="170" cy="190" rx="110" ry="48" fill="#356b2d"/>
+      <ellipse cx="96" cy="200" rx="18" ry="22" fill="#f6f2e2"/><ellipse cx="88" cy="168" rx="5" ry="16" fill="#f6f2e2"/><ellipse cx="104" cy="168" rx="5" ry="16" fill="#f6f2e2"/>
+      <text x="100" y="266" font-size="21" font-weight="800" fill="#fbf7dc" text-anchor="middle">Big Buck Bunny</text>
+      <text x="100" y="286" font-size="9" font-weight="500" fill="#cfe2b6" text-anchor="middle" letter-spacing="3">2008</text></svg>

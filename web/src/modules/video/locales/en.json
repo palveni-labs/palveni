@@ -181,7 +181,28 @@
     "forced": "Forced",
     "sdh": "SDH",
     "channels": "{{count}} ch",
-    "shortcutsHint": "Space Play/Pause · ←/→ Seek · F Fullscreen · M Mute · C Subtitles"
+    "shortcutsHint": "Space Play/Pause · ←/→ Seek · F Fullscreen · M Mute · C Subtitles",
+    "skipIntro": "Skip Intro",
+    "skipCredits": "Skip Credits",
+    "skipRecap": "Skip Recap",
+    "segments": "Intro & Credits Markers",
+    "segmentKinds": {
+      "intro": "Intro",
+      "credits": "Credits",
+      "recap": "Recap"
+    },
+    "segmentStart": "Start (sec)",
+    "segmentEnd": "End (sec)",
+    "useCurrentTime": "Current",
+    "addSegment": "Save marker",
+    "deleteSegment": "Delete marker",
+    "segmentsSaved": "Intro/credits markers saved",
+    "segmentsEmpty": "No intro or credits markers yet",
+    "segmentInvalidRange": "End time must be greater than start time",
+    "versions": "Versions",
+    "switchingVersion": "Switching version…",
+    "trickplayAlt": "Timeline preview frame",
+    "infoDirectUrl": "Direct source"
   },
   "time": {
     "hoursMinutes": "{{hours}}h {{minutes}}m",

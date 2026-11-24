@@ -1,6 +1,6 @@
 import { Dropdown, Header, Label, Separator } from "@heroui/react";
 import { Link, useNavigate, useParams, useRouterState } from "@tanstack/react-router";
-import { Check, ChevronDown, FolderOpen, Loader2 } from "lucide-react";
+import { Check, ChevronDown, FolderOpen, Layers, Link2, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLibraries } from "@/api/queries/libraries";
 import type { NavMenuProps } from "@/modules/types";
@@ -47,19 +47,29 @@ export default function SidebarLibraries() {
         const Icon = LIBRARY_KIND_META[library.kind].icon;
         const active = (pathname.startsWith("/library/") || pathname.startsWith("/video/")) && params.libraryId === library.id;
         const linkClass = cn(
-          "flex h-8 items-center gap-2.5 rounded-tile px-2.5 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
-          active ? "bg-nav-active font-strong text-nav-active-fg shadow-panel" : "font-mid text-shell-fg hover:bg-hover",
+          "flex h-9 items-center gap-2.5 rounded-xl px-3 text-sm outline-none transition-all duration-150 focus-visible:ring-2 focus-visible:ring-focus",
+          active ? "pv-nav-pill-active font-strong" : "font-mid text-shell-fg/85 hover:bg-hover/80 hover:text-shell-fg",
         );
         const content = (
           <>
             {itemColor === "on" ? (
-              <span aria-hidden className="ms-0.5 me-0.5 size-2 shrink-0 rounded-[3px]" style={{ backgroundColor: KIND_SWATCH[library.kind] }} />
+              <span
+                aria-hidden
+                className="size-2.5 shrink-0 rounded-full shadow-xs ring-2 ring-white/20"
+                style={{ backgroundColor: active ? "#ffffff" : KIND_SWATCH[library.kind] }}
+              />
             ) : (
-              <Icon className={cn("size-4 shrink-0", active ? "text-nav-active-fg" : "text-icon")} aria-hidden />
+              <Icon className={cn("size-4 shrink-0", active ? "text-white" : "text-icon")} aria-hidden />
             )}
             <span className="min-w-0 flex-1 truncate">{library.name}</span>
-            {scanning.has(library.id) ? <Loader2 className={cn("pv-spin size-3.5", active ? "text-nav-active-fg" : "text-active-mark")} aria-hidden /> : null}
-            <span data-num className={cn("text-xs tabular-nums", active ? "text-nav-active-fg" : "text-shell-fg-muted")}>
+            {scanning.has(library.id) ? <Loader2 className={cn("pv-spin size-3.5", active ? "text-white" : "text-active-mark")} aria-hidden /> : null}
+            <span
+              data-num
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[0.6875rem] font-mid tabular-nums",
+                active ? "bg-white/20 text-white" : "bg-sunken/85 text-shell-fg-muted",
+              )}
+            >
               {formatNumber(library.itemCount, i18n.resolvedLanguage ?? "en")}
             </span>
           </>
@@ -103,6 +113,8 @@ export function LibraryMenu({ children, className, active }: NavMenuProps) {
   const musicEnabled = useFeature("music");
   const photosEnabled = useFeature("photos");
   const readingEnabled = useFeature("reading");
+  const collectionsEnabled = useFeature("collections");
+  const sharesEnabled = useFeature("shares");
   const libraries = useSortedLibraries();
 
   if (libraries.length === 0) {
@@ -125,6 +137,8 @@ export function LibraryMenu({ children, className, active }: NavMenuProps) {
           onAction={(key) => {
             const id = String(key);
             if (id === "__all__") void navigate({ to: "/library" });
+            else if (id === "__collections__") void navigate({ to: "/library/collections" });
+            else if (id === "__shares__") void navigate({ to: "/library/shares" });
             else {
               const target = libraries.find((entry) => entry.id === id);
               if (musicEnabled && target?.kind === "music") {
@@ -163,6 +177,18 @@ export function LibraryMenu({ children, className, active }: NavMenuProps) {
             <FolderOpen className="size-4 text-fg-muted" aria-hidden />
             <Label>{t("nav.allLibraries")}</Label>
           </Dropdown.Item>
+          {collectionsEnabled ? (
+            <Dropdown.Item id="__collections__" textValue={t("nav.collections")}>
+              <Layers className="size-4 text-fg-muted" aria-hidden />
+              <Label>{t("nav.collections")}</Label>
+            </Dropdown.Item>
+          ) : null}
+          {sharesEnabled ? (
+            <Dropdown.Item id="__shares__" textValue={t("nav.shares")}>
+              <Link2 className="size-4 text-fg-muted" aria-hidden />
+              <Label>{t("nav.shares")}</Label>
+            </Dropdown.Item>
+          ) : null}
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown>

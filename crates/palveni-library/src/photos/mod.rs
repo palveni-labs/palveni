@@ -1,5 +1,6 @@
 //! Photos library indexing, EXIF extraction, and direct photo upload.
 
+pub mod ai;
 pub mod exif;
 
 use std::collections::HashMap;

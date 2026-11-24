@@ -14,8 +14,9 @@ const packages = readdirSync(PLUGINS)
   .filter((name) => name.startsWith("skin-"))
   .map((name) => ({ name, manifest: JSON.parse(readFileSync(path.join(PLUGINS, name, "skin.json"), "utf8")) as unknown, dir: path.join(PLUGINS, name) }));
 
+/** skin design rules */
 const SLOT_TABLE: Record<string, Partial<SkinManifest["slots"]>> = {
-  workcolor: { nav: "sidebar", navPhone: "bottom-bar", status: "inline", progress: "row-fill", attention: "thumbs", section: "panel", itemColor: "on", measure: "sans", pageTitle: "toolbar", summary: "inline" },
+  workcolor: { nav: "sidebar", navPhone: "bottom-bar", status: "inline", progress: "row-fill", attention: "thumbs", section: "panel", itemColor: "on", measure: "sans", pageTitle: "content", summary: "inline" },
   native: { nav: "sidebar", navPhone: "bottom-bar", status: "activity-window", progress: "bar", attention: "tint", section: "plain", itemColor: "off", measure: "sans", pageTitle: "toolbar", summary: "cells" },
   ink: { nav: "topbar", navPhone: "bottom-bar", status: "inline", progress: "bar", attention: "seal", section: "rule", itemColor: "off", measure: "sans", pageTitle: "content", summary: "inline" },
   gear: { nav: "topbar", navPhone: "top-scroll", status: "inline", progress: "separator", attention: "lamp", section: "rule", itemColor: "off", measure: "mono", pageTitle: "content", summary: "cells" },
@@ -78,7 +79,7 @@ describe("all four skins", () => {
     }
   });
 
-  it("use the expected layout slots", () => {
+  it("match the slot table in the skin contract", () => {
     for (const skin of all) {
       expect(Object.keys(skin.slots).sort()).toEqual([...SLOT_NAMES].sort());
       expect(skin.slots).toEqual(SLOT_TABLE[skin.id]);

@@ -1,17 +1,115 @@
 {
   "title": "相册",
   "nav": {
+    "subNavLabel": "相册视图导航",
     "timeline": "时间线",
     "albums": "相簿",
     "places": "地点",
     "memories": "回忆",
+    "people": "人物",
+    "cleanup": "重复清理",
     "favorites": "收藏"
   },
   "search": {
     "commandLabel": "在相册中搜索照片",
     "commandQuery": "在相册中搜索“{{query}}”",
-    "placeholder": "搜索文件名或日期（如 2025-11）…",
-    "clear": "清除筛选"
+    "placeholder": "智能搜索：如“去年秋天的夜景”、“蓝色天空”、“索尼竖拍”…",
+    "clear": "清除筛选",
+    "suggestionsLabel": "示例搜索",
+    "resultCount": "找到 {{count}} 张匹配照片",
+    "parsedLabel": "已识别筛选条件"
+  },
+  "ai": {
+    "runAnalysis": "运行本地智能分析",
+    "analyzing": "正在分析…",
+    "analyzeDone": "本次分析 {{analyzed}} 张，累计已标记 {{total}} 张，剩余 {{remaining}} 张",
+    "filter": {
+      "year": "{{value}}年",
+      "month": "{{value}}月",
+      "season": {
+        "spring": "春季",
+        "summer": "夏季",
+        "autumn": "秋季",
+        "winter": "冬季"
+      },
+      "timeOfDay": {
+        "morning": "清晨/上午",
+        "afternoon": "午后",
+        "sunset": "日落/黄昏",
+        "night": "夜景"
+      },
+      "color": {
+        "red": "红色调",
+        "orange": "橙色调",
+        "yellow": "黄色调",
+        "green": "绿色调",
+        "blue": "蓝色调",
+        "warm": "暖色调",
+        "dark": "暗调",
+        "bright": "明亮"
+      },
+      "orientation": {
+        "portrait": "竖拍",
+        "landscape": "横拍"
+      },
+      "geotagged": "带定位"
+    }
+  },
+  "people": {
+    "title": "人物",
+    "count": "共 {{count}} 位人物",
+    "photoCount": "{{count}} 张照片",
+    "create": "新建人物",
+    "createTitle": "新建人物档案",
+    "rename": "重命名",
+    "renameTitle": "重命名人物",
+    "delete": "删除人物",
+    "nameLabel": "人物姓名",
+    "namePlaceholder": "例如：小明、妈妈、旅行同伴",
+    "save": "保存",
+    "cancel": "取消",
+    "backToList": "返回人物列表",
+    "emptyTitle": "还没有人物档案",
+    "emptyDetail": "创建人物后，可在照片查看器中快速标注并按人物检索照片。",
+    "emptyPersonTitle": "该人物下还没有标注的照片",
+    "emptyPersonDetail": "在时间线打开照片灯箱，点击人物标注按钮即可添加。",
+    "createdToast": "已创建人物“{{name}}”",
+    "updatedToast": "已更新人物名称",
+    "deletedToast": "已删除人物“{{name}}”",
+    "untaggedToast": "已移出人物标注",
+    "untagItem": "移出 {{title}}",
+    "tagTitle": "标注人物",
+    "quickCreatePlaceholder": "输入新人物名称并标注…",
+    "quickCreateAdd": "新建并标注",
+    "taggedToast": "已标注“{{name}}”",
+    "noPeopleYet": "暂无人物，可在下方快速新建。"
+  },
+  "cleanup": {
+    "title": "重复与相似照片清理",
+    "summary": "发现 {{clusters}} 组重复/相似照片（共 {{photos}} 张可清理），预计可释放 {{bytes}}",
+    "thresholdLabel": "感知相似度阈值",
+    "thresholdExact": "仅完全相同 (dHash = 0)",
+    "thresholdValue": "平衡/相似 (dHash ≤ {{value}})",
+    "selectNonKeep": "全选非推荐保留项",
+    "statClusters": "重复分组",
+    "statDuplicates": "冗余照片数",
+    "statReclaimable": "预计可释放空间",
+    "kindExact": "完全相同",
+    "kindSimilar": "相似画面 · dHash ≤ {{distance}}",
+    "clusterMeta": "{{count}} 张 · 可释放 {{bytes}}",
+    "keepBadge": "推荐保留",
+    "markedBadge": "已标记待清理",
+    "markButton": "标记待清理",
+    "unmarkButton": "取消标记",
+    "preview": "预览",
+    "markedCount": "已标记 {{count}} 张待清理照片",
+    "clearMarked": "清空标记",
+    "stageToAlbum": "移入待清理相簿",
+    "reviewAlbumName": "待清理照片",
+    "reviewAlbumDesc": "由重复清理助手安全归集，复核后再决定是否删除源文件。",
+    "stagedToast": "已将 {{count}} 张照片安全归集至相簿“{{album}}”",
+    "emptyTitle": "未发现重复或相似照片",
+    "emptyDetail": "你的相册很整洁；如有新入库照片，可先运行本地智能分析以生成感知哈希。"
   },
   "timeline": {
     "title": "时间线",
@@ -120,6 +218,7 @@
     "favorite": "收藏",
     "favorited": "已收藏",
     "addToAlbum": "加入相簿",
+    "tagPeople": "标注人物",
     "downloadOriginal": "下载原图",
     "infoToggle": "EXIF 详情",
     "counter": "{{index}} / {{total}}",
@@ -139,6 +238,7 @@
       "focalLength": "焦距",
       "coordinates": "GPS 坐标",
       "albums": "所属相簿",
+      "people": "标注人物",
       "none": "未记录"
     }
   }

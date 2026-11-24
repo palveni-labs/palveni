@@ -1,8 +1,20 @@
+/**
+ * MSW handlers for the media API (Video metadata, home, library wall, detail,
+ * media-info, playback sessions, subtitles, artwork).
+ *
+ * Only active when `db.features` includes `"video"` (so M0 tests stay isolated).
+ */
 import { delay, http, HttpResponse } from "msw";
-import type { PlaybackRequest, PlaybackSession } from "@/modules/video/api";
+import type {
+  PlaybackRequest,
+  PlaybackSession,
+  PutVideoSegmentsRequest,
+  VideoSegment,
+} from "@/modules/video/api";
 import type { MockDb } from "../db";
 import type { HandlerOptions } from "../handlers";
 import { renderBackdropSvg, renderPersonSvg, renderPosterSvg, renderThumbSvg } from "./artwork";
+import sampleVideoUrl from "./sample.mp4?url";
 import { VideoMockState } from "./state";
 
 const BASE = "/api/v1";
@@ -47,6 +59,8 @@ export function createVideoHandlers(db: MockDb, options: HandlerOptions = {}) {
   };
 
   let sessionSeq = 1;
+  let segmentSeq = 1;
+  const segmentsByItem = new Map<string, VideoSegment[]>();
 
   return [
     /* ------------------------------------------------------------ home */
@@ -200,11 +214,12 @@ export function createVideoHandlers(db: MockDb, options: HandlerOptions = {}) {
       const capped = typeof body.maxHeight === "number" && body.maxHeight > 0;
       const mode: PlaybackSession["mode"] =
         body.mode === "transcode" || capped ? "transcode" : "direct";
+      const sep = sampleVideoUrl.includes("?") ? "&" : "?";
       const session: PlaybackSession = {
         sessionId,
         mode,
         protocol: "file",
-        url: `/mock/video-${sessionId}.mp4`,
+        url: `${sampleVideoUrl}${sep}ticket=mock-${sessionId}`,
         expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
         startMs: 0,
         reason: capped ? `maxHeight ${body.maxHeight}p` : body.mode === "transcode" ? "requested transcode" : null,
@@ -261,6 +276,46 @@ export function createVideoHandlers(db: MockDb, options: HandlerOptions = {}) {
       const entry = state.artByItemId.get(String(params.id));
       if (!entry) return fail(404, "not_found", "Thumb not found");
       return svgResponse(renderThumbSvg(entry.art, entry.thumbVariant ?? 1));
+    }),
+
+    http.get(`${BASE}/items/:id/segments`, async ({ request, params }) => {
+      await wait();
+      const denied = guard(request);
+      if (denied) return denied;
+      const itemId = String(params.id);
+      return HttpResponse.json({ segments: segmentsByItem.get(itemId) ?? [] });
+    }),
+
+    http.put(`${BASE}/items/:id/segments`, async ({ request, params }) => {
+      await wait();
+      const denied = guard(request);
+      if (denied) return denied;
+      const itemId = String(params.id);
+      const body = await readJson<PutVideoSegmentsRequest>(request);
+      const raw = Array.isArray(body.segments) ? body.segments : [];
+      const saved: VideoSegment[] = raw
+        .filter((s) => typeof s.startMs === "number" && typeof s.endMs === "number" && s.endMs > s.startMs)
+        .map((s) => ({
+          id: `seg-${segmentSeq++}`,
+          itemId,
+          kind: s.kind,
+          startMs: s.startMs,
+          endMs: s.endMs,
+          source: s.source ?? "manual",
+          updatedAt: new Date(db.now()).toISOString(),
+        }))
+        .sort((a, b) => a.startMs - b.startMs);
+      segmentsByItem.set(itemId, saved);
+      return HttpResponse.json({ segments: saved });
+    }),
+
+    http.get(`${BASE}/items/:id/trickplay`, ({ request, params }) => {
+      const denied = guard(request);
+      if (denied) return denied;
+      const entry = state.artByItemId.get(String(params.id));
+      if (!entry) return fail(404, "not_found", "Trickplay frame unavailable");
+      const atMs = Number(new URL(request.url).searchParams.get("atMs") ?? "0") || 0;
+      return svgResponse(renderThumbSvg(entry.art, (Math.floor(atMs / 10_000) % 3) + 1));
     }),
 
     http.get(`${BASE}/libraries/:id/videos/people/:key/image`, ({ request, params }) => {

@@ -275,13 +275,13 @@ fn epub_metadata_toc_sanitization_and_asset_resolution() {
     let opf_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <package version="2.0" xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
-    <dc:title>雾灯</dc:title>
-    <dc:creator>岑砚禾</dc:creator>
-    <dc:description>&lt;p&gt;入冬后的第七夜，守塔人从一叠潮汐记录里发现了重复多年的灯号。&lt;/p&gt;</dc:description>
-    <dc:publisher>纸鸥书社</dc:publisher>
+    <dc:title>三体</dc:title>
+    <dc:creator>刘慈欣</dc:creator>
+    <dc:description>&lt;p&gt;文化大革命如火如荼进行的同时，军方探寻外星文明的绝秘计划“红岸工程”取得了突破性进展。&lt;/p&gt;</dc:description>
+    <dc:publisher>重庆出版社</dc:publisher>
     <dc:language>zh-CN</dc:language>
     <dc:subject>科幻, 硬科幻</dc:subject>
-    <meta name="calibre:series" content="北湾手记"/>
+    <meta name="calibre:series" content="地球往事"/>
     <meta name="calibre:series_index" content="1"/>
     <meta name="cover" content="cover-img"/>
   </metadata>
@@ -301,7 +301,7 @@ fn epub_metadata_toc_sanitization_and_asset_resolution() {
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
   <navMap>
     <navPoint id="np-1" playOrder="1">
-      <navLabel><text>第一章 夜灯初亮</text></navLabel>
+      <navLabel><text>第一章 科学边界</text></navLabel>
       <content src="Text/ch01.xhtml#top"/>
     </navPoint>
   </navMap>
@@ -316,13 +316,13 @@ fn epub_metadata_toc_sanitization_and_asset_resolution() {
   <script>alert('xss-head')</script>
 </head>
 <body onload="evil()">
-  <h1 onclick="steal()">第一章 夜灯初亮</h1>
-  <p style="color:red">海面退了三尺，旧钟才响了第一声。</p>
+  <h1 onclick="steal()">第一章 科学边界</h1>
+  <p style="color:red">汪淼觉得眼前的一切都失去了意义。</p>
   <script>window.pwn = 1;</script>
   <iframe src="https://evil.example/frame"></iframe>
   <a href="javascript:alert(1)">恶意链接</a>
   <a href="https://example.org/ref">参考注释</a>
-  <img src="../Images/radar.png" alt="雾岛信号塔" onerror="evil()" />
+  <img src="../Images/radar.png" alt="红岸雷达峰" onerror="evil()" />
   <img src="https://evil.example/tracker.png" alt="tracker" />
 </body>
 </html>"#
@@ -339,22 +339,22 @@ fn epub_metadata_toc_sanitization_and_asset_resolution() {
     ]);
 
     let (mut zip, book) = open_epub(Cursor::new(epub_bytes)).unwrap();
-    assert_eq!(book.title.as_deref(), Some("雾灯"));
-    assert_eq!(book.authors, vec!["岑砚禾"]);
-    assert_eq!(book.series_name.as_deref(), Some("北湾手记"));
+    assert_eq!(book.title.as_deref(), Some("三体"));
+    assert_eq!(book.authors, vec!["刘慈欣"]);
+    assert_eq!(book.series_name.as_deref(), Some("地球往事"));
     assert_eq!(book.series_index, Some(1.0));
-    assert_eq!(book.publisher.as_deref(), Some("纸鸥书社"));
+    assert_eq!(book.publisher.as_deref(), Some("重庆出版社"));
     assert_eq!(book.language.as_deref(), Some("zh-CN"));
     assert_eq!(book.tags, vec!["科幻", "硬科幻"]);
     assert_eq!(book.cover_path.as_deref(), Some("OEBPS/Images/cover.jpg"));
     assert_eq!(book.spine.len(), 1);
-    assert_eq!(book.spine[0].title, "第一章 夜灯初亮");
+    assert_eq!(book.spine[0].title, "第一章 科学边界");
 
     let item_id = ItemId::generate();
     let ch = read_epub_chapter(&mut zip, &book, 0, item_id)
         .unwrap()
         .unwrap();
-    assert_eq!(ch.title, "第一章 夜灯初亮");
+    assert_eq!(ch.title, "第一章 科学边界");
     assert!(!ch.html.contains("<script"));
     assert!(!ch.html.contains("<style"));
     assert!(!ch.html.contains("<iframe"));
@@ -366,7 +366,7 @@ fn epub_metadata_toc_sanitization_and_asset_resolution() {
     assert!(ch.html.contains(&format!(
         "/api/v1/items/{item_id}/reading-asset?path=OEBPS/Images/radar.png"
     )));
-    assert!(ch.plain_text.contains("海面退了三尺，旧钟才响了第一声"));
+    assert!(ch.plain_text.contains("汪淼觉得眼前的一切都失去了意义"));
 
     // Reading valid asset succeeds; traversal or non-image asset returns None
     let (mime, asset_bytes) = read_epub_asset(&mut zip, "OEBPS/Images/radar.png")
@@ -427,7 +427,7 @@ async fn scanner_indexes_reading_libraries_incrementally_and_splits_txt_md() {
     let books_root = dir.path().join("books");
     let comics_root = dir.path().join("comics");
     std::fs::create_dir_all(&books_root).unwrap();
-    std::fs::create_dir_all(comics_root.join("云梯集市")).unwrap();
+    std::fs::create_dir_all(comics_root.join("迷宫饭")).unwrap();
     let books_canon = books_root.canonicalize().unwrap();
     let comics_canon = comics_root.canonicalize().unwrap();
 
@@ -437,11 +437,7 @@ async fn scanner_indexes_reading_libraries_incrementally_and_splits_txt_md() {
     )
     .unwrap();
     let cbz = build_test_zip(&[("01.png", TINY_PNG, false), ("02.jpg", TINY_JPEG, true)]);
-    std::fs::write(
-        comics_canon.join("云梯集市").join("云梯集市 第01卷.cbz"),
-        cbz,
-    )
-    .unwrap();
+    std::fs::write(comics_canon.join("迷宫饭").join("迷宫饭 第01卷.cbz"), cbz).unwrap();
 
     let book_lib = db
         .libraries()
@@ -479,10 +475,7 @@ async fn scanner_indexes_reading_libraries_incrementally_and_splits_txt_md() {
     assert_eq!(home.recent_books[0].page_count, Some(2));
 
     assert_eq!(home.recent_comics.len(), 1);
-    assert_eq!(
-        home.recent_comics[0].series_name.as_deref(),
-        Some("云梯集市")
-    );
+    assert_eq!(home.recent_comics[0].series_name.as_deref(), Some("迷宫饭"));
     assert_eq!(home.recent_comics[0].series_index, Some(1.0));
     assert_eq!(home.recent_comics[0].page_count, Some(2));
     assert!(home.recent_comics[0].has_cover);

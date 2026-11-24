@@ -11,7 +11,7 @@ import { Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
 import { useAccess } from "@/modules/access";
-import { isEnabled, isVisible } from "@/modules/registry";
+import { isEnabled } from "@/modules/registry";
 import type { ModuleDefinition, NavEntry } from "@/modules/types";
 import { CountMark } from "@/ui/count-mark";
 import { useActiveModule, useActiveModuleId, useVisibleModules } from "./use-shell-modules";
@@ -28,8 +28,20 @@ function Badge({ module, className }: { module: ModuleDefinition; className?: st
 export function Wordmark({ className }: { className?: string }) {
   const { t } = useTranslation();
   return (
-    <Link to="/" className={cn("shrink-0 rounded-sm font-heading text-[1.1875rem] leading-none font-title tracking-[-0.015em] outline-none focus-visible:ring-2 focus-visible:ring-focus", className)}>
-      {t("app.name")}
+    <Link
+      to="/"
+      className={cn(
+        "inline-flex shrink-0 items-center gap-2 rounded-control font-heading text-[1.125rem] leading-none font-title tracking-[-0.025em] outline-none focus-visible:ring-2 focus-visible:ring-focus",
+        className,
+      )}
+    >
+      <span
+        aria-hidden
+        className="pv-nav-pill-active grid size-7 place-items-center rounded-[9px] text-[0.8125rem] font-title"
+      >
+        P
+      </span>
+      <span className="text-[1.125rem]">{t("app.name")}</span>
     </Link>
   );
 }
@@ -117,7 +129,7 @@ export function TopNav({ className }: { className?: string }) {
         {modules.map((module) => {
           const active = module.id === activeId;
           const dimmed = !isEnabled(module, access);
-          const entries = (module.nav ?? []).filter((entry) => isVisible(entry, access));
+          const entries = (module.nav ?? []).filter((entry) => isEnabled(entry, access));
           const Menu = module.sidebar?.menu;
           const label = <>
             {t(module.titleKey)}
@@ -128,10 +140,10 @@ export function TopNav({ className }: { className?: string }) {
           const homeLink = <Link to={module.home} aria-current={active ? "page" : undefined} className={triggerClass}>{label}</Link>;
           return (
             <li key={module.id}>
-              {entries.length >= 2 ? (
-                <TopModuleDropdown module={module} entries={entries} active={active} activeEntry={active ? activeEntry : undefined} dimmed={dimmed} />
-              ) : Menu && !dimmed ? (
+              {Menu && !dimmed ? (
                 <Suspense fallback={homeLink}><Menu className={triggerClass} active={active}>{label}</Menu></Suspense>
+              ) : entries.length >= 2 ? (
+                <TopModuleDropdown module={module} entries={entries} active={active} activeEntry={active ? activeEntry : undefined} dimmed={dimmed} />
               ) : homeLink}
             </li>
           );
@@ -153,12 +165,14 @@ function SidebarItem({ module, current }: { module: ModuleDefinition; current?: 
       to={module.home}
       aria-current={current}
       className={cn(
-        "flex h-8 items-center gap-2.5 rounded-tile px-2.5 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
-        active ? "bg-nav-active font-strong text-nav-active-fg shadow-panel" : "font-mid text-shell-fg hover:bg-hover",
-        !isEnabled(module, access) && !active && "opacity-70",
+        "flex h-9.5 items-center gap-2.5 rounded-xl px-3 text-sm outline-none transition-all duration-150 focus-visible:ring-2 focus-visible:ring-focus",
+        active
+          ? "pv-nav-pill-active font-strong"
+          : "font-mid text-shell-fg/82 hover:bg-hover/80 hover:text-shell-fg",
+        !isEnabled(module, access) && !active && "opacity-60",
       )}
     >
-      <Icon className={cn("size-4 shrink-0", active ? "text-nav-active-fg" : "text-icon")} aria-hidden />
+      <Icon className={cn("size-[1.0625rem] shrink-0 transition-colors", active ? "text-white" : "text-icon")} aria-hidden />
       <span className="min-w-0 flex-1 truncate">{t(module.titleKey)}</span>
       <Badge module={module} />
     </Link>
@@ -188,20 +202,22 @@ function SidebarGroupItem({
     <div className="grid gap-0.5">
       <div
         className={cn(
-          "flex h-8 items-center rounded-tile transition-colors",
-          parentHighlighted ? "bg-nav-active text-nav-active-fg shadow-panel" : "text-shell-fg hover:bg-hover",
-          !isEnabled(module, access) && !active && "opacity-70",
+          "flex h-9.5 items-center rounded-xl transition-all duration-150",
+          parentHighlighted
+            ? "pv-nav-pill-active"
+            : "text-shell-fg/82 hover:bg-hover/80 hover:text-shell-fg",
+          !isEnabled(module, access) && !active && "opacity-60",
         )}
       >
         <Link
           to={module.home}
           aria-current={parentHighlighted ? "page" : undefined}
           className={cn(
-            "flex min-w-0 flex-1 items-center gap-2.5 ps-2.5 pe-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-focus",
-            parentHighlighted ? "font-strong text-nav-active-fg" : "font-mid text-shell-fg",
+            "flex min-w-0 flex-1 items-center gap-2.5 ps-3 pe-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-focus",
+            parentHighlighted ? "font-strong text-white" : "font-mid text-inherit",
           )}
         >
-          <Icon className={cn("size-4 shrink-0", parentHighlighted ? "text-nav-active-fg" : "text-icon")} aria-hidden />
+          <Icon className={cn("size-[1.0625rem] shrink-0 transition-colors", parentHighlighted ? "text-white" : "text-icon")} aria-hidden />
           <span className="min-w-0 flex-1 truncate">{t(module.titleKey)}</span>
           <Badge module={module} />
         </Link>
@@ -211,15 +227,15 @@ function SidebarGroupItem({
           aria-expanded={expanded}
           aria-label={t("nav.toggleSubmenu", { name: t(module.titleKey) })}
           className={cn(
-            "grid size-7 shrink-0 place-items-center rounded-tile outline-none focus-visible:ring-2 focus-visible:ring-focus",
-            parentHighlighted ? "text-nav-active-fg/80 hover:text-nav-active-fg" : "text-shell-fg-muted hover:text-shell-fg",
+            "me-1 grid size-7 shrink-0 place-items-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
+            parentHighlighted ? "text-white/80 hover:text-white" : "text-shell-fg-muted hover:text-shell-fg",
           )}
         >
           <ChevronDown className={cn("size-3.5 transition-transform duration-150", !expanded && "-rotate-90")} aria-hidden />
         </button>
       </div>
       {expanded ? (
-        <ul className="ms-4 mt-0.5 grid gap-0.5 border-s border-shell-line ps-2.5">
+        <ul className="ms-4.5 mt-0.5 grid gap-0.5 border-s border-shell-line/70 ps-2.5">
           {entries.map((entry) => {
             const selected = active && activeEntry?.to === entry.to;
             return (
@@ -228,8 +244,10 @@ function SidebarGroupItem({
                   to={entry.to}
                   aria-current={selected ? "page" : undefined}
                   className={cn(
-                    "flex h-7 items-center rounded-control px-2.5 text-[0.8125rem] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
-                    selected ? "bg-nav-active font-strong text-nav-active-fg shadow-panel" : "text-shell-fg-muted hover:bg-hover hover:text-shell-fg",
+                    "flex h-8 items-center rounded-lg px-2.5 text-[0.8125rem] outline-none transition-all duration-150 focus-visible:ring-2 focus-visible:ring-focus",
+                    selected
+                      ? "pv-nav-pill-active font-strong"
+                      : "text-shell-fg-muted hover:bg-hover/75 hover:text-shell-fg",
                   )}
                 >
                   <span className="min-w-0 flex-1 truncate">{t(entry.titleKey)}</span>
@@ -243,6 +261,12 @@ function SidebarGroupItem({
   );
 }
 
+const SIDEBAR_GROUP_LABELS: Partial<Record<NonNullable<ModuleDefinition["group"]>, "nav.media" | "nav.space" | "nav.manage">> = {
+  media: "nav.media",
+  space: "nav.space",
+  manage: "nav.manage",
+};
+
 export function Sidebar({ onCollapse, side = "left" }: { onCollapse?: () => void; side?: "left" | "right" }) {
   const { t } = useTranslation();
   const modules = useVisibleModules();
@@ -253,7 +277,8 @@ export function Sidebar({ onCollapse, side = "left" }: { onCollapse?: () => void
   const groups: ModuleDefinition[][] = [];
   for (const module of modules) {
     const previous = groups.at(-1);
-    if (previous && previous[0]?.group === module.group) previous.push(module);
+    const key = module.group ?? "main";
+    if (previous && (previous[0]?.group ?? "main") === key) previous.push(module);
     else groups.push([module]);
   }
 
@@ -261,7 +286,7 @@ export function Sidebar({ onCollapse, side = "left" }: { onCollapse?: () => void
   const toggleGroup = (moduleId: string) => setToggled((prev) => ({ ...prev, [moduleId]: !isExpanded(moduleId) }));
 
   const renderModule = (module: ModuleDefinition) => {
-    const entries = (module.nav ?? []).filter((entry) => isVisible(entry, access));
+    const entries = (module.nav ?? []).filter((entry) => isEnabled(entry, access));
     if (entries.length >= 2) {
       return (
         <SidebarGroupItem
@@ -285,7 +310,7 @@ export function Sidebar({ onCollapse, side = "left" }: { onCollapse?: () => void
     <aside
       data-sidebar-side={side}
       className={cn(
-        "flex h-full w-(--pv-sidebar-w) shrink-0 flex-col border-shell-line bg-shell text-shell-fg",
+        "pv-glass-shell flex h-full w-(--pv-sidebar-w) shrink-0 flex-col text-shell-fg",
         side === "right" ? "border-s" : "border-e",
       )}
     >
@@ -296,33 +321,43 @@ export function Sidebar({ onCollapse, side = "left" }: { onCollapse?: () => void
             type="button"
             onClick={onCollapse}
             aria-label={t("a11y.toggleSidebar")}
-            className="grid size-7 place-items-center rounded-tile text-shell-fg-muted outline-none hover:bg-hover hover:text-shell-fg focus-visible:ring-2 focus-visible:ring-focus"
+            className="grid size-8 place-items-center rounded-control text-shell-fg-muted outline-none transition-colors hover:bg-hover hover:text-shell-fg focus-visible:ring-2 focus-visible:ring-focus"
           >
             <CollapseIcon className="size-4" aria-hidden />
           </button>
         ) : null}
       </div>
-      <nav aria-label={t("a11y.navigation")} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-2.5 pb-4">
-        {groups.map((group) => (
-          <div key={group[0]!.id} className="grid gap-4">
-            <div className="grid gap-0.5">
-              {group[0]!.group === "manage" && <p className="px-2.5 pb-1 text-xs font-mid text-shell-fg-muted">{t("nav.manage")}</p>}
-              {group.map(renderModule)}
+      <nav aria-label={t("a11y.navigation")} className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 pt-1 pb-5">
+        {groups.map((group) => {
+          const groupKind = group[0]?.group;
+          const labelKey = groupKind ? SIDEBAR_GROUP_LABELS[groupKind] : undefined;
+          return (
+            <div key={group[0]!.id} className="grid gap-4">
+              <div className="grid gap-0.5">
+                {labelKey ? (
+                  <p className="px-2.5 pb-1.5 text-[0.6875rem] font-strong tracking-[0.04em] text-shell-fg-muted/80 uppercase">
+                    {t(labelKey)}
+                  </p>
+                ) : null}
+                {group.map(renderModule)}
+              </div>
+              {group.map((module) => {
+                if (!module.sidebar || !isEnabled(module, access)) return null;
+                const Section = module.sidebar.component;
+                return (
+                  <div key={module.id} className="grid gap-0.5">
+                    <p className="px-2.5 pb-1.5 text-[0.6875rem] font-strong tracking-[0.04em] text-shell-fg-muted/80 uppercase">
+                      {t(module.sidebar.titleKey)}
+                    </p>
+                    <Suspense><Section /></Suspense>
+                  </div>
+                );
+              })}
             </div>
-            {group.map((module) => {
-              if (!module.sidebar || !isEnabled(module, access)) return null;
-              const Section = module.sidebar.component;
-              return (
-                <div key={module.id} className="grid gap-0.5">
-                  <p className="px-2.5 pb-1 text-xs font-mid text-shell-fg-muted">{t(module.sidebar.titleKey)}</p>
-                  <Suspense><Section /></Suspense>
-                </div>
-              );
-            })}
-          </div>
-        ))}
+          );
+        })}
       </nav>
-      <div className="border-t border-shell-line p-2.5">
+      <div className="border-t border-shell-line/70 p-3">
         <UserMenu layout="row" />
       </div>
     </aside>

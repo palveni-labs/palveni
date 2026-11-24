@@ -1,7 +1,7 @@
 import { Button, Dropdown, Label, Spinner, toast, ToggleButton, ToggleButtonGroup, buttonVariants } from "@heroui/react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { ArrowUp, CheckSquare, ChevronRight, Ellipsis, Film, Folder, FolderOpen, LayoutGrid, Library as LibraryIcon, List, Music, RotateCw, ScanSearch, SearchX, X } from "lucide-react";
+import { ArrowUp, CheckSquare, ChevronRight, Ellipsis, Film, Folder, FolderOpen, LayoutGrid, Library as LibraryIcon, List, Music, RotateCw, ScanSearch, SearchX, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
@@ -12,8 +12,9 @@ import type { Item, Library } from "@/api/types";
 import { errorText } from "@/lib/errors";
 import { formatPercent } from "@/lib/format";
 import { readLocal, writeLocal } from "@/lib/storage";
-import { useSlot } from "@/skins/scope";
 import { useFeature } from "@/modules/access";
+import { shell } from "@/shell/shell-store";
+import { useSlot } from "@/skins/scope";
 import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { Section } from "@/ui/section";
@@ -138,12 +139,15 @@ function ScanControl({ library, size = "sm" }: { library: Library; size?: "sm" |
   );
 }
 
+/** Count, "select loaded", hand-off and cancel for the files picked in selection mode. */
 function SelectionBar({
+  library,
   picked,
   loaded,
   onSelectLoaded,
   onDone,
 }: {
+  library: Library;
   picked: ReadonlySet<string>;
   loaded: number;
   onSelectLoaded: () => void;
@@ -151,6 +155,7 @@ function SelectionBar({
 }) {
   const { t } = useTranslation();
   const navPhone = useSlot("navPhone");
+  const assistantEnabled = useFeature("assistant");
   return (
     <div
       className={cn(
@@ -169,6 +174,19 @@ function SelectionBar({
         <Button variant="ghost" size="sm" isDisabled={loaded === 0 || picked.size === loaded} onPress={onSelectLoaded}>
           {t("browse.selectLoaded")}
         </Button>
+        <Button
+          variant="primary"
+          size="sm"
+          isDisabled={picked.size === 0 || !assistantEnabled}
+          onPress={() => {
+            shell.openAssistant({ label: t("browse.handoffLabel", { count: picked.size, library: library.name }), itemIds: [...picked] });
+            onDone();
+          }}
+        >
+          <Sparkles aria-hidden />
+          {t("browse.handToAssistant")}
+        </Button>
+        {!assistantEnabled ? <span className="text-xs text-fg-muted">{t("browse.assistantUnavailable")}</span> : null}
         <Button variant="ghost" size="sm" isIconOnly onPress={onDone} aria-label={t("browse.cancelSelect")}>
           <X aria-hidden />
         </Button>
@@ -340,6 +358,7 @@ function BrowseBody({ library, parentId, keepFileView }: { library: Library; par
 
       {picking ? (
         <SelectionBar
+          library={library}
           picked={picking}
           loaded={items.length}
           onSelectLoaded={() => setPicking(new Set(items.map((item) => item.id)))}

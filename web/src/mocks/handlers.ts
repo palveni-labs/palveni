@@ -1,12 +1,36 @@
+/**
+ * MSW handlers implementing every M0 endpoint on top of MockDb.
+ * Used by the dev-only browser worker (`npm run dev:mock`) and by the test suite.
+ */
 import { delay, http, HttpResponse } from "msw";
 import type {
-  ApiErrorDetails, ApiErrorCode, CreateLibraryRequest, UpdateLibraryRequest, Credentials, LoginRequest, RuntimeSettings, User } from "@/api/types";
+  ApiErrorDetails,
+  ApiErrorCode,
+  ChangePasswordRequest,
+  CreateBackupRequest,
+  CreateLibraryRequest,
+  CreateUserRequest,
+  ExternalImportRequest,
+  ExternalImportSource,
+  UpdateLibraryRequest,
+  UpdateUserRequest,
+  Credentials,
+  LoginRequest,
+  RuntimeSettings,
+  User,
+} from "@/api/types";
 import { ITEM_KIND_ICON, LIBRARY_KINDS } from "@/lib/kinds";
+import { stableUuid } from "./fixtures";
 import type { MockDb } from "./db";
+import { OFFICIAL_PLUGIN_CATALOG } from "./plugins-catalog";
 import { createMusicHandlers } from "./music/handlers";
+import { createNotificationsAndVirtualTvHandlers } from "./notifications-and-virtual-tv";
 import { createPhotosHandlers } from "./photos/handlers";
 import { createReadingHandlers } from "./reading/handlers";
+import { createSharesCollectionsSearchHandlers } from "./shares-collections-search/handlers";
+import { createSyncCastMqttHandlers } from "./sync-cast-mqtt";
 import { createVideoHandlers } from "./video/handlers";
+import { createWebdavMetadataObservabilityHandlers } from "./webdav-metadata-observability";
 
 const BASE = "/api/v1";
 const ITEM_KINDS = Object.keys(ITEM_KIND_ICON);
@@ -54,6 +78,19 @@ function decodeCursor(cursor: string): number | null {
 
 export function createHandlers(db: MockDb, options: HandlerOptions = {}) {
   const musicClientUsers = new Map<string, boolean>();
+  const clientApiKeys = new Map<
+    string,
+    Array<{
+      id: string;
+      name: string;
+      clientKind: "jellyfin" | "webdav" | "general";
+      keyPrefix: string;
+      lastUsedAt: string | null;
+      revokedAt: string | null;
+      createdAt: string;
+    }>
+  >();
+  let apiKeySeq = 1;
   const latency = options.latency ?? 0;
   const wait = () => (latency > 0 ? delay(latency + Math.round(Math.random() * latency)) : Promise.resolve());
 
@@ -136,7 +173,8 @@ export function createHandlers(db: MockDb, options: HandlerOptions = {}) {
       }
       const user = db.findUserByCredentials(body.username, body.password);
       if (!user) return fail(401, "invalid_credentials", "Invalid username or password");
-      return HttpResponse.json({ accessToken: db.issueToken(user), tokenType: "Bearer", expiresAt: null, user });
+      const deviceName = typeof body.deviceName === "string" && body.deviceName.trim() ? body.deviceName.trim() : "Browser";
+      return HttpResponse.json({ accessToken: db.issueToken(user, deviceName), tokenType: "Bearer", expiresAt: null, user });
     }),
 
     http.post(`${BASE}/auth/logout`, async ({ request }) => {
@@ -170,12 +208,405 @@ export function createHandlers(db: MockDb, options: HandlerOptions = {}) {
       return HttpResponse.json(auth.user);
     }),
 
+    /* ------------------------------------------------------------ users, sessions & maintenance */
+    http.get(`${BASE}/users`, async ({ request }) => {
+      await wait();
+      const auth = authenticate(request, true);
+      if ("response" in auth) return auth.response;
+      return HttpResponse.json({ users: db.managedUsers() });
+    }),
+
+    http.post(`${BASE}/users`, async ({ request }) => {
+      await wait();
+      const auth = authenticate(request, true);
+      if ("response" in auth) return auth.response;
+      const body = await readJson<CreateUserRequest>(request);
+      const username = typeof body?.username === "string" ? body.username.trim() : "";
+      const password = typeof body?.password === "string" ? body.password : "";
+      const role = body?.role === "admin" ? "admin" : "user";
+      if (!username || [...username].length > 64 || /\s/.test(username)) {
+        return fail(400, "validation_failed", "Invalid username", { field: "username" });
+      }
+      if ([...password].length < 8) {
+        return fail(400, "validation_failed", "Password must be at least 8 characters", { field: "password" });
+      }
+      if (db.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
+        return fail(409, "conflict", "That username is already taken", { field: "username" });
+      }
+      const created = db.addUser(
+        username,
+        password,
+        role,
+        db.iso(),
+        body?.policy ?? {
+          allLibraries: true,
+          allowDownload: true,
+          allowTranscode: true,
+          dailyAiLimit: 100,
+        },
+        Array.isArray(body?.allowedLibraryIds) ? body.allowedLibraryIds : [],
+      );
+      const stored = db.users.find((u) => u.id === created.id)!;
+      db.recordAudit("user.created", auth.user, stored.username, { role: stored.role, allLibraries: stored.policy.allLibraries });
+      return HttpResponse.json(db.toManagedUser(stored), { status: 201 });
+    }),
+
+    http.patch(`${BASE}/users/:id`, async ({ request, params }) => {
+      await wait();
+      const auth = authenticate(request, true);
+      if ("response" in auth) return auth.response;
+      const target = db.users.find((u) => u.id === String(params.id));
+      if (!target) return fail(404, "not_found", "User not found");
+      const body = await readJson<UpdateUserRequest>(request);
+      if (!body) return fail(400, "validation_failed", "Invalid request body");
+
+      const nextRole = body.role ?? target.role;
+      const nextDisabled = body.disabled ?? target.disabled;
+      if (target.role === "admin" && !target.disabled && (nextRole !== "admin" || nextDisabled)) {
+        const otherEnabledAdmins = db.users.filter((u) => u.id !== target.id && u.role === "admin" && !u.disabled).length;
+        if (otherEnabledAdmins === 0) {
+          return fail(409, "conflict", "Cannot disable or demote the last enabled administrator");
+        }
+      }
+      if (typeof body.password === "string") {
+        if ([...body.password].length < 8) {
+          return fail(400, "validation_failed", "Password must be at least 8 characters", { field: "password" });
+        }
+        target.password = body.password;
+        db.revokeSessionsForUser(target.id, target.id === auth.user.id ? auth.token : undefined);
+      }
+      target.role = nextRole;
+      target.disabled = nextDisabled;
+      if (nextDisabled) {
+        db.revokeSessionsForUser(target.id);
+      }
+      if (body.policy) {
+        target.policy = {
+          allLibraries: body.policy.allLibraries ?? target.policy.allLibraries,
+          allowDownload: body.policy.allowDownload ?? target.policy.allowDownload,
+          allowTranscode: body.policy.allowTranscode ?? target.policy.allowTranscode,
+          dailyAiLimit: body.policy.dailyAiLimit ?? target.policy.dailyAiLimit,
+        };
+      }
+      if (Array.isArray(body.allowedLibraryIds)) {
+        target.allowedLibraryIds = [...body.allowedLibraryIds];
+      }
+      target.updatedAt = db.iso();
+      db.recordAudit("user.updated", auth.user, target.username, { role: target.role, disabled: target.disabled });
+      return HttpResponse.json(db.toManagedUser(target));
+    }),
+
+    http.delete(`${BASE}/users/:id`, async ({ request, params }) => {
+      await wait();
+      const auth = authenticate(request, true);
+      if ("response" in auth) return auth.response;
+      const targetId = String(params.id);
+      if (targetId === auth.user.id) {
+        return fail(409, "conflict", "Cannot delete your currently signed-in administrator account");
+      }
+      const target = db.users.find((u) => u.id === targetId);
+      if (!target) return fail(404, "not_found", "User not found");
+      if (target.role === "admin" && !target.disabled) {
+        const otherEnabledAdmins = db.users.filter((u) => u.id !== target.id && u.role === "admin" && !u.disabled).length;
+        if (otherEnabledAdmins === 0) {
+          return fail(409, "conflict", "Cannot delete the last enabled administrator");
+        }
+      }
+      db.revokeSessionsForUser(target.id);
+      db.users = db.users.filter((u) => u.id !== targetId);
+      db.recordAudit("user.deleted", auth.user, target.username, { userId: target.id });
+      return new HttpResponse(null, { status: 204 });
+    }),
+
+    http.put(`${BASE}/me/password`, async ({ request }) => {
+      await wait();
+      const auth = authenticate(request);
+      if ("response" in auth) return auth.response;
+      const body = await readJson<ChangePasswordRequest>(request);
+      const currentPassword = typeof body?.currentPassword === "string" ? body.currentPassword : "";
+      const newPassword = typeof body?.newPassword === "string" ? body.newPassword : "";
+      if ([...newPassword].length < 8) {
+        return fail(400, "validation_failed", "Password must be at least 8 characters", { field: "newPassword" });
+      }
+      const stored = db.users.find((u) => u.id === auth.user.id);
+      if (!stored || stored.password !== currentPassword) {
+        return fail(401, "invalid_credentials", "Invalid username or password", { field: "currentPassword" });
+      }
+      stored.password = newPassword;
+      stored.updatedAt = db.iso();
+      if (body?.revokeOtherSessions !== false) {
+        db.revokeSessionsForUser(stored.id, auth.token);
+      }
+      db.recordAudit("auth.password_changed", auth.user, auth.user.username, null);
+      return new HttpResponse(null, { status: 204 });
+    }),
+
+    http.get(`${BASE}/me/sessions`, async ({ request }) => {
+      await wait();
+      const auth = authenticate(request);
+      if ("response" in auth) return auth.response;
+      return HttpResponse.json({ sessions: db.listSessionsForUser(auth.user.id, auth.token) });
+    }),
+
+    http.delete(`${BASE}/me/sessions/:id`, async ({ request, params }) => {
+      await wait();
+      const auth = authenticate(request);
+      if ("response" in auth) return auth.response;
+      if (!db.revokeUserSession(auth.user.id, String(params.id))) {
+        return fail(404, "not_found", "Session not found");
+      }
+      db.recordAudit("auth.session_revoked", auth.user, String(params.id), null);
+      return new HttpResponse(null, { status: 204 });
+    }),
+
+    http.get(`${BASE}/system/audit`, async ({ request }) => {
+      await wait();
+      const auth = authenticate(request, true);
+      if ("response" in auth) return auth.response;
+      const url = new URL(request.url);
+      const prefix = url.searchParams.get("action")?.trim() ?? "";
+      const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit") ?? 50) || 50));
+      const cursor = url.searchParams.get("cursor");
+      let filtered = prefix ? db.auditLogs.filter((e) => e.action.startsWith(prefix)) : db.auditLogs;
+      if (cursor) {
+        const idx = filtered.findIndex((e) => e.id === cursor);
+        if (idx >= 0) filtered = filtered.slice(idx + 1);
+      }
+      const entries = filtered.slice(0, limit);
+      const nextCursor = filtered.length > limit ? entries[entries.length - 1]?.id ?? null : null;
+      return HttpResponse.json({ entries, nextCursor });
+    }),
+
+    http.get(`${BASE}/system/backups`, async ({ request }) => {
+      await wait();
+      const auth = authenticate(request, true);
+      if ("response" in auth) return auth.response;
+      return HttpResponse.json({ backups: db.backups.map((b) => b.summary) });
+    }),
+
+    http.post(`${BASE}/system/backups`, async ({ request }) => {
+      await wait();
+      const auth = authenticate(request, true);
+      if ("response" in auth) return auth.response;
+      const body = await readJson<CreateBackupRequest>(request);
+      const id = stableUuid(`backup:${db.now()}:${db.backups.length}:${Math.random()}`);
+      const name = typeof body?.name === "string" && body.name.trim() ? body.name.trim() : `Snapshot ${db.iso()}`;
+      const snapshotData = {
+        formatVersion: 1,
+        serverVersion: db.version,
+        createdAt: db.iso(),
+        libraries: structuredClone(db.libraries),
+        runtimeSettings: structuredClone(db.runtimeSettings),
+      };
+      const payloadJson = JSON.stringify(snapshotData, null, 2);
+      const sha256 = stableUuid(`sha:${payloadJson}`).replace(/-/g, "").padEnd(64, "a");
+      const summary = {
+        id,
+        name,
+        creatorId: auth.user.id,
+        creatorUsername: auth.user.username,
+        sizeBytes: payloadJson.length,
+        sha256,
+        counts: {
+          libraries: db.libraries.length,
+          settings: 1,
+          playlists: 0,
+          itemStates: 0,
+          photoAlbums: 0,
+          bookmarks: 0,
+          homeDevices: 0,
+          homeScenes: 0,
+          homeRules: 0,
+          memories: 0,
+        },
+        createdAt: db.iso(),
+      };
+      db.backups.unshift({
+        summary,
+        payloadJson,
+        snapshot: {
+          libraries: structuredClone(db.libraries),
+          runtimeSettings: structuredClone(db.runtimeSettings),
+        },
+      });
+      db.recordAudit("system.backup_created", auth.user, id, { name });
+      return HttpResponse.json(summary, { status: 201 });
+    }),
+
+    http.get(`${BASE}/system/backups/:id/download`, async ({ request, params }) => {
+      await wait();
+      const auth = authenticate(request, true);
+      if ("response" in auth) return auth.response;
+      const found = db.backups.find((b) => b.summary.id === String(params.id));
+      if (!found) return fail(404, "not_found", "Backup not found");
+      return new HttpResponse(found.payloadJson, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Disposition": `attachment; filename="palveni-backup-${found.summary.id}.json"`,
+        },
+      });
+    }),
+
+    http.post(`${BASE}/system/backups/:id/restore`, async ({ request, params }) => {
+      await wait();
+      const auth = authenticate(request, true);
+      if ("response" in auth) return auth.response;
+      const found = db.backups.find((b) => b.summary.id === String(params.id));
+      if (!found) return fail(404, "not_found", "Backup not found");
+      db.libraries = structuredClone(found.snapshot.libraries);
+      db.runtimeSettings = structuredClone(found.snapshot.runtimeSettings);
+      db.recordAudit("system.backup_restored", auth.user, found.summary.id, { librariesRestored: db.libraries.length });
+      return HttpResponse.json({
+        backupId: found.summary.id,
+        sha256Verified: true,
+        librariesRestored: db.libraries.length,
+        settingsRestored: 1,
+        playlistsRestored: 0,
+        itemStatesRestored: 0,
+        photoAlbumsRestored: 0,
+        bookmarksRestored: 0,
+        homeEntitiesRestored: 0,
+        memoriesRestored: 0,
+      });
+    }),
+
+    http.delete(`${BASE}/system/backups/:id`, async ({ request, params }) => {
+      await wait();
+      const auth = authenticate(request, true);
+      if ("response" in auth) return auth.response;
+      const targetId = String(params.id);
+      const before = db.backups.length;
+      db.backups = db.backups.filter((b) => b.summary.id !== targetId);
+      if (db.backups.length === before) return fail(404, "not_found", "Backup not found");
+      db.recordAudit("system.backup_deleted", auth.user, targetId, null);
+      return new HttpResponse(null, { status: 204 });
+    }),
+
+    http.post(`${BASE}/system/import`, async ({ request }) => {
+      await wait();
+      const auth = authenticate(request);
+      if ("response" in auth) return auth.response;
+      const body = await readJson<ExternalImportRequest>(request);
+      const content = typeof body?.content === "string" ? body.content.trim() : "";
+      if (!content) return fail(400, "validation_failed", "Import content must not be empty");
+      const dryRun = body?.dryRun !== false;
+      const allLeaves = db.allLeafItems();
+
+      let detectedSource: ExternalImportSource = body?.source && body.source !== "auto" ? body.source : "jellyfin";
+      const candidates: Array<{ title: string; path?: string; favorite: boolean; history: boolean; isPlaylist: boolean }> = [];
+
+      if (!content.startsWith("{") && !content.startsWith("[")) {
+        detectedSource = "m3u";
+        for (const line of content.split(/\r?\n/)) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith("#")) continue;
+          candidates.push({ title: trimmed, path: trimmed, favorite: false, history: false, isPlaylist: true });
+        }
+      } else {
+        const pickStr = (rec: Record<string, unknown>, keys: string[], fallback: string): string => {
+          for (const key of keys) {
+            const val = rec[key];
+            if (typeof val === "string" && val.trim()) return val.trim();
+          }
+          return fallback;
+        };
+        try {
+          const parsed = JSON.parse(content) as Record<string, unknown>;
+          if ("starred" in parsed || "subsonic-response" in parsed) {
+            detectedSource = "navidrome";
+            const arr = Array.isArray(parsed.starred) ? parsed.starred : [];
+            for (const row of arr) {
+              if (typeof row === "object" && row !== null) {
+                const rec = row as Record<string, unknown>;
+                candidates.push({
+                  title: pickStr(rec, ["title", "path"], "Track"),
+                  path: typeof rec.path === "string" ? rec.path : undefined,
+                  favorite: true,
+                  history: Number(rec.playCount ?? 0) > 0,
+                  isPlaylist: false,
+                });
+              }
+            }
+          } else {
+            const arr = Array.isArray(parsed) ? parsed : Array.isArray(parsed.Items) ? parsed.Items : [];
+            for (const row of arr) {
+              if (typeof row === "object" && row !== null) {
+                const rec = row as Record<string, unknown>;
+                const ud = (typeof rec.UserData === "object" && rec.UserData !== null ? rec.UserData : rec) as Record<string, unknown>;
+                candidates.push({
+                  title: pickStr(rec, ["Name", "Title", "Path"], "Item"),
+                  path: typeof rec.Path === "string" ? rec.Path : undefined,
+                  favorite: Boolean(ud.IsFavorite),
+                  history: Boolean(ud.Played) || Number(ud.PlayCount ?? 0) > 0 || Number(ud.PlaybackPositionTicks ?? 0) > 0,
+                  isPlaylist: false,
+                });
+              }
+            }
+          }
+        } catch {
+          return fail(400, "validation_failed", "Invalid JSON or M3U import content");
+        }
+      }
+
+      let matchedItems = 0;
+      let unmatchedEntries = 0;
+      let favoritesImported = 0;
+      let historyImported = 0;
+      let playlistTracksImported = 0;
+      const samples = candidates.slice(0, 25).map((entry) => {
+        const normPath = entry.path?.replace(/\\/g, "/").toLowerCase();
+        const fileTail = normPath?.split("/").pop();
+        const hit = allLeaves.find(
+          (item) =>
+            (fileTail && item.path?.toLowerCase().endsWith(fileTail)) ||
+            item.title.toLowerCase() === entry.title.toLowerCase(),
+        );
+        if (hit) {
+          matchedItems++;
+          if (entry.favorite) favoritesImported++;
+          if (entry.history) historyImported++;
+          if (entry.isPlaylist) playlistTracksImported++;
+          return {
+            title: entry.title,
+            matched: true,
+            matchedTitle: hit.title,
+            kind: entry.isPlaylist ? "playlist_track" : entry.favorite ? "favorite" : "history",
+          };
+        }
+        unmatchedEntries++;
+        return {
+          title: entry.title,
+          matched: false,
+          matchedTitle: null,
+          kind: entry.isPlaylist ? "playlist_track" : "history",
+        };
+      });
+
+      if (!dryRun) {
+        db.recordAudit("system.imported", auth.user, detectedSource, { matchedItems });
+      }
+
+      return HttpResponse.json({
+        detectedSource,
+        dryRun,
+        totalEntries: candidates.length,
+        matchedItems,
+        unmatchedEntries,
+        favoritesImported,
+        historyImported,
+        playlistsImported: playlistTracksImported > 0 ? 1 : 0,
+        playlistTracksImported,
+        samples,
+      });
+    }),
+
     /* ------------------------------------------------------------ libraries */
     http.get(`${BASE}/libraries`, async ({ request }) => {
       await wait();
       const auth = authenticate(request);
       if ("response" in auth) return auth.response;
-      return HttpResponse.json({ libraries: db.libraries });
+      return HttpResponse.json({ libraries: db.visibleLibraries(auth.user) });
     }),
 
     http.post(`${BASE}/libraries`, async ({ request }) => {
@@ -208,7 +639,10 @@ export function createHandlers(db: MockDb, options: HandlerOptions = {}) {
       const auth = authenticate(request);
       if ("response" in auth) return auth.response;
       const library = db.getLibrary(String(params.id));
-      return library ? HttpResponse.json(library) : fail(404, "not_found", "Library not found");
+      if (!library || !db.canAccessLibrary(auth.user, library.id)) {
+        return fail(404, "not_found", "Library not found");
+      }
+      return HttpResponse.json(library);
     }),
 
     http.patch(`${BASE}/libraries/:id`, async ({ request, params }) => {
@@ -330,6 +764,202 @@ export function createHandlers(db: MockDb, options: HandlerOptions = {}) {
       return HttpResponse.json({ plugins: db.plugins });
     }),
 
+    /* ------------------------------------------------------------ client api keys */
+    http.get(`${BASE}/me/api-keys`, async ({ request }) => {
+      await wait();
+      const auth = authenticate(request);
+      if ("response" in auth) return auth.response;
+      if (!db.features.includes("jellyfin")) return fail(404, "not_found", "Feature not enabled");
+      return HttpResponse.json({ keys: clientApiKeys.get(auth.user.id) ?? [] });
+    }),
+
+    http.post(`${BASE}/me/api-keys`, async ({ request }) => {
+      await wait();
+      const auth = authenticate(request);
+      if ("response" in auth) return auth.response;
+      if (!db.features.includes("jellyfin")) return fail(404, "not_found", "Feature not enabled");
+      const body = await readJson<{ name?: string; clientKind?: "jellyfin" | "webdav" | "general" }>(request);
+      const name = typeof body?.name === "string" ? body.name.trim() : "";
+      if (!name || [...name].length > 128) {
+        return fail(400, "validation_failed", "Invalid API key name", { field: "name" });
+      }
+      const clientKind = body?.clientKind && ["jellyfin", "webdav", "general"].includes(body.clientKind)
+        ? body.clientKind
+        : "jellyfin";
+      const seq = apiKeySeq++;
+      const id = stableUuid(`api-key-${auth.user.id}-${seq}`);
+      const token = `pvk_${seq.toString(16).padStart(8, "0")}aabbccddeeff00112233445566778899`;
+      const key = {
+        id,
+        name,
+        clientKind,
+        keyPrefix: token.slice(0, 12),
+        lastUsedAt: null,
+        revokedAt: null,
+        createdAt: new Date(db.now()).toISOString(),
+      };
+      const existing = clientApiKeys.get(auth.user.id) ?? [];
+      clientApiKeys.set(auth.user.id, [key, ...existing]);
+      return HttpResponse.json({ key, token }, { status: 201 });
+    }),
+
+    http.delete(`${BASE}/me/api-keys/:id`, async ({ request, params }) => {
+      await wait();
+      const auth = authenticate(request);
+      if ("response" in auth) return auth.response;
+      if (!db.features.includes("jellyfin")) return fail(404, "not_found", "Feature not enabled");
+      const targetId = String(params.id);
+      const existing = clientApiKeys.get(auth.user.id) ?? [];
+      const next = existing.filter((k) => k.id !== targetId);
+      if (next.length === existing.length) {
+        return fail(404, "not_found", "API key not found");
+      }
+      clientApiKeys.set(auth.user.id, next);
+      return new HttpResponse(null, { status: 204 });
+    }),
+
+    http.get(`${BASE}/plugins/catalog`, async ({ request }) => {
+      await wait();
+      const auth = authenticate(request, true);
+      if ("response" in auth) return auth.response;
+      const installedMap = new Map(db.plugins.map((plugin) => [plugin.id, plugin]));
+      const plugins = OFFICIAL_PLUGIN_CATALOG.map((entry) => {
+        const current = installedMap.get(entry.id);
+        return {
+          ...entry,
+          installed: Boolean(current),
+          installedVersion: current?.version ?? null,
+        };
+      });
+      return HttpResponse.json({ plugins });
+    }),
+
+    http.post(`${BASE}/plugins/install`, async ({ request }) => {
+      await wait();
+      const auth = authenticate(request, true);
+      if ("response" in auth) return auth.response;
+      const body = (await request.json().catch(() => null)) as {
+        pluginId?: string;
+        grantedPermissions?: string[];
+        settings?: Record<string, unknown>;
+      } | null;
+      const pluginId = body?.pluginId?.trim() ?? "";
+      const blueprint = OFFICIAL_PLUGIN_CATALOG.find((item) => item.id === pluginId);
+      if (!blueprint) {
+        return fail(404, "not_found", `Plugin ${pluginId} not found in catalog`);
+      }
+      const granted = new Set((body?.grantedPermissions ?? []).map((p) => p.trim()));
+      const missing = blueprint.permissions.filter((p) => !granted.has(p));
+      if (missing.length > 0) {
+        return fail(400, "validation_failed", `Missing required permissions: ${missing.join(", ")}`, {
+          field: "grantedPermissions",
+        });
+      }
+      const mergedSettings: Record<string, unknown> = {
+        ...blueprint.defaultSettings,
+        ...(body?.settings ?? {}),
+      };
+      const props = blueprint.settingsSchema.properties ?? {};
+      for (const [key, val] of Object.entries(mergedSettings)) {
+        const spec = props[key];
+        if (!spec) {
+          return fail(400, "validation_failed", `Unknown setting ${key}`, { field: "settings" });
+        }
+        if (spec.enum && !spec.enum.includes(val as string)) {
+          return fail(400, "validation_failed", `Invalid value for ${key}`, { field: "settings" });
+        }
+      }
+      const nowIso = new Date(db.now()).toISOString();
+      const existingIdx = db.plugins.findIndex((p) => p.id === blueprint.id);
+      const prevPlugin = existingIdx >= 0 ? db.plugins[existingIdx] : undefined;
+      const previousVersion =
+        prevPlugin && prevPlugin.version !== blueprint.version
+          ? prevPlugin.version
+          : (prevPlugin?.previousVersion ?? blueprint.previousVersion);
+      const record = {
+        id: blueprint.id,
+        name: blueprint.name,
+        version: blueprint.version,
+        runtime: blueprint.runtime,
+        enabled: true,
+        provides: [...blueprint.provides],
+        previousVersion,
+        permissions: [...blueprint.permissions],
+        grantedPermissions: [...blueprint.permissions],
+        settingsSchema: blueprint.settingsSchema,
+        settings: mergedSettings,
+        source: blueprint.source,
+        riskLevel: blueprint.riskLevel,
+        description: blueprint.description,
+        managed: true,
+        installedAt: prevPlugin?.installedAt ?? nowIso,
+        updatedAt: nowIso,
+      };
+      if (existingIdx >= 0) db.plugins[existingIdx] = record;
+      else db.plugins.push(record);
+      return HttpResponse.json(record, { status: 201 });
+    }),
+
+    http.patch(`${BASE}/plugins/:id`, async ({ request, params }) => {
+      await wait();
+      const auth = authenticate(request, true);
+      if ("response" in auth) return auth.response;
+      const id = String(params.id);
+      const idx = db.plugins.findIndex((p) => p.id === id);
+      if (idx < 0) return fail(404, "not_found", "Installed plugin not found");
+      const body = (await request.json().catch(() => null)) as {
+        enabled?: boolean;
+        settings?: Record<string, unknown>;
+      } | null;
+      if (!body || (body.enabled === undefined && body.settings === undefined)) {
+        return fail(400, "validation_failed", "Provide enabled or settings");
+      }
+      const current = db.plugins[idx]!;
+      const nextSettings = body.settings
+        ? { ...(current.settings ?? {}), ...body.settings }
+        : current.settings;
+      const updated = {
+        ...current,
+        enabled: body.enabled ?? current.enabled,
+        settings: nextSettings,
+        updatedAt: new Date(db.now()).toISOString(),
+      };
+      db.plugins[idx] = updated;
+      return HttpResponse.json(updated);
+    }),
+
+    http.post(`${BASE}/plugins/:id/rollback`, async ({ request, params }) => {
+      await wait();
+      const auth = authenticate(request, true);
+      if ("response" in auth) return auth.response;
+      const id = String(params.id);
+      const idx = db.plugins.findIndex((p) => p.id === id);
+      if (idx < 0) return fail(404, "not_found", "Installed plugin not found");
+      const current = db.plugins[idx]!;
+      if (!current.previousVersion) {
+        return fail(400, "validation_failed", "No previous version is available to roll back");
+      }
+      const rolled = {
+        ...current,
+        version: current.previousVersion,
+        previousVersion: null,
+        updatedAt: new Date(db.now()).toISOString(),
+      };
+      db.plugins[idx] = rolled;
+      return HttpResponse.json(rolled);
+    }),
+
+    http.delete(`${BASE}/plugins/:id`, async ({ request, params }) => {
+      await wait();
+      const auth = authenticate(request, true);
+      if ("response" in auth) return auth.response;
+      const id = String(params.id);
+      const idx = db.plugins.findIndex((p) => p.id === id);
+      if (idx < 0) return fail(404, "not_found", "Installed plugin not found");
+      db.plugins.splice(idx, 1);
+      return new HttpResponse(null, { status: 204 });
+    }),
+
     /* ------------------------------------------------------------ events */
     http.get(`${BASE}/events`, ({ request }) => {
       const auth = authenticate(request);
@@ -352,6 +982,10 @@ export function createHandlers(db: MockDb, options: HandlerOptions = {}) {
           const unsubscribe = db.subscribe((event, data) => {
             // Job events go to administrators only.
             if (event === "job.updated" && user.role !== "admin") return;
+            // Provisional events only flow when the matching feature is reported.
+            if (event.startsWith("task.") && !db.features.includes("tasks")) return;
+            if (event.startsWith("assistant.") && !db.features.includes("assistant")) return;
+            if (event.startsWith("home.") && !db.features.includes("home")) return;
             send(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
           });
           const ping = setInterval(() => send("event: ping\ndata: {}\n\n"), 20_000);
@@ -378,9 +1012,13 @@ export function createHandlers(db: MockDb, options: HandlerOptions = {}) {
         headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
       });
     }),
-    ...(db.features.includes("reading") ? createReadingHandlers(db, options) : []),
-    ...(db.features.includes("photos") ? createPhotosHandlers(db, options) : []),
-    ...(db.features.includes("music") ? createMusicHandlers(db, options) : []),
-    ...(db.features.includes("video") ? createVideoHandlers(db, options) : []),
+    ...createPhotosHandlers(db, options),
+    ...createReadingHandlers(db, options),
+    ...createMusicHandlers(db, options),
+    ...createVideoHandlers(db, options),
+    ...createSharesCollectionsSearchHandlers(db, options),
+    ...createNotificationsAndVirtualTvHandlers(db, options),
+    ...createWebdavMetadataObservabilityHandlers(db, options),
+    ...createSyncCastMqttHandlers(db, options),
   ];
 }

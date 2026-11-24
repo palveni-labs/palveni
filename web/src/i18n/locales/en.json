@@ -55,16 +55,23 @@
     "lockedItem": "Core item cannot be hidden",
     "toggleSubmenu": "Toggle {{name}} submenu",
     "allLibraries": "All libraries",
+    "collections": "Collections",
+    "shares": "Share links",
     "overview": "Overview",
     "libraries": "Libraries",
     "admin": "Administration",
     "manageLibraries": "Manage libraries",
+    "users": "Users",
+    "maintenance": "Maintenance",
     "hardware": "Hardware & transcoding",
     "plugins": "Plugins",
     "jobs": "Jobs",
     "more": "More",
     "settings": "Settings",
+    "notifications": "Notifications & automation",
     "themes": "Themes",
+    "media": "Media",
+    "space": "Space",
     "manage": "Manage",
     "appearance": "Appearance"
   },
@@ -205,6 +212,11 @@
     "hide": "Hide",
     "moveEarlier": "Move up",
     "moveLater": "Move down",
+    "pluginWidgets": {
+      "librariesCount": "{{count}} libraries",
+      "dailyPick": "Daily pick",
+      "manage": "Manage"
+    },
     "aside": "At home right now",
     "summary": {
       "attention_one": "{{count}} thing needs you",
@@ -338,7 +350,11 @@
     "selected_other": "{{count}} selected",
     "selectLoaded": "Select loaded",
     "downloadBook": "Download original",
+    "handToAssistant": "Hand to assistant",
+    "assistantUnavailable": "The assistant isn't enabled",
+    "handoffLabel_other": "{{count}} files from “{{library}}”",
     "selected_one": "{{count}} selected",
+    "handoffLabel_one": "{{count}} file from “{{library}}”",
     "files": "Files",
     "up": "Up one level",
     "hiddenFolders": "Folders in between",
@@ -350,9 +366,10 @@
     "backToLibraries": "Back to libraries",
     "loadingMore": "Loading more…",
     "loadMoreFailed": "Couldn't load more files: {{error}}",
-    "selectHint": "Choose files",
+    "selectHint": "Pick files, then hand them to the assistant",
     "selectionTools": "Actions for the selected files",
     "cancelSelect": "Cancel selection",
+    "handoffOne": "“{{title}}” in “{{library}}”",
     "works": "Titles"
   },
   "connections": {
@@ -522,6 +539,11 @@
       "available": "Available",
       "installed": "Installed"
     },
+    "tabs": {
+      "label": "Plugin views",
+      "installed": "Installed",
+      "store": "Recipe Store"
+    },
     "contribute": "Submit a plugin on GitHub",
     "manageSkin": "Manage in Appearance",
     "noMatches": "No matching plugins",
@@ -531,6 +553,7 @@
     "runtimes": {
       "none": "Resource package",
       "recipe": "Recipe",
+      "widget": "Overview widget",
       "wasm": "WASM component",
       "sidecar": "Sidecar service"
     },
@@ -538,14 +561,61 @@
     "summary_other": "{{count}} plugins, {{enabled}} enabled",
     "installedTitle": "Installed plugins",
     "version": "Version {{version}}",
-    "emptyDetail": "Install a plugin from the catalogue or upload a skin package.",
+    "emptyDetail": "Install a recipe plugin from the store or manage skin packages in Appearance.",
     "toAppearance": "Go to Appearance",
     "provides": "Extension points",
     "isolation": {
       "none": "No executable code",
       "recipe": "no executable code",
+      "widget": "declarative controlled widget",
       "wasm": "runs in a sandbox",
       "sidecar": "not sandboxed; runs because you trust it"
+    },
+    "risk": {
+      "label": "Risk level",
+      "low": "Low risk",
+      "medium": "Medium risk",
+      "high": "High risk"
+    },
+    "store": {
+      "title": "Official Recipe & Widget Store",
+      "install": "Install",
+      "installed": "Installed",
+      "installedVersion": "Installed v{{version}}",
+      "permissionsCount": "{{count}} permissions",
+      "noPermissions": "No permissions required",
+      "browseStore": "Browse Recipe Store"
+    },
+    "review": {
+      "title": "Permission & Risk Review: {{name}}",
+      "riskHeading": "Security Risk Level",
+      "permissionsHeading": "Grant each requested permission before installing",
+      "zeroPermissions": "This plugin runs locally with zero permissions and neither contacts external networks nor writes to your library.",
+      "grantRequired": "All requested permissions must be checked to confirm installation.",
+      "confirm": "Grant & Install",
+      "installing": "Installing…",
+      "cancel": "Cancel"
+    },
+    "actions": {
+      "toggle": "Toggle {{name}}",
+      "settings": "Settings",
+      "rollback": "Rollback",
+      "rollbackTo": "Roll back to {{version}}",
+      "uninstall": "Uninstall"
+    },
+    "settings": {
+      "title": "Plugin Settings: {{name}}",
+      "empty": "This plugin has no configurable settings.",
+      "save": "Save settings",
+      "saving": "Saving…",
+      "cancel": "Cancel"
+    },
+    "toast": {
+      "installed": "Installed plugin “{{name}}”",
+      "updated": "Saved settings for “{{name}}”",
+      "toggled": "Updated state for “{{name}}”",
+      "rolledBack": "Rolled back “{{name}}” to version {{version}}",
+      "uninstalled": "Uninstalled plugin “{{name}}”"
     },
     "points": {
       "storage": "Storage",
@@ -621,11 +691,17 @@
     "overview": {
       "title": "Overview"
     },
+    "assistant": {
+      "title": "Assistant"
+    },
     "library": {
       "title": "Library"
     },
     "tasks": {
       "title": "Tasks"
+    },
+    "home": {
+      "title": "Home"
     },
     "apps": {
       "title": "Apps"
@@ -647,6 +723,8 @@
     "title": "Search and commands",
     "placeholder": "Search or run a command",
     "empty": "No matches",
+    "assistant": "Assistant",
+    "ask": "Ask the assistant: {{query}}",
     "actions": "Actions",
     "goTo": "Go to"
   },
@@ -662,6 +740,7 @@
     "alerts_other": "Problems · {{count}}"
   },
   "commands": {
+    "askAssistant": "Open the assistant",
     "changeTheme": "Change appearance",
     "movieScene": "Start movie mode",
     "scanAll": "Scan all libraries",
@@ -669,48 +748,240 @@
     "scanAllStarted_one": "Started scanning {{count}} library"
   },
   "widgets": {
+    "suggestions": "Suggestions",
+    "noSuggestions": "Nothing to suggest right now",
     "libraries": "Libraries",
     "activeTasks": "In progress",
     "noTasks": "Nothing running",
+    "homeQuick": "Home",
     "attention": "Needs you",
     "openInbox": "Open inbox",
     "allTasks": "All tasks",
     "manageLibraries": "Manage libraries",
+    "recent": "Recently added",
+    "viewInLibrary": "View in Library",
     "server": "Server",
     "openSystem": "System",
-    "noTasksDetail": "Scan progress appears here when a library is scanned.",
+    "openHome": "Open Home",
+    "noTasksDetail": "Scans, downloads, transcodes and assistant work show up here once they start",
     "recentlyFinished": "Recently finished"
   },
+  "assistant": {
+    "title": "Assistant",
+    "subtitle": "Let me organise, find and arrange things; I ask before changing anything",
+    "greeting": "What can I do for you today?",
+    "placeholder": "Tell the assistant what you'd like…",
+    "send": "Send",
+    "clearContext": "Remove context",
+    "onPage": "On page: {{page}}",
+    "openFull": "Open full view",
+    "newConversation": "New chat",
+    "showResult": "Show result",
+    "reviewChanges": "Review changes",
+    "toBackground": "Run in background",
+    "backgrounded": "Moved to the background; follow it in Tasks",
+    "runningAsTask": "Running as a task",
+    "openTask": "Open task",
+    "canvasEmpty": "Results appear here: lists, charts, change previews and anything that needs your approval.",
+    "canvasFor": "Result for",
+    "views": {
+      "chat": "Chat",
+      "canvas": "Result"
+    },
+    "runStates": {
+      "running": "Working",
+      "awaiting_approval": "Waiting for you",
+      "succeeded": "Done",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "askAbout": "Ask the assistant",
+    "waitingTitle": "Waiting for you",
+    "waitingDetail": "Nothing has been changed yet. Every change is listed in the result; untick anything you want left alone.",
+    "stepStates": {
+      "done": "Done",
+      "running": "In progress",
+      "failed": "Failed"
+    },
+    "staysInTasks": "You can leave — the request stays in Tasks",
+    "resultEmptyTitle": "No result yet",
+    "working": "Working on it…",
+    "sendHint": "to send, Shift + Enter for a new line",
+    "settings": {
+      "open": "Model & memory",
+      "title": "Model & memory",
+      "providerSection": "Model provider",
+      "preset": "Provider preset",
+      "baseUrl": "Endpoint (Base URL)",
+      "model": "Model name",
+      "apiKey": "API key",
+      "apiKeyPlaceholder": "Paste provider API key",
+      "apiKeySavedPlaceholder": "Encrypted & saved; leave blank to keep",
+      "saveProvider": "Save provider",
+      "saved": "Model configuration updated",
+      "adminOnlyNote": "Signed in as a member; model provider settings are managed by administrators.",
+      "memorySection": "Memories",
+      "memoryPlaceholder": "Add a preference, e.g. Prefer 4K remux with Chinese subtitles…",
+      "addMemory": "Add",
+      "memoryEmpty": "No saved memories yet.",
+      "deleteMemory": "Delete memory",
+      "memoryAdded": "Memory saved",
+      "redactCloudPaths": "Cloud path redaction",
+      "redactCloudPathsHint": "Strip host directory prefixes before sending tool outputs to cloud LLMs",
+      "mcpSection": "MCP External Access (Claude / Cursor / OpenClaw)",
+      "mcpEndpoint": "Endpoint",
+      "mcpProtocol": "Protocol",
+      "mcpToolsCount_one": "{{count}} controlled tool exposed",
+      "mcpToolsCount_other": "{{count}} controlled tools exposed",
+      "mcpClientClaude": "Claude Desktop",
+      "mcpClientCursor": "Cursor",
+      "mcpClientOpenclaw": "OpenClaw",
+      "mcpCopy": "Copy JSON config",
+      "mcpCopied": "MCP client config copied"
+    }
+  },
+  "blocks": {
+    "more_other": "{{count}} more",
+    "selectAll": "Select all",
+    "selectedCount": "{{selected}} of {{total}} selected",
+    "approval": {
+      "confirm": "Confirm",
+      "edit": "Adjust",
+      "cancel": "Cancel",
+      "approved": "Approved",
+      "cancelled": "Cancelled",
+      "count": " ({{count}})"
+    },
+    "chartOther": "Other",
+    "submit": "Submit",
+    "secretConfigured": "Configured; leave empty to keep",
+    "device": {
+      "on": "On",
+      "off": "Off",
+      "offline": "Offline",
+      "lightOn": "{{brightness}}% brightness",
+      "power": "{{watts}} W",
+      "climate": "{{mode}} · {{current}}°C now",
+      "climateOff": "Off · {{current}}°C now",
+      "modes": {
+        "cool": "Cooling",
+        "heat": "Heating",
+        "auto": "Auto",
+        "dry": "Dry",
+        "fan": "Fan"
+      },
+      "media": {
+        "playing": "Playing",
+        "paused": "Paused",
+        "idle": "Idle",
+        "off": "Off"
+      },
+      "readings": {
+        "temperature": "Temperature",
+        "humidity": "Humidity",
+        "contact": "Contact",
+        "motion": "Motion",
+        "pm25": "PM2.5",
+        "contactValue": {
+          "yes": "Open",
+          "no": "Closed"
+        },
+        "motionValue": {
+          "yes": "Detected",
+          "no": "Clear"
+        },
+        "temperatureValue": {
+          "yes": "Yes",
+          "no": "No"
+        },
+        "humidityValue": {
+          "yes": "Yes",
+          "no": "No"
+        },
+        "pm25Value": {
+          "yes": "Yes",
+          "no": "No"
+        }
+      },
+      "toggle": "Toggle {{name}}",
+      "play": "Play",
+      "pause": "Pause",
+      "brightness": "Brightness",
+      "cooler": "Cooler",
+      "warmer": "Warmer",
+      "brightnessOf": "{{name}} brightness",
+      "sensor": "Sensor",
+      "target": "Target",
+      "playbackOf": "Playback of “{{name}}”"
+    },
+    "more_one": "{{count}} more",
+    "filter": "Filter changes",
+    "filterAll": "All",
+    "selected": "Selected",
+    "notSelected": "Not selected",
+    "columns": {
+      "item": "Item",
+      "change": "Change",
+      "reason": "Reason",
+      "size": "Size"
+    },
+    "showRest_one": "Show {{count}} more ({{size}})",
+    "showRest_other": "Show {{count}} more ({{size}})",
+    "chart": "Chart",
+    "chartTotal": "Total",
+    "tableEmpty": "No data",
+    "progress": {
+      "unknown": "In progress",
+      "succeeded": "Done",
+      "failed": "Failed"
+    }
+  },
   "tasks": {
+    "nav": {
+      "queue": "Task queue",
+      "downloads": "Downloads & RSS",
+      "organizer": "Media organizer"
+    },
     "empty": "No tasks yet",
     "emptyFiltered": "No tasks match",
     "allKinds": "All types",
     "filters": {
       "all": "All",
       "active": "Running",
+      "awaiting": "Waiting for you",
       "done": "Done",
       "failed": "Failed"
     },
     "states": {
       "queued": "Queued",
       "running": "Running",
+      "awaiting_approval": "Waiting for you",
       "succeeded": "Done",
       "failed": "Failed",
       "cancelled": "Cancelled"
     },
     "kinds": {
-      "libraryScan": "Scan"
+      "libraryScan": "Scan",
+      "download": "Download",
+      "transcode": "Transcode",
+      "ai": "AI job",
+      "assistantRun": "Assistant",
+      "automation": "Automation"
     },
     "created": "Started",
     "duration": "Duration",
     "id": "Task ID",
+    "steps": "Steps",
+    "result": "Result",
+    "cancel": "Cancel task",
+    "approved": "Approved; the task continues",
     "remainingSeconds": "Almost done",
     "remainingMinutes_one": "About {{count}} minute left",
     "remainingMinutes_other": "About {{count}} minutes left",
     "inProgress": "In progress",
     "totalUnknown": "Total unknown",
     "realtime": "real-time",
-    "emptyDetail": "Jobs appear here when a library is scanned.",
+    "emptyDetail": "Library scans, downloads, transcodes and the assistant's background work all show up here.",
     "emptyFilteredDetail": "Try another state or type.",
     "clearFilters": "Clear filters",
     "filterLabel": "Filter by state",
@@ -718,8 +989,10 @@
     "loading": "Loading tasks",
     "adminOnly": "Only administrators can see background tasks",
     "adminOnlyDetail": "Ask the administrator of this server if you need to follow a task.",
-    "m0Note": "Library scan jobs appear here.",
+    "m0Note": "This server only reports library scans for now. Downloads, transcodes, AI jobs and changes that need your confirmation will appear here once the server supports them.",
     "summary": {
+      "awaiting_one": "{{count}} waiting for you",
+      "awaiting_other": "{{count}} waiting for you",
       "active_one": "{{count}} running",
       "active_other": "{{count}} running",
       "idle": "nothing running",
@@ -728,11 +1001,13 @@
       "separator": ", "
     },
     "groups": {
+      "awaiting": "Waiting for you",
       "active": "Running",
       "finished": "Finished"
     },
     "took": "took {{duration}}",
     "elapsed": "Running for",
+    "origin": "Started by",
     "detail": "Task details",
     "notFound": "This task could not be found",
     "notFoundDetail": "It may have been cleaned up, or the link is incomplete.",
@@ -740,6 +1015,15 @@
     "progressOf": "Progress of “{{title}}”",
     "cancelled": "Task cancelled",
     "failedTitle": "Did not finish",
+    "waitingStep": "Nothing changes until you confirm",
+    "stepStates": {
+      "pending": "Not started",
+      "running": "In progress",
+      "done": "Done",
+      "failed": "Failed",
+      "skipped": "Skipped",
+      "waiting": "Waiting for you"
+    },
     "recovery": {
       "transcode": "Check that hardware acceleration is available under System › Hardware & transcoding. The next playback will transcode again.",
       "libraryScan": "Make sure the library's folders are still reachable, then scan again under System › Libraries.",
@@ -749,11 +1033,124 @@
       "openLibraries": "Open library settings"
     }
   },
+  "home": {
+    "summary": "{{rooms}} rooms · {{devices}} devices · {{on}} on",
+    "scenes": "Scenes",
+    "sceneActive": "Active",
+    "sceneTap": "Tap to start",
+    "sceneActivated": "“{{name}}” is on",
+    "allRooms": "All rooms",
+    "rules": "Playback automations",
+    "lastRun": "Ran {{time}}",
+    "empty": "No devices connected",
+    "climateDetail": "{{mode}} · room {{current}}°C",
+    "noScene": "No scene in use",
+    "sceneInUse": "In use",
+    "switchScene": "Switch scene",
+    "summaryOffline_one": "{{count}} offline",
+    "summaryOffline_other": "{{count}} offline",
+    "roomFilter": "Filter by room",
+    "loading": "Loading home",
+    "emptyDetail": "Once a smart-home system is connected, its rooms, devices and scenes appear here.",
+    "neverRun": "Has not run yet",
+    "ruleOff": "Turned off",
+    "ruleToggle": "Turn on “{{trigger}}”",
+    "rulesEmpty": "No playback automations yet",
+    "rulesEmptyDetail": "Automations can adjust lights and devices when playback starts, pauses or reaches the credits.",
+    "manage": {
+      "open": "Bridges & manage",
+      "title": "Bridges & manage",
+      "bridgesSection": "Home Assistant bridge",
+      "bridgeName": "Name",
+      "bridgeUrl": "Instance URL",
+      "bridgeToken": "Long-lived access token",
+      "saveBridge": "Connect & save",
+      "syncBridge": "Sync entities",
+      "deleteBridge": "Remove bridge",
+      "bridgesEmpty": "No Home Assistant bridge connected yet.",
+      "bridgeSaved": "Saved bridge “{{name}}”",
+      "bridgeSynced": "Synced {{devices}} devices and {{scenes}} scenes",
+      "deviceSection": "Add local device",
+      "deviceRoom": "Room",
+      "deviceName": "Device name",
+      "deviceKind": "Type",
+      "addDevice": "Add device",
+      "deviceAdded": "Added device “{{name}}”",
+      "kinds": {
+        "light": "Light",
+        "switch": "Switch / plug",
+        "climate": "Climate",
+        "sensor": "Sensor",
+        "media_player": "Media player"
+      },
+      "ruleSection": "Add playback automation",
+      "ruleEvent": "When",
+      "ruleTrigger": "Trigger label",
+      "ruleAction": "Action label",
+      "ruleScene": "Linked scene",
+      "noSceneBind": "Description only",
+      "addRule": "Add rule",
+      "ruleAdded": "Added playback automation rule",
+      "events": {
+        "videoPlay": "Video playback starts",
+        "videoPause": "Video playback pauses",
+        "musicPlay": "Music playback starts",
+        "nightPlay": "Playback starts after 23:30"
+      },
+      "mqttSection": "MQTT bridge & ambient light",
+      "mqttEmpty": "No MQTT broker configured yet. Connect Zigbee2MQTT, Tasmota or ESPHome to publish playback telemetry and sync cover-color ambient lights.",
+      "mqttName": "Bridge name",
+      "mqttHost": "Broker host",
+      "mqttPort": "Port",
+      "mqttTopicPrefix": "Topic prefix",
+      "mqttUsername": "Username (optional)",
+      "mqttPassword": "Password (optional)",
+      "mqttAmbientLight": "Bound ambient light",
+      "mqttNoAmbientLight": "No ambient light",
+      "mqttPublishPlayback": "Publish live playback state",
+      "mqttSave": "Save MQTT bridge",
+      "mqttSaved": "Saved MQTT bridge “{{name}}”",
+      "mqttTest": "Test publish",
+      "mqttTestOk": "Published test message to {{topic}}",
+      "mqttTestFailed": "Failed publishing to {{topic}}: {{error}}",
+      "mqttDelete": "Remove MQTT bridge",
+      "mqttDeleted": "Removed MQTT bridge",
+      "mqttAmbientBadge": "Ambient: {{name}}",
+      "mqttLastPublished": "Last published {{time}}"
+    }
+  },
   "opdsReaders": {
     "password": "Reader password",
     "title": "OPDS readers",
     "show": "Show reader credentials",
     "session": "These credentials expire when you sign out of this session."
+  },
+  "apiKeys": {
+    "title": "Jellyfin & Client API Keys",
+    "jellyfinUrl": "Jellyfin-compatible server URL",
+    "jellyfinHint": "Enter this URL in Infuse, VidHub, SenPlayer, or any Jellyfin client. Sign in with your account password or authenticate with a personal API key below.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "nameLabel": "Key name",
+    "namePlaceholder": "e.g. Living Room Apple TV / Infuse",
+    "kindLabel": "Client type",
+    "kinds": {
+      "jellyfin": "Jellyfin client",
+      "webdav": "WebDAV",
+      "general": "General"
+    },
+    "create": "Create key",
+    "createdNotice": "Save this key now. The full secret is shown only once.",
+    "createdTokenLabel": "New API key",
+    "dismiss": "Done",
+    "activeKeys": "Active keys",
+    "empty": "No client API keys yet",
+    "prefix": "Prefix",
+    "lastUsed": "Last used",
+    "neverUsed": "Never used",
+    "revoke": "Revoke",
+    "revoked": "API key revoked",
+    "nameRequired": "Enter a key name"
   },
   "musicClients": {
     "grantPersonal": "Allow players to manage my favorites, playlists, ratings and listening history",
@@ -820,6 +1217,13 @@
     "emptyDetail": "Changes waiting for your confirmation and anything that went wrong show up here",
     "details": "Details"
   },
+  "storage": {
+    "mountOffline": "“{{name}}” is offline",
+    "mountOfflineDetail_one": "Scanning is paused for {{count}} library that uses it; its items stay as they are",
+    "mountOfflineDetail_other": "Scanning is paused for the {{count}} libraries that use it; their items stay as they are",
+    "offline": "Offline",
+    "reconnect": "Reconnect"
+  },
   "units": {
     "video": "videos",
     "music": "tracks",
@@ -828,6 +1232,16 @@
     "comic": "volumes",
     "audiobook": "chapters",
     "podcast": "episodes"
+  },
+  "works": {
+    "movie": "Film",
+    "series": "Series",
+    "album": "Album",
+    "book": "Book",
+    "photo": "Photo"
+  },
+  "recent": {
+    "empty": "Nothing new has been added lately"
   },
   "server": {
     "cpu": "CPU",
@@ -927,11 +1341,11 @@
     },
     "preview": {
       "section": "Tasks",
-      "waitingTitle": "Some library folders are unavailable",
+      "waitingTitle": "Remove 21 duplicate photos",
       "runningKind": "Scan",
       "runningSubject": "Family photos",
-      "runningDetail": "312 entries indexed",
-      "runningLeft": "Indexing"
+      "runningDetail": "312 new photos found",
+      "runningLeft": "About 6 min left"
     },
     "applied": "Switched to {{name}}"
   },
@@ -1009,5 +1423,516 @@
     "loadError": "Could not read the shared directory",
     "up": "Parent directory",
     "chooseFolder": "Open a subdirectory"
+  },
+  "accountSecurity": {
+    "title": "Account security",
+    "password": "Password",
+    "passwordHint": "Update your password and optionally sign out other active devices",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "revokeOtherSessions": "Sign out all other active devices",
+    "passwordChanged": "Password updated",
+    "currentPasswordRequired": "Enter your current password",
+    "sessions": "Active device sessions",
+    "sessionsEmpty": "No active sessions",
+    "currentSession": "Current session",
+    "lastActive": "Last active ",
+    "created": "Signed in ",
+    "revokeSession": "Sign out device",
+    "sessionRevoked": "Device session signed out"
+  },
+  "adminUsers": {
+    "summary": "{{total}} accounts · {{sessions}} active sessions",
+    "create": "Add member",
+    "edit": "Edit permissions",
+    "editTitle": "Edit {{name}}",
+    "resetPassword": "Reset password",
+    "resetPasswordTitle": "Reset password for {{name}}",
+    "resetDone": "Password reset for {{name}}",
+    "created": "Created account {{name}}",
+    "saved": "Updated {{name}}",
+    "deleted": "Deleted account {{name}}",
+    "you": "You",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "disableAccount": "Disable account (revokes all sessions immediately)",
+    "allLibraries": "Allow access to all libraries",
+    "restrictedLibraries": "{{count}} allowed libraries",
+    "allowedLibrariesLabel": "Allowed libraries",
+    "noLibrariesSelected": "No libraries selected",
+    "allowDownload": "Allow file downloads",
+    "allowTranscode": "Allow live transcoding",
+    "dailyAiLimit": "Daily AI request limit",
+    "aiQuota": "AI {{limit}}/day",
+    "activeSessions": "{{count}} active",
+    "deleteTitle": "Delete account {{name}}?",
+    "deleteDescription": "This permanently removes the member's playback state, playlists and sessions. Media files on disk are never touched."
+  },
+  "maintenance": {
+    "summary": "Portable snapshot backups, external history import and security audit log",
+    "backups": {
+      "title": "Portable database snapshots",
+      "namePlaceholder": "Optional label (e.g. Before upgrade)",
+      "create": "Create snapshot",
+      "created": "Created snapshot {{name}}",
+      "empty": "No snapshot backups yet",
+      "emptyDetail": "Package libraries, runtime settings, playlists, playback progress, albums, bookmarks and smart-home config into a SHA-256-verified JSON snapshot.",
+      "download": "Download JSON",
+      "restore": "Restore",
+      "confirmRestore": "Confirm restore",
+      "restored": "Snapshot verified and restored ({{libraries}} libraries, {{states}} item states)",
+      "deleted": "Snapshot deleted",
+      "counts": "{{libraries}} libs · {{playlists}} playlists · {{states}} states · {{bookmarks}} bookmarks"
+    },
+    "importer": {
+      "title": "Emby / Jellyfin / Navidrome / M3U importer",
+      "source": "Source format",
+      "sources": {
+        "auto": "Auto-detect",
+        "jellyfin": "Jellyfin JSON",
+        "emby": "Emby JSON",
+        "navidrome": "Navidrome / Subsonic JSON",
+        "m3u": "M3U / M3U8 playlist"
+      },
+      "playlistName": "Playlist name (optional)",
+      "uploadFile": "Choose file",
+      "contentLabel": "Import payload",
+      "contentPlaceholder": "Paste Jellyfin/Emby UserData JSON, Navidrome starred JSON or #EXTM3U playlist text…",
+      "preview": "Preview match",
+      "apply": "Import now",
+      "imported": "Imported {{matched}} matched items",
+      "stats": "{{total}} total · {{matched}} matched · {{unmatched}} unmatched · {{favorites}} favorites · {{history}} history · {{tracks}} playlist tracks",
+      "matchedBadge": "Matched",
+      "unmatchedBadge": "Unmatched"
+    },
+    "audit": {
+      "title": "Security audit log",
+      "filterLabel": "Filter by action",
+      "allActions": "All events",
+      "empty": "No matching audit records",
+      "systemActor": "System",
+      "columns": {
+        "time": "Time",
+        "actor": "Actor",
+        "action": "Action",
+        "target": "Target",
+        "detail": "Details"
+      },
+      "loadMore": "Load more"
+    },
+    "doctor": {
+      "title": "System doctor",
+      "refresh": "Re-run check",
+      "status": {
+        "healthy": "Healthy",
+        "degraded": "Degraded",
+        "unhealthy": "Unhealthy"
+      },
+      "checkedAt": "Checked"
+    },
+    "logs": {
+      "title": "Live server logs",
+      "refresh": "Refresh",
+      "levelLabel": "Filter log level",
+      "levels": {
+        "all": "All levels",
+        "info": "INFO",
+        "warn": "WARN",
+        "error": "ERROR"
+      },
+      "sources": {
+        "runtime": "Runtime",
+        "audit": "Audit",
+        "job": "Job"
+      },
+      "empty": "No matching log entries"
+    },
+    "metadataConfig": {
+      "title": "Metadata provider keys",
+      "tmdbKey": "TMDB API Key / Read Access Token",
+      "tmdbPlaceholder": "Enter new TMDB API key (leave blank to keep existing)",
+      "bangumiToken": "Bangumi Access Token (optional)",
+      "bangumiPlaceholder": "Enter new Bangumi token (leave blank to keep existing)",
+      "preferredLanguage": "Preferred language",
+      "autoFetchPosters": "Auto-fetch poster and backdrop URLs",
+      "configured": "Configured",
+      "notConfigured": "Not configured",
+      "clearKey": "Clear",
+      "save": "Save config",
+      "savedToast": "Metadata provider configuration saved"
+    },
+    "endpoints": {
+      "title": "WebDAV & Prometheus endpoints",
+      "webdavLabel": "Read-only WebDAV root (RFC 4918)",
+      "webdavHint": "Authenticate via HTTP Basic Auth using your Palveni account; respects per-library ACLs for Infuse, VidHub, Finder, or rclone.",
+      "prometheusLabel": "Prometheus metrics (0.0.4)",
+      "prometheusHint": "Scrape live runtime metrics (CPU, memory, library items, mounts, active sessions) with an admin Bearer token.",
+      "copy": "Copy URL",
+      "copiedToast": "Endpoint URL copied"
+    }
+  },
+  "metadataModal": {
+    "trigger": "Edit & Scrape",
+    "dialogTitle": "Edit & scrape metadata",
+    "tabScrape": "Online scrape",
+    "tabManual": "Manual edit",
+    "providerLabel": "Provider",
+    "providers": {
+      "tmdb": "TMDB",
+      "bangumi": "Bangumi",
+      "openlibrary": "OpenLibrary"
+    },
+    "mediaTypeLabel": "Media type",
+    "mediaTypes": {
+      "movie": "Movie",
+      "tv": "TV series",
+      "anime": "Anime",
+      "book": "Book"
+    },
+    "queryLabel": "Search query",
+    "queryPlaceholder": "Enter title…",
+    "yearLabel": "Year (optional)",
+    "searchButton": "Search",
+    "searching": "Searching…",
+    "noResults": "No matching candidates found. Try another keyword or provider.",
+    "applyCandidate": "Apply to form",
+    "appliedToast": "Applied {{title}} to form",
+    "fieldTitle": "Title",
+    "fieldOriginalTitle": "Original title",
+    "fieldYear": "Year",
+    "fieldRating": "Rating (0–10)",
+    "fieldGenres": "Genres / tags (comma separated)",
+    "fieldOverview": "Overview",
+    "fieldPosterUrl": "Poster URL (https://)",
+    "fieldBackdropUrl": "Backdrop URL (https://)",
+    "overrideActive": "Custom metadata override active (source: {{provider}})",
+    "save": "Save override",
+    "reset": "Reset override",
+    "savedToast": "Metadata saved and synced to library",
+    "resetToast": "Metadata override removed"
+  },
+  "sharesApp": {
+    "button": "Share",
+    "title": "Share links",
+    "summary": "Manage public and password-protected share links, expirations and GPS privacy",
+    "emptyTitle": "No share links yet",
+    "emptyDetail": "Click Share on a video title, photo album or collection to create a link with optional password and expiry.",
+    "dialogTitle": "Create share link",
+    "shareTitleLabel": "Share title",
+    "passwordLabel": "Access password (leave blank for public link)",
+    "passwordPlaceholder": "Optional password",
+    "expiryLabel": "Expiration",
+    "expiryNever": "Never expires",
+    "expiry24h": "24 hours",
+    "expiry7d": "7 days",
+    "expiry30d": "30 days",
+    "maxViewsLabel": "Maximum views (leave blank for unlimited)",
+    "maxViewsPlaceholder": "Unlimited",
+    "allowDownloadLabel": "Allow original file downloads",
+    "stripGpsLabel": "Strip photo GPS location and raw EXIF",
+    "createSubmit": "Create link",
+    "createdBanner": "Share link ready",
+    "copyLink": "Copy link",
+    "copiedToast": "Share link copied",
+    "openLink": "Open preview",
+    "revoke": "Revoke",
+    "revokedToast": "Share link revoked",
+    "statusActive": "Active",
+    "statusExpired": "Expired",
+    "statusRevoked": "Revoked",
+    "passwordBadge": "Password",
+    "gpsStrippedBadge": "GPS stripped",
+    "downloadAllowedBadge": "Downloadable",
+    "viewsCount": "{{count}} views",
+    "viewsWithMax": "{{count}} / {{max}} views",
+    "expiresAt": "Expires {{time}}",
+    "targetKinds": {
+      "item": "Item",
+      "video_work": "Video work",
+      "music_album": "Music album",
+      "playlist": "Playlist",
+      "photo_album": "Photo album",
+      "collection": "Collection"
+    },
+    "viewer": {
+      "sharedVia": "Shared from Palveni Server",
+      "lockedTitle": "Password required",
+      "lockedDetail": "Enter the password provided by the sender to view this share.",
+      "passwordInput": "Password",
+      "unlockButton": "Unlock",
+      "invalidPassword": "Incorrect password. Try again.",
+      "expiredTitle": "Share link expired or revoked",
+      "expiredDetail": "This link has passed its expiration, reached its view cap or been revoked.",
+      "notFoundTitle": "Share link not found",
+      "notFoundDetail": "Check that the link URL is complete.",
+      "emptyItems": "No viewable items in this share",
+      "download": "Download",
+      "gpsHidden": "Location hidden",
+      "itemCount": "{{count}} items",
+      "closePreview": "Close preview"
+    }
+  },
+  "collectionsApp": {
+    "title": "Collections",
+    "summary": "Group films, soundtracks, novels, comics and photos belonging to the same universe or theme",
+    "createButton": "New collection",
+    "createDialogTitle": "New cross-media collection",
+    "editDialogTitle": "Edit collection",
+    "nameLabel": "Collection title",
+    "namePlaceholder": "e.g. Suzume Universe, Dune Collection",
+    "descLabel": "Description",
+    "descPlaceholder": "Optional notes",
+    "save": "Save",
+    "createdToast": "Collection created",
+    "updatedToast": "Collection updated",
+    "deletedToast": "Collection deleted",
+    "addedToast": "Added to collection",
+    "removedToast": "Removed from collection",
+    "emptyTitle": "No collections yet",
+    "emptyDetail": "Create a collection to bring together films, soundtrack albums, books, comics and photos in one place.",
+    "itemCount": "{{count}} items",
+    "itemsSection": "Collection items",
+    "emptyItemsTitle": "No items in this collection yet",
+    "emptyItemsDetail": "Add discovered works below or search your libraries to add items.",
+    "addWorkButton": "Add item",
+    "searchToAddPlaceholder": "Search films, albums, tracks, books, comics or photos…",
+    "autoRelatedSection": "Auto-discovered related works",
+    "autoRelatedHint": "Matched across film, soundtrack albums, books and comics by normalized title stem",
+    "addToCollection": "Add to collection",
+    "pickCollectionTitle": "Add to collection",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "removeEntry": "Remove",
+    "editCollection": "Edit",
+    "deleteCollection": "Delete collection",
+    "relatedRailTitle": "Across media",
+    "entryKinds": {
+      "video": "Video",
+      "music_album": "Soundtrack / Album",
+      "track": "Track",
+      "book": "Book",
+      "comic": "Comic",
+      "photo": "Photo"
+    }
+  },
+  "globalSearch": {
+    "sectionTitle": "Catalog & smart home",
+    "searching": "Searching…",
+    "kinds": {
+      "video_work": "Video",
+      "music_album": "Album",
+      "track": "Track",
+      "book": "Book",
+      "comic": "Comic",
+      "photo": "Photo",
+      "broadcast": "Broadcast",
+      "collection": "Collection",
+      "home_device": "Device",
+      "home_scene": "Scene"
+    }
+  },
+  "notificationsCenter": {
+    "title": "Notifications & automation",
+    "inboxTitle": "Notification inbox",
+    "markAllRead": "Mark all as read",
+    "markedAllRead": "Marked {{count}} notifications as read",
+    "emptyInbox": "No notifications yet",
+    "unreadTag": "Unread",
+    "status": {
+      "in_app": "In-app",
+      "sent": "Sent",
+      "failed": "Failed",
+      "skipped_quiet": "Quiet hours"
+    },
+    "channelsTitle": "External push channels",
+    "addChannel": "Add push channel",
+    "emptyChannels": "No external push channels configured",
+    "channelName": "Channel name",
+    "channelNamePlaceholder": "e.g. Household Feishu",
+    "channelKind": "Provider",
+    "kinds": {
+      "webhook": "Webhook",
+      "telegram": "Telegram",
+      "bark": "Bark",
+      "ntfy": "ntfy",
+      "wecom": "WeCom",
+      "feishu": "Feishu",
+      "discord": "Discord"
+    },
+    "endpointUrl": "Endpoint or webhook URL",
+    "secretToken": "Secret token (optional)",
+    "botToken": "Bot token",
+    "chatId": "Chat ID",
+    "topic": "Topic",
+    "deviceKey": "Device key (optional)",
+    "eventsLabel": "Subscribed events (comma-separated, * for all)",
+    "quietHours": "Quiet hours",
+    "quietHoursPlaceholder": "23:00-07:00",
+    "quietBadge": "Quiet {{range}}",
+    "testSend": "Test",
+    "testSucceeded": "Test notification delivered",
+    "testFailed": "Test delivery failed: {{reason}}",
+    "toggleChannel": "Enable channel “{{name}}”",
+    "deleteChannel": "Remove channel",
+    "confirmDeleteChannel": "Remove push channel “{{name}}”?",
+    "routinesTitle": "Scheduled routines",
+    "addRoutine": "New routine",
+    "emptyRoutines": "No scheduled routines yet",
+    "routineName": "Routine name",
+    "routineNamePlaceholder": "e.g. Nightly library scan",
+    "scheduleKind": "Trigger",
+    "scheduleKinds": {
+      "hourly": "Hourly",
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "on_event": "On event"
+    },
+    "scheduleExpr": "Schedule or event",
+    "actionKind": "Action",
+    "actionKinds": {
+      "scan_all": "Scan all libraries",
+      "scan_library": "Scan a library",
+      "home_scene": "Activate smart-home scene",
+      "assistant_prompt": "Run assistant prompt"
+    },
+    "targetLibrary": "Target library",
+    "sceneId": "Scene ID",
+    "assistantPrompt": "Assistant prompt",
+    "runNow": "Run now",
+    "ranSucceeded": "Executed: {{detail}}",
+    "lastRun": "Last run: {{time}}",
+    "neverRun": "Never run",
+    "toggleRoutine": "Enable routine “{{name}}”",
+    "deleteRoutine": "Remove routine",
+    "confirmDeleteRoutine": "Remove routine “{{name}}”?",
+    "webhooksTitle": "Inbound media automation webhooks",
+    "addWebhook": "Create inbound token",
+    "emptyWebhooks": "No Sonarr / Radarr / MoviePilot inbound webhooks yet",
+    "webhookName": "Source name",
+    "webhookNamePlaceholder": "e.g. Main Sonarr",
+    "sourceKind": "Source tool",
+    "sources": {
+      "sonarr": "Sonarr",
+      "radarr": "Radarr",
+      "moviepilot": "MoviePilot",
+      "qbittorrent": "qBittorrent",
+      "custom": "Custom JSON"
+    },
+    "boundLibrary": "Scan target",
+    "allMediaLibraries": "All video & audio libraries",
+    "triggerUrlLabel": "One-time trigger URL (copy and save now)",
+    "copyUrl": "Copy URL",
+    "copied": "Copied to clipboard",
+    "lastTriggered": "Last triggered: {{time}}",
+    "neverTriggered": "Never triggered",
+    "deleteWebhook": "Revoke token",
+    "confirmDeleteWebhook": "Revoke and remove inbound webhook “{{name}}”?"
+  },
+  "downloadsApp": {
+    "title": "Downloads & RSS",
+    "summary": "Bridge external downloaders and monitor RSS/Atom media feeds",
+    "configureClient": "Configure client",
+    "addTask": "Add download",
+    "uriPlaceholder": "Paste Magnet link or HTTP(S) torrent URL…",
+    "submitTask": "Send to client",
+    "taskSubmitted": "Sent to {{name}}",
+    "clientsSection": "Downloader clients",
+    "clientsEmpty": "No external downloader clients configured yet (qBittorrent / Transmission / aria2).",
+    "clientName": "Client name",
+    "clientKind": "Client type",
+    "clientUrl": "Base URL",
+    "clientUsername": "Username (optional)",
+    "clientPassword": "Password / RPC secret (optional)",
+    "clientSavePath": "Default save path (optional)",
+    "saveClient": "Save client",
+    "clientSaved": "Saved downloader {{name}}",
+    "deleteClient": "Remove client",
+    "clientDeleted": "Downloader removed",
+    "status": {
+      "online": "Online",
+      "offline": "Offline",
+      "disabled": "Disabled"
+    },
+    "transfersSection": "Live transfer queue",
+    "transfersEmpty": "No active transfers right now.",
+    "transferState": {
+      "downloading": "Downloading",
+      "seeding": "Seeding",
+      "paused": "Paused",
+      "queued": "Queued",
+      "completed": "Completed",
+      "error": "Error"
+    },
+    "subscriptionsSection": "RSS media subscriptions",
+    "subscriptionsEmpty": "No RSS media subscriptions created yet.",
+    "subTitle": "Title keyword",
+    "subTitlePlaceholder": "e.g. Three-Body / Dune",
+    "subKind": "Media kind",
+    "subKinds": {
+      "series": "Series",
+      "movie": "Movie",
+      "music": "Music",
+      "book": "Book"
+    },
+    "subQuality": "Quality rule",
+    "subQualityPlaceholder": "e.g. 2160p HEVC or 4K",
+    "subFeedUrl": "RSS / Atom feed URL",
+    "addSubscription": "Add subscription",
+    "subscriptionAdded": "Added subscription {{title}}",
+    "deleteSubscription": "Delete subscription",
+    "checkNow": "Check feed",
+    "checkedResult": "Scanned {{total}} items, matched {{matched}}",
+    "matchedItems": "Matched feed items",
+    "sentBadge": "Sent"
+  },
+  "organizerApp": {
+    "title": "Media organizer",
+    "summary": "Dry-run naming template preview, safe rename or hardlink, with 1-click undo",
+    "configSection": "Template & options",
+    "library": "Target library",
+    "mode": "Mode",
+    "modes": {
+      "rename": "In-place rename",
+      "hardlink": "Create hardlink"
+    },
+    "preset": "Naming preset",
+    "template": "Naming template",
+    "previewAction": "Preview changes",
+    "previewSection": "Dry-run change preview",
+    "readOnlyBanner": "This library resides on a read-only mount; preview only.",
+    "collisionBanner": "{{count}} path collisions detected and unticked automatically.",
+    "applySelected": "Apply selected ({{count}})",
+    "appliedToast": "Organized {{count}} media files",
+    "batchesSection": "Recent organize batches",
+    "batchesEmpty": "No organize batches recorded yet.",
+    "undoAction": "1-Click Undo",
+    "undoneBadge": "Undone",
+    "undoneToast": "Reverted batch and restored {{count}} original file paths",
+    "batchMeta": "{{mode}} · {{count}} files · template {{template}}"
+  },
+  "cast": {
+    "title": "Devices & cast",
+    "open": "Open active devices and remote playback control",
+    "thisDevice": "This device",
+    "empty": "No active playback devices",
+    "emptyDetail": "Start playback here or in Primuse / Viozi to monitor and control devices in real time.",
+    "idleTrack": "Idle",
+    "refresh": "Refresh devices",
+    "states": {
+      "playing": "Playing",
+      "paused": "Paused",
+      "stopped": "Stopped",
+      "idle": "Idle"
+    },
+    "controls": {
+      "previous": "Previous",
+      "play": "Play",
+      "pause": "Pause",
+      "next": "Next",
+      "volume": "Volume",
+      "commandSent": "Sent command to {{device}}"
+    }
   }
 }

@@ -186,6 +186,7 @@ pub async fn run(cli: &Cli) -> anyhow::Result<()> {
         }),
         shutdown: shutdown.clone(),
     };
+    let background_services = palveni_api::spawn_background_services(state.clone());
     let app = palveni_api::with_http_layers(with_fallback(palveni_api::router(state)));
 
     let addr = config.listen_addr();
@@ -217,6 +218,9 @@ pub async fn run(cli: &Cli) -> anyhow::Result<()> {
     }
 
     shutdown.cancel();
+    if let Err(err) = background_services.await {
+        tracing::warn!(error = %err, "background notification and routine runner stopped unexpectedly");
+    }
     video_shutdown.video.shutdown().await;
     if let Some(listener) = link_listener
         && let Err(err) = listener.await

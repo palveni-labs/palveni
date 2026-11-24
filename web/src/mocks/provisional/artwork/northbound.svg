@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" width="200" height="300" font-family="Figtree, 'Noto Sans SC', sans-serif">
+      <rect width="200" height="300" fill="#4c5722"/>
+      <rect width="200" height="150" fill="#66742f"/>
+      <path d="M0 150 L40 132 L70 142 L104 120 L140 138 L170 128 L200 140 V150 Z" fill="#3a431a"/>
+      <path d="M92 150 L108 150 L176 300 L24 300 Z" fill="#2c3214"/>
+      <path d="M100 160 V170 M100 186 V202 M100 222 V244 M100 266 V296" stroke="#e8d66c" stroke-width="3"/>
+      <text x="100" y="58" font-size="21" font-weight="800" fill="#f2eed2" text-anchor="middle" letter-spacing="2">NORTHBOUND</text>
+      <text x="100" y="78" font-size="9" font-weight="600" fill="#d4d8ae" text-anchor="middle" letter-spacing="4">SEASON 2</text></svg>

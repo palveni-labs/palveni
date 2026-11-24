@@ -1,7 +1,29 @@
-import { request } from "./client";
+import { request, requestBlob } from "./client";
 import type {
+  AuditLogPage,
+  BackupList,
+  BackupRestoreResult,
+  BackupSummary,
+  ChangePasswordRequest,
+  CreateBackupRequest,
   CreateLibraryRequest,
+  CreateUserRequest,
+  ExternalImportRequest,
+  ExternalImportResult,
+  ManagedUser,
+  MetadataConfigResponse,
+  MetadataOverride,
+  MetadataOverrideResponse,
+  MetadataSearchRequest,
+  MetadataSearchResponse,
+  SaveMetadataOverrideRequest,
+  ServerLogList,
+  SystemDoctorReport,
   UpdateLibraryRequest,
+  UpdateMetadataConfigRequest,
+  UpdateUserRequest,
+  UserList,
+  UserSessionList,
   Credentials,
   HardwareReport,
   HealthResponse,
@@ -12,11 +34,15 @@ import type {
   SubsonicPasswordStatus,
   ItemPage,
   JobList,
+  InstallPluginRequest,
   Library,
   LibraryList,
   LoginRequest,
   LoginResponse,
+  Plugin,
+  PluginCatalogResponse,
   PluginList,
+  UpdatePluginRequest,
   ScanResponse,
   ScanReviewList,
   ScanReviewPaths,
@@ -30,6 +56,7 @@ import type {
 
 const enc = encodeURIComponent;
 
+/** One function per M0 endpoint. */
 export const api = {
   subsonicPassword: {
     status: (signal?: AbortSignal) => request<SubsonicPasswordStatus>("/me/subsonic-password", { signal }),
@@ -49,6 +76,56 @@ export const api = {
     login: (body: LoginRequest) => request<LoginResponse>("/auth/login", { method: "POST", body, auth: false }),
     logout: () => request<void>("/auth/logout", { method: "POST" }),
     me: (signal?: AbortSignal) => request<User>("/auth/me", { signal }),
+    changePassword: (body: ChangePasswordRequest) => request<void>("/me/password", { method: "PUT", body }),
+    sessions: (signal?: AbortSignal) => request<UserSessionList>("/me/sessions", { signal }),
+    revokeSession: (id: string) => request<void>(`/me/sessions/${enc(id)}`, { method: "DELETE" }),
+  },
+  users: {
+    list: (signal?: AbortSignal) => request<UserList>("/users", { signal }),
+    create: (body: CreateUserRequest) => request<ManagedUser>("/users", { method: "POST", body }),
+    update: (id: string, body: UpdateUserRequest) => request<ManagedUser>(`/users/${enc(id)}`, { method: "PATCH", body }),
+    remove: (id: string) => request<void>(`/users/${enc(id)}`, { method: "DELETE" }),
+  },
+  maintenance: {
+    audit: (params?: { action?: string; cursor?: string | null; limit?: number }, signal?: AbortSignal) =>
+      request<AuditLogPage>("/system/audit", {
+        signal,
+        query: {
+          action: params?.action || undefined,
+          cursor: params?.cursor ?? undefined,
+          limit: params?.limit,
+        },
+      }),
+    backups: (signal?: AbortSignal) => request<BackupList>("/system/backups", { signal }),
+    createBackup: (body: CreateBackupRequest = {}) => request<BackupSummary>("/system/backups", { method: "POST", body }),
+    downloadBackup: (id: string, signal?: AbortSignal) => requestBlob(`/system/backups/${enc(id)}/download`, { signal }),
+    restoreBackup: (id: string) => request<BackupRestoreResult>(`/system/backups/${enc(id)}/restore`, { method: "POST" }),
+    deleteBackup: (id: string) => request<void>(`/system/backups/${enc(id)}`, { method: "DELETE" }),
+    importExternal: (body: ExternalImportRequest) => request<ExternalImportResult>("/system/import", { method: "POST", body }),
+  },
+  metadata: {
+    config: (signal?: AbortSignal) => request<MetadataConfigResponse>("/metadata/config", { signal }),
+    updateConfig: (body: UpdateMetadataConfigRequest) =>
+      request<MetadataConfigResponse>("/metadata/config", { method: "PUT", body }),
+    search: (body: MetadataSearchRequest) =>
+      request<MetadataSearchResponse>("/metadata/search", { method: "POST", body }),
+    getOverride: (itemId: string, signal?: AbortSignal) =>
+      request<MetadataOverrideResponse>(`/items/${enc(itemId)}/metadata-override`, { signal }),
+    saveOverride: (itemId: string, body: SaveMetadataOverrideRequest) =>
+      request<MetadataOverride>(`/items/${enc(itemId)}/metadata-override`, { method: "PUT", body }),
+    deleteOverride: (itemId: string) =>
+      request<void>(`/items/${enc(itemId)}/metadata-override`, { method: "DELETE" }),
+  },
+  observability: {
+    doctor: (signal?: AbortSignal) => request<SystemDoctorReport>("/system/doctor", { signal }),
+    logs: (params?: { level?: string; limit?: number }, signal?: AbortSignal) =>
+      request<ServerLogList>("/system/logs", {
+        signal,
+        query: {
+          level: params?.level && params.level !== "all" ? params.level : undefined,
+          limit: params?.limit,
+        },
+      }),
   },
   libraries: {
     list: (signal?: AbortSignal) => request<LibraryList>("/libraries", { signal }),
@@ -87,6 +164,12 @@ export const api = {
   },
   plugins: {
     list: (signal?: AbortSignal) => request<PluginList>("/plugins", { signal }),
+    catalog: (signal?: AbortSignal) => request<PluginCatalogResponse>("/plugins/catalog", { signal }),
+    install: (body: InstallPluginRequest) => request<Plugin>("/plugins/install", { method: "POST", body }),
+    update: (id: string, body: UpdatePluginRequest) =>
+      request<Plugin>(`/plugins/${enc(id)}`, { method: "PATCH", body }),
+    rollback: (id: string) => request<Plugin>(`/plugins/${enc(id)}/rollback`, { method: "POST" }),
+    uninstall: (id: string) => request<void>(`/plugins/${enc(id)}`, { method: "DELETE" }),
   },
   skins: {
     installed: (signal?: AbortSignal) => request<{ skins: InstalledSkin[] }>("/skins/installed", { signal }),

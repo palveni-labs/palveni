@@ -42,14 +42,23 @@ pub const ENV_OPS_DATABASE_URL: &str = "PALVENI_TEST_OPS_DATABASE_URL";
 
 /// Every table the migrations create, children before parents so they can
 /// be dropped in this order on backends that enforce foreign keys.
+mod accounts;
 mod broadcast;
 mod connections;
+mod downloads;
+mod home_assistant;
+mod jellyfin;
 mod loudness;
+mod metadata_overrides;
 mod music_catalog;
 mod music_search;
+mod notifications_and_virtual_tv;
 mod photos;
+mod plugins_photo_ai;
 mod reading;
 mod scan_reviews;
+mod shares_collections;
+mod sync_cast;
 mod video;
 
 const PALVENI_TABLES: &[&str] = &[
@@ -59,6 +68,38 @@ const PALVENI_TABLES: &[&str] = &[
     "jobs",
     "palveni_ops_migrations",
     // main store
+    "photo_person_tags",
+    "photo_people",
+    "photo_ai_tags",
+    "plugin_installations",
+    "mqtt_bridges",
+    "playback_sessions",
+    "metadata_overrides",
+    "video_segments",
+    "client_api_keys",
+    "organize_batches",
+    "media_subscriptions",
+    "downloader_clients",
+    "media_collection_items",
+    "media_collections",
+    "share_links",
+    "system_backups",
+    "user_library_access",
+    "user_policies",
+    "notification_deliveries",
+    "notification_channels",
+    "scheduled_routines",
+    "virtual_channels",
+    "inbound_webhooks",
+    "assistant_messages",
+    "assistant_runs",
+    "assistant_conversations",
+    "assistant_memories",
+    "home_rules",
+    "home_scenes",
+    "home_devices",
+    "home_rooms",
+    "home_bridges",
     "sync_state",
     "settings",
     "playlist_entries",

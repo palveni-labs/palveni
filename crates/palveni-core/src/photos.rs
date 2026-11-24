@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::{ItemId, LibraryId, PhotoAlbumId};
+use crate::{ItemId, LibraryId, PhotoAlbumId, PhotoPersonId};
 
 /// Format a clean camera display name from EXIF `Make` and `Model` without repeating the brand.
 pub fn format_camera_name(make: Option<&str>, model: Option<&str>) -> Option<String> {
@@ -201,4 +201,186 @@ pub struct PhotoUploadRequest {
     #[schema(min_length = 1, max_length = 255)]
     pub file_name: String,
     pub data_base64: String,
+}
+
+// ---------------------------------------------------------------------------
+// Local Photo AI, Smart Search, People Albums & Duplicate Detection
+// ---------------------------------------------------------------------------
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoQueryFilter {
+    #[schema(required = true)]
+    pub year: Option<i32>,
+    #[schema(required = true)]
+    pub month: Option<u32>,
+    #[schema(required = true)]
+    pub season: Option<String>,
+    #[schema(required = true)]
+    pub time_of_day: Option<String>,
+    #[schema(required = true)]
+    pub color: Option<String>,
+    #[schema(required = true)]
+    pub orientation: Option<String>,
+    #[schema(required = true)]
+    pub camera_brand: Option<String>,
+    #[schema(required = true)]
+    pub geotagged: Option<bool>,
+    pub keywords: Vec<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoAnalyzeResponse {
+    pub analyzed_count: u64,
+    pub total_tagged: u64,
+    pub remaining: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoPersonRef {
+    pub id: PhotoPersonId,
+    pub name: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoItemPeopleResponse {
+    pub people: Vec<PhotoPersonRef>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoPersonSummary {
+    pub id: PhotoPersonId,
+    pub name: String,
+    #[schema(required = true)]
+    pub cover_item_id: Option<ItemId>,
+    pub preview_item_ids: Vec<ItemId>,
+    pub photo_count: u64,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoPersonList {
+    pub people: Vec<PhotoPersonSummary>,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CreatePhotoPersonRequest {
+    #[schema(min_length = 1, max_length = 128)]
+    pub name: String,
+    pub cover_item_id: Option<ItemId>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct UpdatePhotoPersonRequest {
+    #[schema(min_length = 1, max_length = 128)]
+    pub name: Option<String>,
+    pub cover_item_id: Option<ItemId>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoSearchHit {
+    pub id: ItemId,
+    pub library_id: LibraryId,
+    pub title: String,
+    pub taken_at: DateTime<Utc>,
+    pub day_bucket: String,
+    pub month_bucket: String,
+    #[schema(required = true)]
+    pub width: Option<i32>,
+    #[schema(required = true)]
+    pub height: Option<i32>,
+    pub orientation: i32,
+    #[schema(required = true)]
+    pub camera_make: Option<String>,
+    #[schema(required = true)]
+    pub camera_model: Option<String>,
+    #[schema(required = true)]
+    pub latitude: Option<f64>,
+    #[schema(required = true)]
+    pub longitude: Option<f64>,
+    pub favorite: bool,
+    #[schema(required = true)]
+    pub dominant_color: Option<String>,
+    #[schema(required = true)]
+    pub dominant_hex: Option<String>,
+    #[schema(required = true)]
+    pub time_of_day: Option<String>,
+    #[schema(required = true)]
+    pub season: Option<String>,
+    pub scene_tags: Vec<String>,
+    pub people: Vec<PhotoPersonRef>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoSearchResponse {
+    pub query: String,
+    pub parsed_filters: PhotoQueryFilter,
+    pub items: Vec<PhotoSearchHit>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum PhotoDuplicateKind {
+    Exact,
+    Similar,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoDuplicateItem {
+    pub id: ItemId,
+    pub library_id: LibraryId,
+    pub title: String,
+    pub file_name: String,
+    pub taken_at: DateTime<Utc>,
+    pub day_bucket: String,
+    pub month_bucket: String,
+    #[schema(required = true)]
+    pub width: Option<i32>,
+    #[schema(required = true)]
+    pub height: Option<i32>,
+    pub orientation: i32,
+    #[schema(required = true)]
+    pub size_bytes: Option<i64>,
+    #[schema(required = true)]
+    pub camera_make: Option<String>,
+    #[schema(required = true)]
+    pub camera_model: Option<String>,
+    #[schema(required = true)]
+    pub latitude: Option<f64>,
+    #[schema(required = true)]
+    pub longitude: Option<f64>,
+    pub favorite: bool,
+    pub recommended_keep: bool,
+    pub distance: u32,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoDuplicateCluster {
+    pub cluster_id: String,
+    pub kind: PhotoDuplicateKind,
+    pub keep_item_id: ItemId,
+    pub reclaimable_bytes: u64,
+    pub max_distance: u32,
+    pub items: Vec<PhotoDuplicateItem>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoDuplicatesResponse {
+    pub threshold: u32,
+    pub total_clusters: u64,
+    pub total_duplicate_photos: u64,
+    pub total_reclaimable_bytes: u64,
+    pub clusters: Vec<PhotoDuplicateCluster>,
 }

@@ -150,21 +150,39 @@
     color: inherit;
   }
   input,
-  textarea {
+  textarea,
+  select {
     caret-color: var(--pv-focus);
+  }
+  select {
+    transition:
+      border-color var(--pv-duration-fast) var(--pv-ease),
+      background-color var(--pv-duration-fast) var(--pv-ease);
+  }
+  select:hover:not(:disabled) {
+    border-color: var(--pv-line-strong);
+  }
+  select option {
+    background-color: var(--pv-surface-raised);
+    color: var(--pv-fg);
   }
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--pv-line-strong) transparent;
+    scrollbar-color: color-mix(in oklab, var(--pv-fg) 20%, transparent) transparent;
   }
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--pv-line-strong);
+    background: color-mix(in oklab, var(--pv-fg) 18%, transparent);
     border-radius: 999px;
-    border: 3px solid transparent;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--pv-fg) 32%, transparent);
+    border: 2px solid transparent;
     background-clip: padding-box;
   }
   button:not(:disabled),
@@ -278,7 +296,7 @@
     --button-bg-hover: color-mix(in oklab, var(--pv-failed) 88%, var(--pv-fg-inverse));
     --button-fg: var(--pv-fg-inverse);
   }
-
+  /* The one action that carries out a confirmed change. */
   .button.button--confirm {
     --button-bg: var(--pv-confirm);
     --button-bg-hover: color-mix(in oklab, var(--pv-confirm) 88%, var(--pv-confirm-fg));
@@ -357,18 +375,25 @@
     --switch-control-bg-hover: var(--pv-secondary-hover);
     --switch-control-bg-pressed: var(--pv-secondary-hover);
     --switch-control-bg-checked: var(--pv-selected);
-    --switch-control-bg-checked-hover: var(--pv-selected);
+    --switch-control-bg-checked-hover: var(--pv-action-hover);
   }
   .switch__control {
-    border-radius: calc(var(--pv-radius-control) * 1);
-    box-shadow: inset 0 0 0 1.5px var(--pv-line-control);
+    border-radius: 9999px;
+    box-shadow: inset 0 0 0 1px var(--pv-line-control);
+    transition:
+      background-color var(--pv-duration-fast) var(--pv-ease),
+      box-shadow var(--pv-duration-fast) var(--pv-ease);
   }
   .switch[data-selected="true"] .switch__control {
-    box-shadow: inset 0 0 0 1.5px var(--pv-selected);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pv-selected) 85%, transparent);
   }
   .switch__thumb {
-    border-radius: calc(var(--pv-radius-control) * 1);
-    background: var(--pv-surface);
+    border-radius: 9999px;
+    background: var(--pv-surface-raised);
+    box-shadow: 0 1px 3px oklch(0 0 0 / 0.25);
+  }
+  .dark .switch__thumb {
+    background: color-mix(in oklab, var(--pv-fg) 84%, var(--pv-surface));
   }
   .switch[data-selected="true"] .switch__thumb {
     background: var(--pv-selected-fg);
@@ -517,12 +542,140 @@
   .pv-enter > * {
     animation: pv-enter var(--pv-duration-base) var(--pv-ease) backwards;
   }
+
+  /* Atmospheric ambient mesh canvas (strictly non-purple hues: ocean 248°, cyan-teal 202°, warm amber 64°) */
+  .pv-ambient-canvas {
+    background-color: var(--pv-bg);
+    background-image:
+      radial-gradient(ellipse 68% 52% at 8% -6%, oklch(0.84 0.085 242 / 0.34), transparent 64%),
+      radial-gradient(ellipse 56% 48% at 94% 4%, oklch(0.86 0.075 196 / 0.26), transparent 60%),
+      radial-gradient(ellipse 52% 44% at 54% 106%, oklch(0.90 0.065 72 / 0.22), transparent 62%);
+    background-attachment: fixed;
+  }
+  .dark .pv-ambient-canvas {
+    background-image:
+      radial-gradient(ellipse 62% 48% at 10% -8%, oklch(0.46 0.145 248 / 0.28), transparent 62%),
+      radial-gradient(ellipse 52% 44% at 92% 6%, oklch(0.48 0.115 202 / 0.20), transparent 58%),
+      radial-gradient(ellipse 48% 40% at 52% 104%, oklch(0.46 0.095 64 / 0.11), transparent 60%);
+  }
+
+  /* Translucent frosted glass materials catching the ambient mesh behind them */
+  .pv-glass-panel {
+    background: color-mix(in oklab, var(--pv-surface) 80%, transparent);
+    backdrop-filter: blur(22px) saturate(145%);
+    -webkit-backdrop-filter: blur(22px) saturate(145%);
+    border-color: color-mix(in oklab, var(--pv-line) 70%, oklch(1 0 0 / 0.65));
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.65),
+      0 1px 2px oklch(0.2 0.02 250 / 0.05),
+      0 12px 30px -14px oklch(0.2 0.03 250 / 0.12);
+  }
+  .dark .pv-glass-panel {
+    background: color-mix(in oklab, var(--pv-surface) 72%, transparent);
+    border-color: oklch(1 0 0 / 0.085);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.09),
+      0 14px 36px -14px oklch(0 0 0 / 0.62);
+  }
+
+  .pv-glass-shell {
+    background: color-mix(in oklab, var(--pv-shell) 80%, transparent);
+    backdrop-filter: blur(26px) saturate(150%);
+    -webkit-backdrop-filter: blur(26px) saturate(150%);
+    border-color: color-mix(in oklab, var(--pv-shell-line) 72%, transparent);
+  }
+  .dark .pv-glass-shell {
+    background: color-mix(in oklab, var(--pv-shell) 72%, transparent);
+    border-color: oklch(1 0 0 / 0.08);
+  }
+
+  .pv-glass-toolbar {
+    background: color-mix(in oklab, var(--pv-surface) 78%, transparent);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    border: 1px solid color-mix(in oklab, var(--pv-line) 72%, oklch(1 0 0 / 0.6));
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.7),
+      0 8px 24px -12px oklch(0.2 0.03 250 / 0.12);
+  }
+  .dark .pv-glass-toolbar {
+    background: color-mix(in oklab, var(--pv-surface) 68%, transparent);
+    border: 1px solid oklch(1 0 0 / 0.085);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.09),
+      0 10px 28px -12px oklch(0 0 0 / 0.58);
+  }
+
+  /* Luminous directional ocean-to-cerulean active navigation pill (non-purple) */
+  .pv-nav-pill-active {
+    background: linear-gradient(135deg, oklch(0.50 0.165 250), oklch(0.56 0.135 218));
+    color: oklch(0.99 0 0);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.25),
+      0 6px 18px -6px oklch(0.50 0.165 250 / 0.55);
+  }
+  .dark .pv-nav-pill-active {
+    background: linear-gradient(135deg, oklch(0.54 0.165 248), oklch(0.58 0.135 216));
+    color: oklch(0.99 0 0);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.24),
+      0 8px 22px -6px oklch(0.54 0.165 248 / 0.62);
+  }
+
+  /* Subtle top-left card luminescence for active smart-home devices & KPI stat cards */
+  .pv-glow-amber {
+    background-image: radial-gradient(circle at 12% 10%, oklch(0.76 0.16 74 / 0.18), transparent 62%);
+  }
+  .dark .pv-glow-amber {
+    background-image: radial-gradient(circle at 12% 10%, oklch(0.76 0.16 74 / 0.22), transparent 64%);
+  }
+  .pv-glow-sky {
+    background-image: radial-gradient(circle at 12% 10%, oklch(0.68 0.14 218 / 0.18), transparent 62%);
+  }
+  .dark .pv-glow-sky {
+    background-image: radial-gradient(circle at 12% 10%, oklch(0.68 0.14 218 / 0.22), transparent 64%);
+  }
+  .pv-glow-blue {
+    background-image: radial-gradient(circle at 12% 10%, oklch(0.56 0.16 250 / 0.16), transparent 62%);
+  }
+  .dark .pv-glow-blue {
+    background-image: radial-gradient(circle at 12% 10%, oklch(0.58 0.16 250 / 0.22), transparent 64%);
+  }
+  .pv-glow-emerald {
+    background-image: radial-gradient(circle at 12% 10%, oklch(0.68 0.14 156 / 0.16), transparent 62%);
+  }
+  .dark .pv-glow-emerald {
+    background-image: radial-gradient(circle at 12% 10%, oklch(0.68 0.14 156 / 0.20), transparent 64%);
+  }
+  .pv-glow-orange {
+    background-image: radial-gradient(circle at 12% 10%, oklch(0.72 0.16 48 / 0.16), transparent 62%);
+  }
+  .dark .pv-glow-orange {
+    background-image: radial-gradient(circle at 12% 10%, oklch(0.72 0.16 48 / 0.20), transparent 64%);
+  }
 }
 
 @utility no-scrollbar {
   scrollbar-width: none;
   &::-webkit-scrollbar {
     display: none;
+  }
+}
+
+@utility sidebar-scroll {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 999px;
+  }
+  &:hover {
+    scrollbar-width: thin;
+  }
+  &:hover::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--pv-shell-fg) 18%, transparent);
   }
 }
 
@@ -568,25 +721,33 @@
 
 @layer components {
   .slider[data-orientation="horizontal"] .slider__track {
-    height: 1rem;
+    height: 1.125rem;
     border-inline-width: 0.5rem;
+    border-inline-color: transparent;
     border-color: transparent;
     background: transparent;
+  }
+  /* HeroUI paints the track's inline start/end border with --accent when data-fill-start/end is set;
+     clear it so the thin custom rail owns the fill without rendering an extra half-pill cap. */
+  .slider[data-orientation="horizontal"] .slider__track[data-fill-start="true"],
+  .slider[data-orientation="horizontal"] .slider__track[data-fill-end="true"] {
+    border-inline-color: transparent;
   }
   .slider[data-orientation="horizontal"] .slider__track::before {
     content: "";
     position: absolute;
     inset-inline: -0.5rem;
     top: 50%;
-    height: 4px;
+    height: 5px;
     translate: 0 -50%;
     border-radius: 999px;
     background: var(--pv-progress-rest);
   }
   .slider[data-orientation="horizontal"] .slider__fill {
     top: 50%;
-    height: 4px;
+    height: 5px;
     translate: 0 -50%;
+    border-radius: 0 999px 999px 0;
     background: var(--pv-selected);
   }
   .slider[data-orientation="horizontal"] .slider__fill::before {
@@ -603,14 +764,26 @@
     width: 1rem;
     height: 1rem;
     border-radius: 999px;
-    background: var(--pv-surface);
-    border: 1.5px solid var(--pv-selected);
+    background: var(--pv-surface-raised);
+    border: 2px solid var(--pv-selected);
     box-shadow: var(--pv-shadow-raised);
+    transition: transform 140ms var(--pv-ease), box-shadow 140ms var(--pv-ease);
     &::after {
       display: none;
     }
+    &:hover,
+    &[data-dragging="true"] {
+      transform: translate(-50%, -50%) scale(1.12);
+    }
+  }
+  .dark .slider .slider__thumb,
+  .dark .slider[data-orientation="horizontal"] .slider__thumb {
+    background: oklch(0.98 0 0);
   }
   .slider[data-disabled="true"] .slider__fill {
     background: var(--pv-line-strong);
+  }
+  .slider[data-disabled="true"] .slider__thumb {
+    border-color: var(--pv-line-strong);
   }
 }

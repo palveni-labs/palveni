@@ -3,17 +3,22 @@
  * trees, jobs (with a simulated scan), the hardware report, and an event bus for SSE.
  */
 import type {
+  AuditLogEntry,
+  BackupSummary,
   HardwareReport,
   Item,
   Job,
   Library,
   LibraryKind,
+  ManagedUser,
   Plugin,
   Role,
   RuntimeSettings,
   ServerEventMap,
   ServerEventName,
   User,
+  UserPolicy,
+  UserSession,
 } from "@/api/types";
 import { generateItems, sampleHardwareReport, stableUuid } from "./fixtures";
 
@@ -37,6 +42,29 @@ export interface MockDbOptions {
 
 interface StoredUser extends User {
   password: string;
+  disabled: boolean;
+  updatedAt: string;
+  policy: UserPolicy;
+  allowedLibraryIds: string[];
+}
+
+interface StoredSession {
+  id: string;
+  userId: string;
+  deviceId: string | null;
+  deviceName: string;
+  token: string;
+  createdAt: string;
+  lastUsedAt: string;
+}
+
+export interface StoredBackup {
+  summary: BackupSummary;
+  payloadJson: string;
+  snapshot: {
+    libraries: Library[];
+    runtimeSettings: RuntimeSettings;
+  };
 }
 
 type Listener = (event: string, data: unknown) => void;
@@ -67,8 +95,11 @@ export class MockDb {
   libraries: Library[] = [];
   jobs: Job[] = [];
   plugins: Plugin[] = [];
+  auditLogs: AuditLogEntry[] = [];
+  backups: StoredBackup[] = [];
   runtimeSettings: RuntimeSettings = { serverName: null, perfTier: null };
   hardware: HardwareReport;
+  private sessions: StoredSession[] = [];
   private items = new Map<string, Item[]>();
   private children = new Map<string, Item[]>();
   private itemsById = new Map<string, Item>();
@@ -101,20 +132,81 @@ export class MockDb {
     return this.users.length > 0;
   }
 
-  addUser(username: string, password: string, role: Role, createdAt = this.iso()): User {
-    const user: StoredUser = { id: stableUuid(`user:${username}`), username, password, role, createdAt };
+  addUser(
+    username: string,
+    password: string,
+    role: Role,
+    createdAt = this.iso(),
+    policy?: UserPolicy,
+    allowedLibraryIds: string[] = [],
+  ): User {
+    const baseId = stableUuid(`user:${username}`);
+    const id = this.users.some((u) => u.id === baseId) ? stableUuid(`user:${username}:${this.now()}`) : baseId;
+    const user: StoredUser = {
+      id,
+      username,
+      password,
+      role,
+      createdAt,
+      updatedAt: createdAt,
+      disabled: false,
+      policy: policy ?? {
+        allLibraries: true,
+        allowDownload: true,
+        allowTranscode: true,
+        dailyAiLimit: 100,
+      },
+      allowedLibraryIds: [...allowedLibraryIds],
+    };
     this.users.push(user);
     return publicUser(user);
   }
 
+  managedUsers(): ManagedUser[] {
+    return this.users.map((u) => this.toManagedUser(u));
+  }
+
+  toManagedUser(u: StoredUser): ManagedUser {
+    const activeSessions = u.disabled
+      ? 0
+      : this.sessions.filter((s) => s.userId === u.id && !this.revoked.has(s.token)).length;
+    const liveIds = new Set(this.libraries.map((lib) => lib.id));
+    return {
+      id: u.id,
+      username: u.username,
+      role: u.role,
+      disabled: u.disabled,
+      policy: { ...u.policy },
+      allowedLibraryIds: u.allowedLibraryIds.filter((id) => liveIds.has(id)),
+      activeSessions,
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
+    };
+  }
+
   findUserByCredentials(username: string, password: string): User | null {
-    const user = this.users.find((entry) => entry.username === username && entry.password === password);
+    const key = username.trim().toLowerCase();
+    const user = this.users.find(
+      (entry) => entry.username.toLowerCase() === key && entry.password === password && !entry.disabled,
+    );
     return user ? publicUser(user) : null;
   }
 
   /** Tokens embed the user id so seeded sessions survive a page reload of the mock. */
-  issueToken(user: User): string {
-    return `mock.${user.id}.${Math.random().toString(36).slice(2, 12)}`;
+  issueToken(user: User, deviceName = "Browser"): string {
+    const nonce = Math.random().toString(36).slice(2, 12);
+    const token = `mock.${user.id}.${nonce}`;
+    const now = this.iso();
+    this.sessions.unshift({
+      id: stableUuid(`session:${token}`),
+      userId: user.id,
+      deviceId: stableUuid(`device:${user.id}:${deviceName}:${nonce}`),
+      deviceName,
+      token,
+      createdAt: now,
+      lastUsedAt: now,
+    });
+    return token;
   }
 
   userForToken(token: string | null): User | null {
@@ -122,11 +214,69 @@ export class MockDb {
     const [prefix, userId] = token.split(".");
     if (prefix !== "mock" || !userId) return null;
     const user = this.users.find((entry) => entry.id === userId);
-    return user ? publicUser(user) : null;
+    if (!user || user.disabled) return null;
+    return publicUser(user);
   }
 
   revoke(token: string) {
     this.revoked.add(token);
+  }
+
+  revokeSessionsForUser(userId: string, keepToken?: string) {
+    for (const s of this.sessions) {
+      if (s.userId === userId && s.token !== keepToken) {
+        this.revoked.add(s.token);
+      }
+    }
+  }
+
+  listSessionsForUser(userId: string, currentToken: string): UserSession[] {
+    return this.sessions
+      .filter((s) => s.userId === userId && !this.revoked.has(s.token))
+      .map((s) => ({
+        id: s.id,
+        deviceId: s.deviceId,
+        deviceName: s.deviceName,
+        current: s.token === currentToken,
+        createdAt: s.createdAt,
+        lastUsedAt: s.lastUsedAt,
+        expiresAt: null,
+      }))
+      .sort((a, b) => Number(b.current) - Number(a.current));
+  }
+
+  revokeUserSession(userId: string, sessionId: string): boolean {
+    const found = this.sessions.find((s) => s.id === sessionId && s.userId === userId);
+    if (!found) return false;
+    this.revoked.add(found.token);
+    return true;
+  }
+
+  canAccessLibrary(user: User, libraryId: string): boolean {
+    if (user.role === "admin") return true;
+    const stored = this.users.find((u) => u.id === user.id);
+    if (!stored || stored.policy.allLibraries) return true;
+    return stored.allowedLibraryIds.includes(libraryId);
+  }
+
+  visibleLibraries(user: User): Library[] {
+    return this.libraries.filter((lib) => this.canAccessLibrary(user, lib.id));
+  }
+
+  recordAudit(action: string, actor: User | null, target: string | null = null, detail: Record<string, unknown> | null = null) {
+    this.auditLogs.unshift({
+      id: stableUuid(`audit:${this.now()}:${this.auditLogs.length}:${Math.random()}`),
+      occurredAt: this.iso(),
+      actorId: actor?.id ?? null,
+      actorUsername: actor?.username ?? null,
+      action,
+      target,
+      detail: detail ? JSON.stringify(detail) : null,
+    });
+  }
+
+  allLeafItems(): Item[] {
+    return [...this.itemsById.values()].filter((item) => item.kind !== "folder");
   }
 
   /* ------------------------------------------------------------ libraries and items */
@@ -239,6 +389,7 @@ export class MockDb {
 
     const tick = () => {
       if (!this.getLibrary(libraryId)) {
+        // Failed or cancelled jobs carry neither step nor message.
         job = { ...job, state: "cancelled", finishedAt: this.iso(), step: null, message: null };
         this.activeScans.delete(libraryId);
         this.upsertJob(job);
@@ -297,7 +448,7 @@ export class MockDb {
     this.emitRaw(event, data);
   }
 
-
+  /** Events outside the M0 contract (provisional mocks). */
   emitRaw(event: string, data: unknown) {
     for (const listener of this.listeners) listener(event, data);
   }
@@ -320,8 +471,10 @@ export class MockDb {
   /* ------------------------------------------------------------ seed */
 
   private seed(liveScan: boolean) {
-    this.addUser(MOCK_ACCOUNTS.admin.username, MOCK_ACCOUNTS.admin.password, "admin", this.iso(-40 * 24 * HOUR));
-    this.addUser(MOCK_ACCOUNTS.user.username, MOCK_ACCOUNTS.user.password, "user", this.iso(-38 * 24 * HOUR));
+    const admin = this.addUser(MOCK_ACCOUNTS.admin.username, MOCK_ACCOUNTS.admin.password, "admin", this.iso(-40 * 24 * HOUR));
+    const member = this.addUser(MOCK_ACCOUNTS.user.username, MOCK_ACCOUNTS.user.password, "user", this.iso(-38 * 24 * HOUR));
+    this.recordAudit("setup.completed", admin, admin.username, null);
+    this.recordAudit("user.created", admin, member.username, { role: "user" });
 
     const seeds: Array<{
       key: string;

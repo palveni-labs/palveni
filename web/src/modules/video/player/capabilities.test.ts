@@ -38,6 +38,26 @@ describe("detectClientCapabilities", () => {
     expect(caps.audioCodecs).toContain("aac");
   });
 
+  it("prefers mse HLS over Chrome native HLS probes and gates MSE HEVC on Main 10 support", () => {
+    const caps = detectClientCapabilities({
+      canPlayType: (mime) => {
+        if (mime === "application/vnd.apple.mpegurl") return "maybe";
+        if (mime === "video/x-matroska") return "maybe";
+        if (mime.includes("hvc1.1.6")) return "probably";
+        if (mime.includes("video/mp4") || mime.includes("audio/mp4")) return "probably";
+        return "";
+      },
+      mseSupported: true,
+      isTypeSupported: (mime) =>
+        mime.includes("avc1") || mime.includes("hvc1.1.6.L120.90"),
+    });
+
+    expect(caps.hls).toBe("mse");
+    expect(caps.containers).not.toContain("mkv");
+    expect(caps.videoCodecs).toContain("h264");
+    expect(caps.videoCodecs).not.toContain("hevc");
+  });
+
   it("falls back safely when browser probes return empty strings", () => {
     const caps = detectClientCapabilities({
       canPlayType: () => "",

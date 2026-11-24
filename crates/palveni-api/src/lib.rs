@@ -21,6 +21,7 @@ use tower_http::trace::{DefaultOnResponse, TraceLayer};
 use tracing::{Level, Span};
 
 pub use error::ApiError;
+pub use routes::notifications::spawn_background_services;
 pub use state::{AppState, ServerInfo};
 
 const REQUEST_ID_HEADER: &str = "x-request-id";
@@ -54,6 +55,8 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .nest("/api/v1", v1)
         .merge(routes::opds::router())
+        .merge(routes::jellyfin::router())
+        .merge(routes::webdav::router())
         .route(
             "/rest/{method}",
             axum::routing::get(routes::subsonic::handle),

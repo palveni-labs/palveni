@@ -1,3 +1,11 @@
+/**
+ * Colour parsing and measurement for skins and work colours.
+ *
+ * Skins are untrusted data, so colours go through a narrow grammar (hex, rgb(), oklch(), oklab())
+ * before they reach a CSS variable. Everything else here is plain colour math: sRGB ↔ OKLab ↔
+ * OKLCH, WCAG relative luminance and contrast, and the purple-range test skin rules require.
+ */
+
 export interface Rgba {
   /** 0–1, gamma-encoded sRGB. */
   r: number;
@@ -169,6 +177,7 @@ export function contrast(foreground: string, background: string): number {
   return contrastRatio(fg, bg);
 }
 
+/** no colour whose OKLCH hue lies in the purple range (270°–330°). */
 export const PURPLE_RANGE = { from: 270, to: 330 } as const;
 /** Below this chroma a colour reads as neutral grey, whatever its nominal hue. */
 export const NEUTRAL_CHROMA = 0.003;

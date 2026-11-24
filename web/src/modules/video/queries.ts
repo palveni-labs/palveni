@@ -2,7 +2,7 @@ import { toast } from "@heroui/react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { errorText } from "@/lib/errors";
-import { videoApi, type VideoListQuery } from "./api";
+import { videoApi, type PutVideoSegmentsRequest, type VideoListQuery } from "./api";
 
 export const videoKeys = {
   all: ["video"] as const,
@@ -14,6 +14,7 @@ export const videoKeys = {
     ["video", "episodes", libraryId, seriesId, season] as const,
   mediaInfo: (itemId: string) => ["video", "mediaInfo", itemId] as const,
   subtitles: (itemId: string) => ["video", "subtitles", itemId] as const,
+  segments: (itemId: string) => ["video", "segments", itemId] as const,
   personal: (itemId: string) => ["video", "personal", itemId] as const,
   image: (path: string) => ["video", "image", path] as const,
 };
@@ -112,6 +113,29 @@ export function useToggleWorkFavorite() {
     onSuccess: (_data, vars) => {
       void queryClient.invalidateQueries({ queryKey: videoKeys.all });
       toast.success(t(vars.favorite ? "videoApp.toast.favorited" : "videoApp.toast.unfavorited"));
+    },
+    onError: (err) => toast.danger(errorText(t, err)),
+  });
+}
+
+export function useVideoSegments(itemId: string | null | undefined, enabled = true) {
+  return useQuery({
+    queryKey: videoKeys.segments(itemId ?? ""),
+    queryFn: ({ signal }) => videoApi.segments(itemId!, signal),
+    enabled: Boolean(itemId) && enabled,
+    staleTime: 60_000,
+    retry: false,
+  });
+}
+
+export function useSaveVideoSegments(itemId: string) {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  return useMutation({
+    mutationFn: (body: PutVideoSegmentsRequest) => videoApi.saveSegments(itemId, body),
+    onSuccess: (saved) => {
+      queryClient.setQueryData(videoKeys.segments(itemId), saved);
+      toast.success(t("videoApp.player.segmentsSaved"));
     },
     onError: (err) => toast.danger(errorText(t, err)),
   });

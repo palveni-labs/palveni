@@ -1,7 +1,7 @@
 import { Workflow } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
-import type { TaskState } from "./task";
+import type { TaskState } from "@/provisional/types";
 import { StatusLabel } from "@/ui/marks";
 import { KIND_ICONS, STATE_TONE } from "./task-kinds";
 

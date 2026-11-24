@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" width="200" height="300" font-family="Figtree, 'Noto Sans SC', sans-serif">
+      <rect width="200" height="300" fill="#a9852b"/>
+      <g fill="none" stroke="#2b220c" stroke-width="1.6"><circle cx="100" cy="150" r="58"/><ellipse cx="100" cy="150" rx="28" ry="58"/><path d="M42 150 H158 M50 122 H150 M50 178 H150 M100 92 V208"/></g>
+      <text x="100" y="52" font-size="11" font-weight="600" fill="#2b220c" text-anchor="middle" letter-spacing="4">THE GOLDEN</text>
+      <text x="100" y="74" font-size="20" font-weight="800" fill="#2b220c" text-anchor="middle" letter-spacing="5">ATLAS</text>
+      <text x="100" y="284" font-size="9" font-weight="500" fill="#4b3c13" text-anchor="middle" letter-spacing="3">1991</text></svg>

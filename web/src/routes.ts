@@ -24,6 +24,7 @@ const moduleIds = readdirSync(modulesDir, { withFileTypes: true })
 export const routes = rootRoute("shell/routes/root.tsx", [
   route("/setup", "shell/routes/setup.tsx"),
   route("/login", "shell/routes/login.tsx"),
+  route("/s/$token", "shell/routes/share.tsx"),
   layout("app", "shell/routes/app.tsx", [
     ...moduleIds.map((id) => physical(id === HOME_MODULE ? "" : `/${id}`, `modules/${id}/routes`)),
   ]),

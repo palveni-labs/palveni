@@ -101,6 +101,12 @@ fn success(output: Output) -> Value {
         Output::WebVtt => content("text/vtt", json!({"type":"string"})),
         Output::HlsPlaylist => content("application/vnd.apple.mpegurl", json!({"type":"string"})),
         Output::HlsSegment => binary(&["video/mp4", "video/mp2t"]),
+        Output::M3uPlaylist => content("audio/x-mpegurl", json!({"type":"string"})),
+        Output::XmlTv => content("application/xml", json!({"type":"string"})),
+        Output::Prometheus => content(
+            "text/plain; version=0.0.4; charset=utf-8",
+            json!({"type":"string"}),
+        ),
         Output::Poster => binary(&["image/jpeg", "image/png", "image/webp"]),
         Output::ReadingImage => binary(&[
             "image/jpeg",
@@ -149,7 +155,22 @@ fn parameters(cap: &Capability) -> Vec<Value> {
     let mut params = Vec::new();
     for part in cap.path.split('/') {
         if let Some(name) = part.strip_prefix('{').and_then(|s| s.strip_suffix('}')) {
-            let schema = if name == "id" && !matches!(cap.module, "skins" | "storage" | "artwork") {
+            let schema = if name == "personId"
+                || (name == "id"
+                    && !matches!(
+                        cap.module,
+                        "skins"
+                            | "plugins"
+                            | "home"
+                            | "assistant"
+                            | "tasks"
+                            | "storage"
+                            | "artwork"
+                            | "downloads"
+                            | "organizer"
+                            | "cast"
+                            | "mqtt"
+                    )) {
                 json!({"type":"string","format":"uuid"})
             } else if matches!(name, "page" | "index") {
                 json!({"type":"integer","minimum":0})
@@ -171,6 +192,8 @@ fn parameters(cap: &Capability) -> Vec<Value> {
             | "streamReadingInline"
             | "getVideoMasterPlaylist"
             | "getVideoSegment"
+            | "getVirtualTvPlaylist"
+            | "getVirtualTvEpg"
     ) {
         params.push(parameter("ticket", "query", false, json!({"type":"string","description":"Short-lived credential issued for this file and session, as an alternative to a bearer header."})));
     }
@@ -391,6 +414,12 @@ fn parameters(cap: &Capability) -> Vec<Value> {
             false,
             json!({"type":"integer","minimum":1,"maximum":3840}),
         )),
+        "getVideoTrickplay" => params.push(parameter(
+            "atMs",
+            "query",
+            false,
+            json!({"type":"integer","minimum":0,"maximum":604800000,"default":0}),
+        )),
         "getPhotoTimeline" => {
             params.extend([
                 parameter(
@@ -460,6 +489,36 @@ fn parameters(cap: &Capability) -> Vec<Value> {
                 "query",
                 false,
                 json!({"type":"string","maxLength":255}),
+            ));
+        }
+        "searchPhotos" => {
+            params.extend([
+                parameter(
+                    "q",
+                    "query",
+                    false,
+                    json!({"type":"string","maxLength":128}),
+                ),
+                parameter(
+                    "personId",
+                    "query",
+                    false,
+                    json!({"type":"string","format":"uuid"}),
+                ),
+                parameter(
+                    "limit",
+                    "query",
+                    false,
+                    json!({"type":"integer","minimum":1,"maximum":200,"default":60}),
+                ),
+            ]);
+        }
+        "listPhotoDuplicates" => {
+            params.push(parameter(
+                "threshold",
+                "query",
+                false,
+                json!({"type":"integer","minimum":0,"maximum":32,"default":6}),
             ));
         }
         "browseConnection" => {
@@ -692,6 +751,15 @@ fn parameters(cap: &Capability) -> Vec<Value> {
             false,
             json!({"type":"boolean","default":false}),
         )),
+        "listAuditLogs" => params.extend([
+            parameter(
+                "action",
+                "query",
+                false,
+                json!({"type":"string","maxLength":64,"description":"Optional action prefix filter, e.g. auth. or user."}),
+            ),
+            parameter("cursor", "query", false, json!({"type":"string"})),
+        ]),
         "streamEvents" => params.push(parameter(
             "Last-Event-ID",
             "header",
@@ -702,18 +770,104 @@ fn parameters(cap: &Capability) -> Vec<Value> {
             params.push(parameter("Range", "header", false, json!({"type":"string","description":"One HTTP byte range, for example bytes=0-1."})));
             params.push(parameter("If-Range", "header", false, json!({"type":"string","description":"Returns the full representation because this endpoint supplies no entity validator."})));
         }
+        "getPublicShare" => {
+            params.push(parameter("proof", "query", false, json!({"type":"string"})));
+        }
+        "streamPublicShareMedia" => {
+            params.extend([
+                parameter("proof", "query", true, json!({"type":"string"})),
+                parameter("size", "query", false, json!({"type":"integer","minimum":1,"maximum":3840})),
+                parameter("download", "query", false, json!({"type":"boolean","default":false})),
+                parameter("Range", "header", false, json!({"type":"string"})),
+            ]);
+        }
+        "getPublicShareCover" => {
+            params.extend([
+                parameter("proof", "query", true, json!({"type":"string"})),
+                parameter("size", "query", false, json!({"type":"integer","minimum":1,"maximum":3840})),
+            ]);
+        }
+        "listRelatedWorks" => {
+            params.extend([
+                parameter("title", "query", true, json!({"type":"string","minLength":1,"maxLength":255})),
+                parameter("excludeKind", "query", false, reference("MediaCollectionEntryKind")),
+                parameter("limit", "query", false, json!({"type":"integer","minimum":1,"maximum":50,"default":16})),
+            ]);
+        }
+        "globalSearch" => {
+            params.extend([
+                parameter("q", "query", false, json!({"type":"string","maxLength":128})),
+                parameter("limit", "query", false, json!({"type":"integer","minimum":1,"maximum":60,"default":20})),
+            ]);
+        }
+        "getVirtualTvGuide" | "getVirtualTvPlaylist" | "getVirtualTvEpg" => {
+            params.push(parameter(
+                "at",
+                "query",
+                false,
+                json!({"type":"string","format":"date-time","description":"Optional RFC 3339 timestamp at which to evaluate the deterministic loop schedule."}),
+            ));
+        }
+        "getSystemLogs" => {
+            params.extend([
+                parameter(
+                    "level",
+                    "query",
+                    false,
+                    json!({"type":"string","enum":["all","info","warn","error"]}),
+                ),
+                parameter(
+                    "limit",
+                    "query",
+                    false,
+                    json!({"type":"integer","minimum":1,"maximum":500,"default":100}),
+                ),
+            ]);
+        }
         _ => (),
     }
     if matches!(
         cap.id,
         "listItems"
             | "listJobs"
+            | "listTasks"
+            | "listAuditLogs"
+            | "listNotifications"
+            | "listOrganizeBatches"
             | "browseMusic"
             | "listPersonalItems"
             | "listPlaylists"
             | "listPlaylistTracks"
     ) {
         params.push(parameter("limit","query",false,json!({"type":"integer","minimum":1,"default":50,"description":"Values above 200 are clamped to 200."})));
+    }
+    if cap.id == "getSyncChanges" {
+        params.push(parameter(
+            "since",
+            "query",
+            false,
+            json!({"type":"integer","minimum":0,"default":0,"description":"Return changes after this global sync revision."}),
+        ));
+        params.push(parameter(
+            "limit",
+            "query",
+            false,
+            json!({"type":"integer","minimum":1,"maximum":500,"default":200,"description":"Maximum records per section (clamped 1..=500)."}),
+        ));
+        params.push(parameter(
+            "cursor",
+            "query",
+            false,
+            json!({"type":"string","description":"Opaque keyset cursor returned in nextCursor when paginating within one revision."}),
+        ));
+    }
+    if cap.id == "listPlaybackSessions" {
+        params.push(parameter(
+            "all",
+            "query",
+            false,
+            json!({"type":"boolean","default":false,"description":"When true and caller is an administrator, include active playback sessions for all users."}),
+        ));
     }
     params
 }
@@ -741,10 +895,18 @@ fn operation(endpoint: &Endpoint) -> Value {
     }
     if matches!(
         cap.id,
-        "createLinkChallenge" | "getOpdsAccess" | "listLinkDevices" | "prepareReadingInline"
+        "createLinkChallenge"
+            | "getOpdsAccess"
+            | "listLinkDevices"
+            | "prepareReadingInline"
+            | "downloadBackup"
     ) {
         op["responses"]["200"]["headers"]["Cache-Control"] =
             json!({"schema":{"type":"string","const":"private, no-store"}});
+        if cap.id == "downloadBackup" {
+            op["responses"]["200"]["headers"]["Content-Disposition"] =
+                json!({"schema":{"type":"string"}});
+        }
     }
     if matches!(
         cap.id,
@@ -797,10 +959,16 @@ fn operation(endpoint: &Endpoint) -> Value {
             }
         }
     }
-    if matches!(cap.id, "getVideoMasterPlaylist" | "getVideoSegment") {
+    if matches!(
+        cap.id,
+        "getVideoMasterPlaylist" | "getVideoSegment" | "getVirtualTvPlaylist" | "getVirtualTvEpg"
+    ) {
         op["security"] = json!([{"bearerAuth":[]},{"mediaTicket":[]}]);
         op["responses"]["200"]["headers"]["Cache-Control"] =
             json!({"schema":{"type":"string","const":"private, no-store"}});
+    }
+    if cap.id == "postMcp" {
+        op["responses"]["202"] = json!({"description":"Accepted JSON-RPC notification"});
     }
     match endpoint.input {
         Input::None => (),
@@ -863,7 +1031,10 @@ mod tests {
         assert!(normal.iter().all(|c| c.permission != Permission::Admin));
         assert!(!normal.iter().any(|c| c.id == "updateRuntimeSettings"));
         assert!(registry.list().iter().any(|name| name == "skins"));
-        assert!(!registry.list().iter().any(|name| name == "assistant"));
+        assert!(registry.list().iter().any(|name| name == "assistant"));
+        assert!(registry.list().iter().any(|name| name == "home"));
+        assert!(registry.list().iter().any(|name| name == "tasks"));
+        assert!(!registry.list().iter().any(|name| name == "acquire"));
     }
 
     #[test]

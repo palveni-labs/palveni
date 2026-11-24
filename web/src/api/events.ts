@@ -13,6 +13,23 @@ import type { Library, LibraryList, ServerEventMap } from "./types";
 let status: SseConnectionState = "closed";
 const statusListeners = new Set<() => void>();
 
+export interface PlaybackCommandEvent {
+  targetSessionId: string;
+  command: "play" | "pause" | "toggle" | "seek" | "next" | "prev" | "volume" | "play_item";
+  positionMs?: number | null;
+  volume?: number | null;
+  itemId?: string | null;
+  issuedBy: string;
+}
+
+const playbackCommandListeners = new Set<(event: PlaybackCommandEvent) => void>();
+
+/** Subscribes to live `playback.command` SSE frames delivered on the shared shell stream. */
+export function subscribePlaybackCommands(listener: (event: PlaybackCommandEvent) => void): () => void {
+  playbackCommandListeners.add(listener);
+  return () => playbackCommandListeners.delete(listener);
+}
+
 function setStatus(next: SseConnectionState) {
   if (status === next) return;
   status = next;
@@ -83,6 +100,21 @@ export function applyServerEvent(queryClient: QueryClient, message: SseMessage) 
     case "library.deleted": {
       const payload = parseData<"library.deleted">(message);
       if (payload) removeLibrary(queryClient, payload.id);
+      break;
+    }
+    case "playback.session.updated": {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.cast.sessions });
+      break;
+    }
+    case "playback.command": {
+      try {
+        const payload = JSON.parse(message.data) as PlaybackCommandEvent;
+        if (payload && typeof payload.targetSessionId === "string" && typeof payload.command === "string") {
+          for (const listener of playbackCommandListeners) listener(payload);
+        }
+      } catch {
+        // Ignore malformed command payload.
+      }
       break;
     }
     default:

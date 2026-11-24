@@ -145,6 +145,7 @@ pub(super) async fn prepare(
         Json(PlaybackInfo {
             mode: PlaybackMode::Transcode,
             url,
+            direct_url: None,
             expires_at,
         }),
     )

@@ -19,6 +19,8 @@ import { PageFrame } from "@/ui/frame";
 import { LinkDevices } from "./link-devices";
 import { OpdsReaderAccess } from "./opds-reader-access";
 import { MusicClientAccess } from "./music-client-access";
+import { AccountSecurity } from "./account-security";
+import { ApiKeysCard } from "./api-keys-card";
 import { PageHeader } from "@/ui/page";
 import { Section, SectionRows, useRowInset } from "@/ui/section";
 import { ErrorState, LoadingRows } from "@/ui/states";
@@ -233,6 +235,8 @@ export function SettingsPage() {
         <div className="grid min-w-0 gap-(--pv-gap-section)">
           <ServerInfo />
           <Account />
+          <ApiKeysCard />
+          <AccountSecurity />
         </div>
       </div>
     </PageFrame>

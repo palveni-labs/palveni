@@ -60,13 +60,13 @@ async fn conformance_reading_metadata_filters_progress_bookmarks_and_opds() {
 
     let b1 = make_item(
         ItemKind::Book,
-        "雾灯 I",
+        "三体 I",
         "/srv/books/three-body-1.epub",
         900_000,
     );
     let b2 = make_item(
         ItemKind::Book,
-        "雾灯 II：白礁航线",
+        "三体 II：黑暗森林",
         "/srv/books/three-body-2.epub",
         1_200_000,
     );
@@ -78,13 +78,13 @@ async fn conformance_reading_metadata_filters_progress_bookmarks_and_opds() {
     );
     let c1 = make_item(
         ItemKind::Comic,
-        "云梯集市 第01卷",
+        "迷宫饭 第01卷",
         "/srv/comics/dungeon-meshi-01.cbz",
         45_000_000,
     );
     let c2 = make_item(
         ItemKind::Comic,
-        "云梯集市 第02卷",
+        "迷宫饭 第02卷",
         "/srv/comics/dungeon-meshi-02.cbz",
         48_000_000,
     );
@@ -112,14 +112,14 @@ async fn conformance_reading_metadata_filters_progress_bookmarks_and_opds() {
             stamp: "v1:900000:1730000000000".into(),
             kind: ReadingKind::Book,
             format: "epub".into(),
-            title: "雾灯".into(),
+            title: "三体".into(),
             sort_title: "san ti 01".into(),
-            authors: vec!["岑砚禾".into()],
-            series_name: Some("北湾手记".into()),
-            series_key: series_key_for("北湾手记"),
+            authors: vec!["刘慈欣".into()],
+            series_name: Some("地球往事".into()),
+            series_key: series_key_for("地球往事"),
             series_index: Some(1.0),
-            summary: Some("守塔人记录海雾里第一次出现的蓝色灯号。".into()),
-            publisher: Some("纸鸥书社".into()),
+            summary: Some("红岸基地与三体文明的首次接触。".into()),
+            publisher: Some("重庆出版社".into()),
             language: Some("zh-CN".into()),
             page_count: Some(36),
             has_cover: true,
@@ -131,14 +131,14 @@ async fn conformance_reading_metadata_filters_progress_bookmarks_and_opds() {
             stamp: "v1:1200000:1730000000000".into(),
             kind: ReadingKind::Book,
             format: "epub".into(),
-            title: "白礁航线".into(),
+            title: "黑暗森林".into(),
             sort_title: "san ti 02".into(),
-            authors: vec!["岑砚禾".into()],
-            series_name: Some("北湾手记".into()),
-            series_key: series_key_for("北湾手记"),
+            authors: vec!["刘慈欣".into()],
+            series_name: Some("地球往事".into()),
+            series_key: series_key_for("地球往事"),
             series_index: Some(2.0),
-            summary: Some("巡岸员沿着旧航标寻找遗失的测绘日志。".into()),
-            publisher: Some("纸鸥书社".into()),
+            summary: Some("面壁计划与宇宙社会学公理。".into()),
+            publisher: Some("重庆出版社".into()),
             language: Some("zh-CN".into()),
             page_count: Some(42),
             has_cover: true,
@@ -169,11 +169,11 @@ async fn conformance_reading_metadata_filters_progress_bookmarks_and_opds() {
             stamp: "v1:45000000:1730000000000".into(),
             kind: ReadingKind::Comic,
             format: "cbz".into(),
-            title: "云梯集市 第1卷".into(),
+            title: "迷宫饭 第1卷".into(),
             sort_title: "mi gong fan 01".into(),
-            authors: vec!["谷芦".into()],
-            series_name: Some("云梯集市".into()),
-            series_key: series_key_for("云梯集市"),
+            authors: vec!["九井谅子".into()],
+            series_name: Some("迷宫饭".into()),
+            series_key: series_key_for("迷宫饭"),
             series_index: Some(1.0),
             summary: Some("在地下城烹饪魔物的冒险故事。".into()),
             publisher: None,
@@ -188,11 +188,11 @@ async fn conformance_reading_metadata_filters_progress_bookmarks_and_opds() {
             stamp: "v1:48000000:1730000000000".into(),
             kind: ReadingKind::Comic,
             format: "cbz".into(),
-            title: "云梯集市 第2卷".into(),
+            title: "迷宫饭 第2卷".into(),
             sort_title: "mi gong fan 02".into(),
-            authors: vec!["谷芦".into()],
-            series_name: Some("云梯集市".into()),
-            series_key: series_key_for("云梯集市"),
+            authors: vec!["九井谅子".into()],
+            series_name: Some("迷宫饭".into()),
+            series_key: series_key_for("迷宫饭"),
             series_index: Some(2.0),
             summary: None,
             publisher: None,
@@ -237,7 +237,7 @@ async fn conformance_reading_metadata_filters_progress_bookmarks_and_opds() {
             alice,
             book_lib,
             &ReadingFilters {
-                author: Some("岑砚禾"),
+                author: Some("刘慈欣"),
                 limit: 1,
                 sort: ReadingSort::Title,
                 dir: Some(ReadingSortDir::Asc),
@@ -256,7 +256,7 @@ async fn conformance_reading_metadata_filters_progress_bookmarks_and_opds() {
             alice,
             book_lib,
             &ReadingFilters {
-                author: Some("岑砚禾"),
+                author: Some("刘慈欣"),
                 limit: 1,
                 cursor: Some(cursor),
                 sort: ReadingSort::Title,
@@ -351,7 +351,7 @@ async fn conformance_reading_metadata_filters_progress_bookmarks_and_opds() {
     let dm_series = home
         .series
         .iter()
-        .find(|s| s.series_name == "云梯集市")
+        .find(|s| s.series_name == "迷宫饭")
         .unwrap();
     assert_eq!(dm_series.item_count, 2);
     assert_eq!(dm_series.completed_count, 1);
@@ -364,7 +364,7 @@ async fn conformance_reading_metadata_filters_progress_bookmarks_and_opds() {
             CreateBookmarkRequest {
                 page: 5,
                 locator: Some("chapter:5".into()),
-                label: "守塔人登上信号塔".into(),
+                label: "叶文洁登上雷达峰".into(),
                 note: Some("关键转折".into()),
             },
         )
@@ -377,7 +377,7 @@ async fn conformance_reading_metadata_filters_progress_bookmarks_and_opds() {
             CreateBookmarkRequest {
                 page: 18,
                 locator: Some("chapter:18".into()),
-                label: "灯塔谜题".into(),
+                label: "三体游戏".into(),
                 note: None,
             },
         )
@@ -390,7 +390,7 @@ async fn conformance_reading_metadata_filters_progress_bookmarks_and_opds() {
             b1.id,
             vec![ReadingChapterSummary {
                 index: 0,
-                title: "第一章 夜灯初亮".into(),
+                title: "第一章 科学边界".into(),
             }],
         )
         .await
@@ -424,7 +424,7 @@ async fn conformance_reading_metadata_filters_progress_bookmarks_and_opds() {
     assert_eq!(shelves.len(), 2);
     let opds_comics = repo.opds_catalog(comic_lib, 10, None).await.unwrap();
     assert_eq!(opds_comics.items.len(), 2);
-    assert_eq!(opds_comics.items[0].authors, vec!["谷芦"]);
+    assert_eq!(opds_comics.items[0].authors, vec!["九井谅子"]);
     assert_eq!(opds_comics.items[0].page_count, Some(192));
 
     h.finish().await;

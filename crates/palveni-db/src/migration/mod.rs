@@ -35,6 +35,15 @@ mod m20261122_000021_video_library;
 mod m20261122_000021a_video_work_initial;
 mod m20261123_000022_reading;
 mod m20261123_000023_photos;
+mod m20261123_000024_home_and_assistant;
+mod m20261123_000025_users_and_backups;
+mod m20261123_000026_shares_and_collections;
+mod m20261123_000027_notifications_and_virtual_tv;
+mod m20261123_000028_mcp_downloads_organizer;
+mod m20261123_000029_jellyfin_and_video_pro;
+mod m20261123_000030_metadata_and_observability;
+mod m20261123_000031_sync_sessions_mqtt;
+mod m20261123_000032_plugins_and_photo_ai;
 
 pub struct MainMigrator;
 
@@ -62,6 +71,15 @@ impl MigratorTrait for MainMigrator {
             Box::new(m20261122_000021a_video_work_initial::Migration),
             Box::new(m20261123_000022_reading::Migration),
             Box::new(m20261123_000023_photos::Migration),
+            Box::new(m20261123_000024_home_and_assistant::Migration),
+            Box::new(m20261123_000025_users_and_backups::Migration),
+            Box::new(m20261123_000026_shares_and_collections::Migration),
+            Box::new(m20261123_000027_notifications_and_virtual_tv::Migration),
+            Box::new(m20261123_000028_mcp_downloads_organizer::Migration),
+            Box::new(m20261123_000029_jellyfin_and_video_pro::Migration),
+            Box::new(m20261123_000030_metadata_and_observability::Migration),
+            Box::new(m20261123_000031_sync_sessions_mqtt::Migration),
+            Box::new(m20261123_000032_plugins_and_photo_ai::Migration),
         ]
     }
 

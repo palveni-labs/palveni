@@ -181,7 +181,28 @@
     "forced": "强制",
     "sdh": "听障",
     "channels": "{{count}} 声道",
-    "shortcutsHint": "空格 播放/暂停 · ←/→ 快进退 · F 全屏 · M 静音 · C 字幕"
+    "shortcutsHint": "空格 播放/暂停 · ←/→ 快进退 · F 全屏 · M 静音 · C 字幕",
+    "skipIntro": "跳过片头",
+    "skipCredits": "跳过片尾",
+    "skipRecap": "跳过回顾",
+    "segments": "片头片尾标记",
+    "segmentKinds": {
+      "intro": "片头",
+      "credits": "片尾",
+      "recap": "前情回顾"
+    },
+    "segmentStart": "开始（秒）",
+    "segmentEnd": "结束（秒）",
+    "useCurrentTime": "取当前",
+    "addSegment": "保存标记",
+    "deleteSegment": "删除标记",
+    "segmentsSaved": "片头片尾标记已保存",
+    "segmentsEmpty": "暂未设置片头或片尾标记",
+    "segmentInvalidRange": "结束时间必须大于开始时间",
+    "versions": "版本切换",
+    "switchingVersion": "正在切换版本…",
+    "trickplayAlt": "时间轴预览帧",
+    "infoDirectUrl": "直链来源"
   },
   "time": {
     "hoursMinutes": "{{hours}} 小时 {{minutes}} 分钟",
