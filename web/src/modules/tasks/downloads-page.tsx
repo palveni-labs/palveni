@@ -77,15 +77,18 @@ function ClientModalDrawer({ open, onOpenChange }: { open: boolean; onOpenChange
 
   return (
     <Drawer.Backdrop isOpen={open} onOpenChange={onOpenChange}>
-      <Drawer.Content placement="right" className="w-full sm:max-w-md">
-        <Drawer.Dialog aria-label={t("downloadsApp.configureClient")} className="flex h-full flex-col">
-          <Drawer.CloseTrigger aria-label={t("a11y.close")} className="absolute top-3 end-3 z-10" />
-          <Drawer.Header className="border-b border-line px-6 pt-5 pb-4">
+      <Drawer.Content placement="right">
+        <Drawer.Dialog
+          aria-label={t("downloadsApp.configureClient")}
+          className="flex h-full w-[min(28rem,94vw)] max-w-none flex-col gap-0 overflow-hidden border-s border-line p-0"
+        >
+          <Drawer.Header className="flex flex-row items-center justify-between gap-3 border-b border-line px-6 py-4">
             <Drawer.Heading className="font-heading text-lg font-title text-heading">
               {t("downloadsApp.configureClient")}
             </Drawer.Heading>
+            <Drawer.CloseTrigger aria-label={t("a11y.close")} className="static shrink-0" />
           </Drawer.Header>
-          <Drawer.Body className="overflow-y-auto px-6 py-5">
+          <Drawer.Body className="m-0 overflow-y-auto px-6 py-5">
             <form onSubmit={onSubmit} className="grid gap-3.5">
               <div className="grid gap-1.5">
                 <label htmlFor="dl-client-kind" className="text-sm font-mid text-fg">

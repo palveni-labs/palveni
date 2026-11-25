@@ -79,6 +79,12 @@ describe("应用 › 插件", () => {
     // Switch to Recipe Store tab
     await user.click(await screen.findByRole("tab", { name: "配方商店" }, { timeout: 5000 }));
     const storeSection = await screen.findByRole("region", { name: "官方配方与小组件商店" });
+    const categoryGroup = screen.getByRole("group", { name: "插件类型" });
+    await user.click(within(categoryGroup).getByRole("button", { name: /概览小组件/ }));
+    expect(within(storeSection).queryByRole("heading", { name: "TMDB Metadata Recipe" })).not.toBeInTheDocument();
+    expect(within(storeSection).getByRole("heading", { name: "Home Overview Clock & Media Summary Widget" })).toBeInTheDocument();
+    await user.click(within(categoryGroup).getByRole("button", { name: /全部类型/ }));
+
     const tmdbHeading = await within(storeSection).findByRole("heading", { name: "TMDB Metadata Recipe" });
     const tmdbCard = tmdbHeading.closest("article")!;
     expect(within(tmdbCard).getByText("中风险")).toBeInTheDocument();

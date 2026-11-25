@@ -534,6 +534,15 @@
     "official": "Official catalogue",
     "search": "Search plugins",
     "filterLabel": "Installation status",
+    "categoryLabel": "Plugin category",
+    "categories": {
+      "all": "All types",
+      "metadata": "Metadata & Scrapers",
+      "mediaEnhance": "Lyrics & Subtitles",
+      "widget": "Overview Widgets",
+      "skin": "Skins & Themes",
+      "other": "Other Extensions"
+    },
     "filter": {
       "all": "All",
       "available": "Available",

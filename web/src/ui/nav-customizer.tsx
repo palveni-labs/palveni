@@ -33,13 +33,16 @@ export function NavCustomizer({ className }: { className?: string }) {
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-mid text-fg-muted">{t("nav.customizerTitle")}</span>
         {customized ? (
-          <Button size="sm" variant="ghost" onPress={resetNavPrefs} className="h-7 px-2 text-xs">
+          <Button size="sm" variant="ghost" onPress={resetNavPrefs}>
             <RotateCcw className="size-3.5" aria-hidden />
             {t("nav.resetOrder")}
           </Button>
         ) : null}
       </div>
-      <ul className="grid gap-1" aria-label={t("nav.customizerTitle")}>
+      <ul
+        className="divide-y divide-line/65 overflow-hidden rounded-tile border border-line bg-surface"
+        aria-label={t("nav.customizerTitle")}
+      >
         {modules.map((module, index) => {
           const Icon = module.icon;
           const locked = LOCKED_NAV_MODULES.has(module.id);
@@ -74,9 +77,9 @@ export function NavCustomizer({ className }: { className?: string }) {
                 setOverId(null);
               }}
               className={cn(
-                "flex items-center gap-2 rounded-tile border border-line bg-surface px-2.5 py-1.5 text-sm transition-colors",
+                "flex items-center gap-2.5 px-3 py-2 text-sm transition-colors hover:bg-hover/55",
                 draggingId === module.id && "opacity-50",
-                overId === module.id && draggingId !== module.id && "border-active-mark bg-active-soft/60",
+                overId === module.id && draggingId !== module.id && "bg-active-soft/70",
               )}
             >
               <GripVertical className="size-3.5 shrink-0 cursor-grab text-fg-subtle" aria-hidden />
@@ -88,7 +91,7 @@ export function NavCustomizer({ className }: { className?: string }) {
                   disabled={index === 0}
                   onClick={() => moveNavModule(module.id, -1, allIds)}
                   aria-label={t("nav.moveUp", { name: label })}
-                  className="grid size-6 place-items-center rounded-control text-fg-muted outline-none hover:bg-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-focus disabled:pointer-events-none disabled:opacity-30"
+                  className="grid size-7 place-items-center rounded-control text-fg-muted outline-none transition-colors hover:bg-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-focus disabled:pointer-events-none disabled:opacity-30"
                 >
                   <ArrowUp className="size-3.5" aria-hidden />
                 </button>
@@ -97,13 +100,13 @@ export function NavCustomizer({ className }: { className?: string }) {
                   disabled={index === modules.length - 1}
                   onClick={() => moveNavModule(module.id, 1, allIds)}
                   aria-label={t("nav.moveDown", { name: label })}
-                  className="grid size-6 place-items-center rounded-control text-fg-muted outline-none hover:bg-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-focus disabled:pointer-events-none disabled:opacity-30"
+                  className="grid size-7 place-items-center rounded-control text-fg-muted outline-none transition-colors hover:bg-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-focus disabled:pointer-events-none disabled:opacity-30"
                 >
                   <ArrowDown className="size-3.5" aria-hidden />
                 </button>
                 {locked ? (
                   <span
-                    className="grid size-6 place-items-center text-fg-subtle"
+                    className="grid size-7 place-items-center text-fg-subtle"
                     title={t("nav.lockedItem")}
                     aria-label={t("nav.lockedItem")}
                   >
@@ -115,7 +118,7 @@ export function NavCustomizer({ className }: { className?: string }) {
                     onClick={() => toggleNavModuleHidden(module.id)}
                     aria-pressed={!isHidden}
                     aria-label={isHidden ? t("nav.showItem", { name: label }) : t("nav.hideItem", { name: label })}
-                    className="grid size-6 place-items-center rounded-control text-fg-muted outline-none hover:bg-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-focus"
+                    className="grid size-7 place-items-center rounded-control text-fg-muted outline-none transition-colors hover:bg-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-focus"
                   >
                     {isHidden ? <EyeOff className="size-3.5" aria-hidden /> : <Eye className="size-3.5" aria-hidden />}
                   </button>

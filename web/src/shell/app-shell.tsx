@@ -45,7 +45,7 @@ export function AppShell() {
 
   const sidebarNode =
     nav === "sidebar" && sidebarOpen ? (
-      <div className="max-md:hidden">
+      <div className="pv-shell-sidebar-slot max-md:hidden">
         <Sidebar side={navSide} onCollapse={() => toggleSidebar(false)} />
       </div>
     ) : null;
@@ -54,9 +54,9 @@ export function AppShell() {
     <ScrollContainerContext value={scrollRef}>
       <InboxCollectors />
       <div className="pv-ambient-canvas flex h-svh flex-col overflow-hidden text-fg">
-        <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="pv-shell-frame flex min-h-0 flex-1 overflow-hidden">
           {navSide === "left" ? sidebarNode : null}
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="pv-shell-main flex min-w-0 flex-1 flex-col overflow-hidden">
             {nav === "sidebar" ? (
               <Toolbar sidebarOpen={sidebarOpen} sidebarSide={navSide} onOpenSidebar={() => toggleSidebar(true)} />
             ) : (

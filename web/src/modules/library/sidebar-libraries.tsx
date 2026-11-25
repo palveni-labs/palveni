@@ -47,7 +47,7 @@ export default function SidebarLibraries() {
         const Icon = LIBRARY_KIND_META[library.kind].icon;
         const active = (pathname.startsWith("/library/") || pathname.startsWith("/video/")) && params.libraryId === library.id;
         const linkClass = cn(
-          "flex h-9 items-center gap-2.5 rounded-xl px-3 text-sm outline-none transition-all duration-150 focus-visible:ring-2 focus-visible:ring-focus",
+          "relative flex h-[30px] items-center gap-2.5 rounded-control px-2.5 text-[0.8125rem] outline-none transition-all duration-150 focus-visible:ring-2 focus-visible:ring-focus",
           active ? "pv-nav-pill-active font-strong" : "font-mid text-shell-fg/85 hover:bg-hover/80 hover:text-shell-fg",
         );
         const content = (
@@ -55,19 +55,19 @@ export default function SidebarLibraries() {
             {itemColor === "on" ? (
               <span
                 aria-hidden
-                className="size-2.5 shrink-0 rounded-full shadow-xs ring-2 ring-white/20"
-                style={{ backgroundColor: active ? "#ffffff" : KIND_SWATCH[library.kind] }}
+                className="size-2 shrink-0 rounded-full ring-2 ring-current/15"
+                style={{ backgroundColor: KIND_SWATCH[library.kind] }}
               />
             ) : (
-              <Icon className={cn("size-4 shrink-0", active ? "text-white" : "text-icon")} aria-hidden />
+              <Icon className={cn("size-4 shrink-0", active ? "text-current" : "text-icon")} aria-hidden />
             )}
             <span className="min-w-0 flex-1 truncate">{library.name}</span>
-            {scanning.has(library.id) ? <Loader2 className={cn("pv-spin size-3.5", active ? "text-white" : "text-active-mark")} aria-hidden /> : null}
+            {scanning.has(library.id) ? <Loader2 className={cn("pv-spin size-3.5", active ? "text-current" : "text-active-mark")} aria-hidden /> : null}
             <span
               data-num
               className={cn(
-                "rounded-full px-2 py-0.5 text-[0.6875rem] font-mid tabular-nums",
-                active ? "bg-white/20 text-white" : "bg-sunken/85 text-shell-fg-muted",
+                "rounded-full px-1.5 py-0.5 text-[0.6875rem] font-mid tabular-nums",
+                active ? "bg-current/12 text-current" : "bg-sunken/85 text-shell-fg-muted",
               )}
             >
               {formatNumber(library.itemCount, i18n.resolvedLanguage ?? "en")}

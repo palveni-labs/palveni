@@ -91,9 +91,23 @@ const HEROUI_MAPPING: Record<string, string> = {
   "--border-tertiary": "var(--pv-line-control)",
 };
 
+/** Aesthetic style-query profile key for built-in modern skins (falls back to "classic"). */
+function aestheticProfile(skinId: string): string {
+  switch (skinId) {
+    case "studio":
+    case "sonic":
+    case "cinema":
+    case "workcolor":
+      return skinId;
+    default:
+      return "classic";
+  }
+}
+
 /** Every CSS custom property a skin sets for one mode. */
 export function skinVariables(skin: SkinManifest, mode: Mode): Record<string, string> {
   const vars: Record<string, string> = {};
+  vars["--pv-aesthetic"] = aestheticProfile(skin.id);
   const colors = skin.colors[mode];
   for (const token of COLOR_TOKENS) vars[`--pv-${token}`] = colors[token];
   for (const token of ELEVATION_TOKENS) vars[`--pv-shadow-${token}`] = skin.elevation[mode][token];

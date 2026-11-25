@@ -30,7 +30,7 @@ function SearchButton({ tone, prominent = false }: { tone: Tone; prominent?: boo
         onClick={() => shell.setPalette(true)}
         className={cn(
           "hidden h-9 min-w-0 items-center gap-2 rounded-control border px-3 text-sm outline-none transition-all duration-150 focus-visible:ring-2 focus-visible:ring-focus",
-          prominent ? "w-[17rem] max-w-[34vw] md:flex" : "w-[13rem] xl:flex",
+          prominent ? "w-[17rem] max-w-[34vw] md:flex" : "w-[12rem] 2xl:flex",
           tone === "shell"
             ? "border-shell-line bg-shell-field text-shell-fg-muted hover:border-line-strong hover:text-shell-fg"
             : "border-line/80 bg-surface/85 text-fg-muted shadow-panel hover:border-line-strong hover:bg-surface hover:text-fg",
@@ -46,7 +46,7 @@ function SearchButton({ tone, prominent = false }: { tone: Tone; prominent?: boo
         size="sm"
         onPress={() => shell.setPalette(true)}
         aria-label={t("palette.title")}
-        className={cn(prominent ? "md:hidden" : "xl:hidden", tone === "shell" && "text-shell-fg-muted data-[hovered=true]:bg-shell-field")}
+        className={cn(prominent ? "md:hidden" : "2xl:hidden", tone === "shell" && "text-shell-fg-muted data-[hovered=true]:bg-shell-field")}
       >
         <Search aria-hidden />
       </Button>
@@ -122,16 +122,16 @@ export function TopBar() {
   const navPhone = useSlot("navPhone");
   return (
     <div className="shrink-0">
-      <header className="relative z-20 flex h-(--pv-shell-h) items-center border-b border-shell-line/75 bg-shell/90 text-shell-fg backdrop-blur-xl">
+      <header className="pv-shell-topbar relative z-20 flex h-(--pv-shell-h) items-center border-b border-shell-line/75 bg-shell/90 text-shell-fg backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-(--pv-layout-max) items-center gap-3 px-(--pv-layout-gutter)">
           <div className="flex min-w-0 grow items-center gap-1 md:grow-0">
-            <Wordmark className="me-2 text-shell-fg" />
-            <ServerSwitch className="max-lg:hidden" />
-            {status === "inline" ? <InlineStatus className="ms-1 max-xl:hidden" /> : null}
+            <Wordmark className="me-1.5 text-shell-fg" />
+            <ServerSwitch className="max-2xl:hidden" />
+            {status === "inline" ? <InlineStatus className="ms-1 max-2xl:hidden" /> : null}
           </div>
           <TopNav className="flex-1 max-md:hidden" />
-          <div className="flex min-w-0 items-center justify-end gap-2">
-            {status === "activity-window" ? <ActivityWindow className="max-w-[24rem] max-lg:hidden" /> : null}
+          <div className="flex min-w-0 items-center justify-end gap-1.5">
+            {status === "activity-window" ? <ActivityWindow className="max-w-[20rem] max-2xl:hidden" /> : null}
             <Tools tone="shell" />
           </div>
         </div>
@@ -168,9 +168,9 @@ export function Toolbar({
     </button>
   ) : null;
   return (
-    <div className="shrink-0 pt-3">
-      <div className="mx-auto w-full max-w-(--pv-layout-max) px-(--pv-layout-gutter)">
-      <header className="pv-glass-toolbar relative z-20 flex h-13 items-center gap-3 rounded-2xl px-3.5 md:px-4">
+    <div className="pv-shell-toolbar-wrap shrink-0">
+      <div className="pv-shell-toolbar-inner">
+      <header className="pv-shell-toolbar pv-glass-toolbar relative z-20 flex items-center gap-3">
         <Wordmark className="text-heading md:hidden" />
         {sidebarSide === "left" ? openButton : null}
         {contentHeader ? (

@@ -84,16 +84,16 @@ function ProviderForm({ config, isAdmin }: { config: AssistantConfigResponse; is
 
       {!isBuiltin ? (
         <>
-          <TextField value={baseUrl} onChange={setBaseUrl} isDisabled={!isAdmin || update.isPending}>
-            <Label>{t("assistant.settings.baseUrl")}</Label>
+          <TextField value={baseUrl} onChange={setBaseUrl} isDisabled={!isAdmin || update.isPending} className="grid gap-1.5">
+            <Label className="text-sm font-mid text-fg">{t("assistant.settings.baseUrl")}</Label>
             <Input placeholder="http://127.0.0.1:11434/v1" />
           </TextField>
-          <TextField value={model} onChange={setModel} isDisabled={!isAdmin || update.isPending}>
-            <Label>{t("assistant.settings.model")}</Label>
+          <TextField value={model} onChange={setModel} isDisabled={!isAdmin || update.isPending} className="grid gap-1.5">
+            <Label className="text-sm font-mid text-fg">{t("assistant.settings.model")}</Label>
             <Input placeholder="qwen2.5:7b" />
           </TextField>
-          <TextField value={apiKey} onChange={setApiKey} isDisabled={!isAdmin || update.isPending}>
-            <Label>{t("assistant.settings.apiKey")}</Label>
+          <TextField value={apiKey} onChange={setApiKey} isDisabled={!isAdmin || update.isPending} className="grid gap-1.5">
+            <Label className="text-sm font-mid text-fg">{t("assistant.settings.apiKey")}</Label>
             <Input
               type="password"
               autoComplete="off"
@@ -107,13 +107,13 @@ function ProviderForm({ config, isAdmin }: { config: AssistantConfigResponse; is
         </>
       ) : null}
 
-      <label className="flex items-start gap-2.5 rounded-tile border border-line bg-surface px-3 py-2.5 text-sm">
+      <label className="flex cursor-pointer items-start gap-2.5 rounded-tile border border-line bg-surface px-3.5 py-3 text-sm">
         <input
           type="checkbox"
           checked={redactCloudPaths}
           disabled={!isAdmin || update.isPending}
           onChange={(event) => setRedactCloudPaths(event.target.checked)}
-          className="mt-0.5 size-4 rounded border-line accent-fg"
+          className="pv-checkbox mt-0.5"
         />
         <span className="grid min-w-0 gap-0.5">
           <span className="font-mid text-fg">{t("assistant.settings.redactCloudPaths")}</span>
@@ -180,7 +180,11 @@ function McpAccessCard({ enabled }: { enabled: boolean }) {
         </span>
       </div>
 
-      <div role="tablist" aria-label={t("assistant.settings.mcpSection")} className="flex gap-1 border-b border-line pb-2">
+      <div
+        role="tablist"
+        aria-label={t("assistant.settings.mcpSection")}
+        className="inline-flex w-fit items-center gap-0.5 rounded-control border border-line bg-sunken p-0.5"
+      >
         {tabs.map((tab) => {
           const active = clientTab === tab.id;
           return (
@@ -191,8 +195,10 @@ function McpAccessCard({ enabled }: { enabled: boolean }) {
               aria-selected={active}
               onClick={() => setClientTab(tab.id)}
               className={cn(
-                "rounded-control px-2.5 py-1 text-xs transition-colors",
-                active ? "bg-sunken font-strong text-fg" : "text-fg-muted hover:text-fg",
+                "h-7 rounded-[calc(var(--pv-radius-control)-2px)] px-2.5 text-xs transition-all",
+                active
+                  ? "bg-raised font-strong text-heading shadow-panel"
+                  : "font-mid text-fg-muted hover:text-fg",
               )}
             >
               {tab.label}
@@ -201,13 +207,13 @@ function McpAccessCard({ enabled }: { enabled: boolean }) {
         })}
       </div>
 
-      <pre className="max-h-44 overflow-auto rounded-control border border-line bg-sunken p-2.5 font-mono text-xs leading-relaxed text-fg">
+      <pre className="max-h-48 overflow-auto rounded-control border border-line bg-sunken p-3 font-mono text-[11px] leading-relaxed text-fg">
         {snippet}
       </pre>
 
       <div className="flex justify-end">
-        <Button size="sm" variant="secondary" onPress={() => void onCopy()}>
-          {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+        <Button size="sm" variant="outline" onPress={() => void onCopy()}>
+          {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
           {t("assistant.settings.mcpCopy")}
         </Button>
       </div>
@@ -243,15 +249,18 @@ export function AssistantSettingsDrawer({ open, onOpenChange }: { open: boolean;
 
   return (
     <Drawer.Backdrop isOpen={open} onOpenChange={onOpenChange}>
-      <Drawer.Content placement="right" className="w-full sm:max-w-md">
-        <Drawer.Dialog aria-label={t("assistant.settings.title")} className="flex h-full flex-col">
-          <Drawer.CloseTrigger aria-label={t("a11y.close")} className="absolute top-3 end-3 z-10" />
-          <Drawer.Header className="border-b border-line px-6 pt-5 pb-4">
+      <Drawer.Content placement="right">
+        <Drawer.Dialog
+          aria-label={t("assistant.settings.title")}
+          className="flex h-full w-[min(31rem,94vw)] max-w-none flex-col gap-0 overflow-hidden border-s border-line p-0"
+        >
+          <Drawer.Header className="flex flex-row items-center justify-between gap-3 border-b border-line px-6 py-4">
             <Drawer.Heading className="font-heading text-lg font-title text-heading">
               {t("assistant.settings.title")}
             </Drawer.Heading>
+            <Drawer.CloseTrigger aria-label={t("a11y.close")} className="static shrink-0" />
           </Drawer.Header>
-          <Drawer.Body className="grid content-start gap-6 overflow-y-auto px-6 py-5">
+          <Drawer.Body className="m-0 grid content-start gap-6 overflow-y-auto px-6 py-5">
             <section className="grid gap-3">
               <h2 className="text-sm font-strong text-heading">{t("assistant.settings.providerSection")}</h2>
               {config ? (
@@ -286,11 +295,10 @@ export function AssistantSettingsDrawer({ open, onOpenChange }: { open: boolean;
                 />
                 <Button
                   type="submit"
-                  size="sm"
                   variant="secondary"
                   isDisabled={!memoryDraft.trim() || addMemory.isPending}
                 >
-                  <Plus className="size-4" aria-hidden />
+                  <Plus aria-hidden />
                   {t("assistant.settings.addMemory")}
                 </Button>
               </form>

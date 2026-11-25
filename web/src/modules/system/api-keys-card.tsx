@@ -122,11 +122,10 @@ export function ApiKeysCard() {
                   className="min-w-0 flex-1 font-mono text-sm"
                 />
                 <Button
-                  size="sm"
                   variant="outline"
                   onPress={() => void handleCopy("url", serverUrl)}
                 >
-                  {copiedId === "url" ? <Check className="size-3.5" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
+                  {copiedId === "url" ? <Check aria-hidden /> : <Copy aria-hidden />}
                   {copiedId === "url" ? t("apiKeys.copied") : t("apiKeys.copy")}
                 </Button>
               </div>
@@ -168,8 +167,8 @@ export function ApiKeysCard() {
                   </select>
                 </label>
 
-                <Button type="submit" size="sm" isPending={createKey.isPending}>
-                  {createKey.isPending ? <Spinner size="sm" color="current" /> : <Plus className="size-3.5" aria-hidden />}
+                <Button type="submit" variant="primary" isPending={createKey.isPending}>
+                  {createKey.isPending ? <Spinner size="sm" color="current" /> : <Plus aria-hidden />}
                   {t("apiKeys.create")}
                 </Button>
               </div>

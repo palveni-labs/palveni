@@ -515,6 +515,15 @@
     "official": "官方目录",
     "search": "搜索插件",
     "filterLabel": "安装状态",
+    "categoryLabel": "插件类型",
+    "categories": {
+      "all": "全部类型",
+      "metadata": "元数据刮削",
+      "mediaEnhance": "歌词与字幕",
+      "widget": "概览小组件",
+      "skin": "外观皮肤",
+      "other": "其他扩展"
+    },
     "filter": {
       "all": "全部",
       "available": "可安装",

@@ -21,7 +21,7 @@ const packages = readdirSync(PLUGINS)
 const SLOT_TABLE: Record<string, Partial<SkinManifest["slots"]>> = {
   studio: { nav: "sidebar", navPhone: "bottom-bar", status: "inline", progress: "bar", attention: "tint", section: "panel", itemColor: "on", measure: "mono", pageTitle: "content", summary: "cells" },
   sonic: { nav: "sidebar", navPhone: "bottom-bar", status: "inline", progress: "row-fill", attention: "thumbs", section: "panel", itemColor: "on", measure: "sans", pageTitle: "content", summary: "inline" },
-  cinema: { nav: "sidebar", navPhone: "bottom-bar", status: "inline", progress: "bar", attention: "thumbs", section: "panel", itemColor: "on", measure: "sans", pageTitle: "content", summary: "inline" },
+  cinema: { nav: "topbar", navPhone: "bottom-bar", status: "inline", progress: "bar", attention: "thumbs", section: "panel", itemColor: "on", measure: "sans", pageTitle: "content", summary: "inline" },
   workcolor: { nav: "sidebar", navPhone: "bottom-bar", status: "inline", progress: "row-fill", attention: "thumbs", section: "panel", itemColor: "on", measure: "sans", pageTitle: "content", summary: "inline" },
   native: { nav: "sidebar", navPhone: "bottom-bar", status: "activity-window", progress: "bar", attention: "tint", section: "plain", itemColor: "off", measure: "sans", pageTitle: "toolbar", summary: "cells" },
   ink: { nav: "topbar", navPhone: "bottom-bar", status: "inline", progress: "bar", attention: "seal", section: "rule", itemColor: "off", measure: "sans", pageTitle: "content", summary: "inline" },
@@ -90,7 +90,7 @@ describe("all built-in and official skins", () => {
     }
   });
 
-  it("match the slot table in the skin contract", () => {
+  it("match the slot table in DESIGN.md §4", () => {
     for (const skin of all) {
       expect(Object.keys(skin.slots).sort()).toEqual([...SLOT_NAMES].sort());
       expect(skin.slots).toEqual(SLOT_TABLE[skin.id]);

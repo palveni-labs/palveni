@@ -1,5 +1,5 @@
 /**
- * 作品色 · Work Colour (default). 
+ * 作品色 · Work Colour (default). Spec: docs/design/skins/workcolor.md.
  * Refined studio-neutral surfaces paired with a restrained ocean-sapphire accent and cover-derived accents.
  */
 import type { BuiltinSkin } from "../registry";
@@ -194,7 +194,7 @@ const manifest = {
     "radius-tile": 14,
     "radius-panel": 16,
     "control-h": 36,
-    "control-h-sm": 30,
+    "control-h-sm": 32,
     "row-h": 54,
     space: 4,
     "pad-panel": 20,

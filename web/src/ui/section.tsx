@@ -76,13 +76,13 @@ export function Section({ title, count, more, actions, bare = false, raised = fa
         <header
           className={cn(
             "flex min-h-12 items-center gap-2",
-            variant === "panel" && "px-(--pv-pad-panel) pt-4.5 pb-3.5",
+            variant === "panel" && "px-(--pv-pad-panel) pt-4 pb-3",
             variant === "rule" && "pt-4 pb-3",
             variant === "plain" && "pb-2.5",
             bare && "sr-only",
           )}
         >
-          <h2 className="truncate font-heading text-lg font-title text-heading">{title}</h2>
+          <h2 className="truncate font-heading text-[0.9375rem] font-strong tracking-[-0.01em] text-heading">{title}</h2>
           {count !== undefined ? (
             <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sunken px-1.5 text-xs font-mid text-fg-muted tabular-nums">
               {count}
@@ -101,7 +101,7 @@ export function Section({ title, count, more, actions, bare = false, raised = fa
 /** Horizontal padding a row needs inside the current section variant. */
 export function useRowInset(): string {
   const variant = useSectionVariant();
-  return variant === "panel" ? "px-(--pv-pad-panel)" : variant === "plain" ? "px-3" : "";
+  return variant === "panel" ? "px-(--pv-pad-panel)" : variant === "plain" ? "px-(--pv-pad-panel)" : "";
 }
 
 /** A list of rows separated the way the section variant separates them. */
@@ -110,7 +110,9 @@ export function SectionRows({ className, children, ...props }: ComponentProps<"u
   return (
     <ul
       className={cn(
-        variant === "plain" ? "grid gap-0.5 [&>li:nth-child(odd)]:bg-sunken [&>li]:rounded-tile" : "divide-y divide-line/65",
+        variant === "plain"
+          ? "divide-y divide-line/65 overflow-hidden rounded-panel border border-line/85 bg-surface shadow-panel"
+          : "divide-y divide-line/65",
         variant === "panel" && "border-t border-line/70",
         className,
       )}

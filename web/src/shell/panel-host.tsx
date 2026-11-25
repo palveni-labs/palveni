@@ -52,8 +52,8 @@ export function PanelHost() {
   }
   return (
     <Drawer.Backdrop isOpen={panelOpen} onOpenChange={(open) => (open ? undefined : shell.closeAssistant())}>
-      <Drawer.Content placement="right" className="w-full sm:max-w-md">
-        <Drawer.Dialog aria-label={title} className="flex h-full flex-col p-0">
+      <Drawer.Content placement="right">
+        <Drawer.Dialog aria-label={title} className="flex h-full w-[min(28rem,94vw)] max-w-none flex-col gap-0 overflow-hidden border-s border-line p-0">
           <PanelBody />
         </Drawer.Dialog>
       </Drawer.Content>

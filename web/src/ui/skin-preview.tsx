@@ -56,25 +56,25 @@ function MiniTopBar() {
   const { t } = useTranslation();
   const items = useNavItems();
   return (
-    <div className="flex h-(--pv-shell-h) shrink-0 items-center justify-between gap-4 border-b border-shell-line bg-shell px-5 text-shell-fg">
+    <div className="pv-shell-topbar flex h-(--pv-shell-h) shrink-0 items-center justify-between gap-4 border-b border-shell-line bg-shell px-5 text-shell-fg">
       <span className="font-heading text-[1.125rem] leading-none font-title tracking-[-0.015em]">{t("app.name")}</span>
       <ul className="flex items-center gap-0.5 rounded-control bg-nav-track p-[3px]">
         {items.map((item, index) => (
           <li
             key={item.label}
             className={cn(
-              "relative flex h-(--pv-control-h) items-center gap-1 rounded-control px-3 text-sm whitespace-nowrap",
+              "relative flex h-8 items-center gap-1 rounded-control px-3 text-sm whitespace-nowrap",
               index === 0 ? "bg-nav-active font-strong text-nav-active-fg" : "font-mid text-shell-fg-muted",
             )}
           >
             {item.label}
             {index === 2 ? <ChevronDown className="size-3 opacity-65" /> : null}
             {index === 0 ? (
-              <span className="absolute inset-x-2.5 h-0.5 bg-nav-indicator" style={{ bottom: "calc((var(--pv-control-h) + 6px - var(--pv-shell-h)) / 2)" }} />
+              <span className="absolute inset-x-2.5 -bottom-1 h-0.5 bg-nav-indicator" />
             ) : null}
           </li>
         ))}
-        <li className="flex h-(--pv-control-h) items-center gap-1 rounded-control px-3 text-sm font-mid whitespace-nowrap text-shell-fg-muted">
+        <li className="flex h-8 items-center gap-1 rounded-control px-3 text-sm font-mid whitespace-nowrap text-shell-fg-muted">
           {t("modules.system.title")}
           <ChevronDown className="size-3 opacity-65" />
         </li>
@@ -88,15 +88,18 @@ function MiniSidebar() {
   const { t } = useTranslation();
   const items = useNavItems();
   return (
-    <div className="flex w-[12.5rem] shrink-0 flex-col border-e border-shell-line bg-shell px-2.5 text-shell-fg">
+    <div className="pv-shell-sidebar pv-glass-shell flex w-[12.5rem] shrink-0 flex-col border-e border-shell-line px-2.5 text-shell-fg">
       <span className="flex h-(--pv-shell-h) items-center px-2 font-heading text-[1.125rem] leading-none font-title text-heading">{t("app.name")}</span>
       <ul className="grid gap-0.5">
         {items.map(({ label, icon: Icon }, index) => (
           <li
             key={label}
-            className={cn("flex h-8 items-center gap-2 rounded-tile px-2.5 text-sm", index === 0 ? "bg-nav-active font-strong text-nav-active-fg shadow-panel" : "font-mid text-shell-fg")}
+            className={cn(
+              "flex h-8 items-center gap-2 rounded-control px-2.5 text-sm",
+              index === 0 ? "pv-nav-pill-active font-strong" : "font-mid text-shell-fg",
+            )}
           >
-            <Icon className={cn("size-3.5 shrink-0", index === 0 ? "text-nav-active-fg" : "text-icon")} />
+            <Icon className={cn("size-3.5 shrink-0", index === 0 ? "text-current" : "text-icon")} />
             {label}
           </li>
         ))}
@@ -189,20 +192,24 @@ function Miniature() {
   const section = useSlot("section");
   const title = t("modules.overview.title");
   return (
-    <div className="flex size-full bg-page font-ui text-base text-fg">
+    <div className="pv-ambient-canvas pv-shell-frame flex size-full font-ui text-base text-fg">
       {nav === "sidebar" ? <MiniSidebar /> : null}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="pv-shell-main flex min-w-0 flex-1 flex-col overflow-hidden">
         {nav === "topbar" ? (
           <MiniTopBar />
         ) : (
-          <div className="flex h-(--pv-shell-h) shrink-0 items-center border-b border-line bg-page px-5 text-[1.0625rem] font-strong text-heading">
-            {pageTitle === "toolbar" ? title : null}
+          <div className="pv-shell-toolbar-wrap shrink-0">
+            <div className="pv-shell-toolbar-inner">
+              <div className="pv-shell-toolbar pv-glass-toolbar flex shrink-0 items-center text-[0.9375rem] font-strong text-heading">
+                {pageTitle === "toolbar" ? title : <span className="h-2.5 w-28 rounded-full bg-sunken" />}
+              </div>
+            </div>
           </div>
         )}
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-(--pv-gutter) pt-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-hidden px-(--pv-gutter) pt-4">
           {pageTitle === "content" ? <span className="font-heading text-headline leading-none font-title text-heading">{title}</span> : null}
           <Section title={t("appearance.preview.section")} count={2}>
-            <ul className={cn(attention === "tint" ? "grid gap-2" : "divide-y divide-line", section === "panel" && attention !== "tint" && "border-t border-line")}>
+            <ul className={cn(attention === "tint" ? "grid gap-2 p-2" : "divide-y divide-line", section === "panel" && attention !== "tint" && "border-t border-line")}>
               <WaitingRow />
               <RunningRow />
             </ul>

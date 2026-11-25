@@ -120,7 +120,7 @@
     color: var(--pv-fg);
     font-family: var(--pv-font-ui);
     font-size: 100%;
-    accent-color: var(--pv-action);
+    accent-color: var(--pv-selected);
     scrollbar-color: color-mix(in oklab, var(--pv-fg) 26%, transparent) transparent;
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
@@ -143,12 +143,21 @@
       font-size: 114%;
     }
   }
-  body {
+  body,
+  .skin-scope {
     --pv-layout-max: 92rem;
     --pv-layout-gutter: clamp(1rem, 2.2vw, 2.5rem);
     --pv-layout-top: clamp(1.125rem, 1.5vw, 1.75rem);
     --pv-layout-bottom: clamp(2.5rem, 3.5vw, 3.75rem);
     --pv-fluid-headline: clamp(1.375rem, 1.15rem + 0.65vw, 1.875rem);
+    /* Harmonized ergonomic control height floors across all built-in and plugin skins. */
+    --pv-btn-h: max(2.25rem, var(--pv-control-h));
+    --pv-btn-h-sm: max(2rem, var(--pv-control-h-sm));
+    --pv-btn-h-lg: max(2.625rem, calc(var(--pv-control-h) + 0.5rem));
+    --pv-control-border: color-mix(in oklab, var(--pv-fg) 15%, transparent);
+    --pv-control-border-hover: color-mix(in oklab, var(--pv-fg) 26%, transparent);
+  }
+  body {
     min-height: 100svh;
     background: var(--pv-bg);
     color: var(--pv-fg);
@@ -232,44 +241,83 @@
 
 @layer components {
   .button {
-    height: var(--pv-control-h);
-    padding-inline: calc(var(--pv-control-h) * 0.42);
+    height: var(--pv-btn-h);
+    min-height: var(--pv-btn-h);
+    padding-inline: 0.9375rem;
     border-radius: var(--pv-radius-control);
     font-size: var(--pv-text-sm);
     font-weight: var(--pv-weight-medium);
-    gap: 0.375rem;
+    line-height: 1;
+    letter-spacing: -0.006em;
+    gap: 0.4375rem;
     transition:
       background-color var(--pv-duration-fast) var(--pv-ease),
+      border-color var(--pv-duration-fast) var(--pv-ease),
       color var(--pv-duration-fast) var(--pv-ease),
       box-shadow var(--pv-duration-fast) var(--pv-ease),
-      transform 120ms var(--pv-ease);
+      scale 110ms var(--pv-ease);
+    &:active,
+    &[data-pressed="true"] {
+      transform: none;
+      scale: 0.98;
+    }
+    &:focus-visible,
+    &[data-focus-visible="true"] {
+      outline: 2px solid var(--pv-focus);
+      outline-offset: 2px;
+      box-shadow: none;
+    }
     & svg:not([data-slot="spinner"] svg) {
       width: 1rem;
       height: 1rem;
       margin: 0;
+      flex-shrink: 0;
     }
   }
   .button--sm {
-    height: var(--pv-control-h-sm);
-    padding-inline: calc(var(--pv-control-h-sm) * 0.38);
+    height: var(--pv-btn-h-sm);
+    min-height: var(--pv-btn-h-sm);
+    padding-inline: 0.75rem;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    & svg:not([data-slot="spinner"] svg) {
+      width: 0.9375rem;
+      height: 0.9375rem;
+    }
   }
   .button--lg {
-    height: calc(var(--pv-control-h) + 0.375rem);
-    padding-inline: calc(var(--pv-control-h) * 0.55);
+    height: var(--pv-btn-h-lg);
+    min-height: var(--pv-btn-h-lg);
+    padding-inline: 1.25rem;
+    gap: 0.5rem;
     font-size: var(--pv-text-base);
   }
   .button--icon-only {
-    width: var(--pv-control-h);
+    width: var(--pv-btn-h);
+    min-width: var(--pv-btn-h);
     padding: 0;
   }
   .button--icon-only.button--sm {
-    width: var(--pv-control-h-sm);
+    width: var(--pv-btn-h-sm);
+    min-width: var(--pv-btn-h-sm);
   }
   .button--primary {
     --button-bg: var(--pv-action);
     --button-bg-hover: var(--pv-action-hover);
     --button-bg-pressed: var(--pv-action-hover);
     --button-fg: var(--pv-action-fg);
+    border: 1px solid transparent;
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.18),
+      0 1px 2px oklch(0 0 0 / 0.14);
+    @media (hover: hover) {
+      &:hover,
+      &[data-hovered="true"] {
+        box-shadow:
+          inset 0 1px 0 oklch(1 0 0 / 0.22),
+          0 4px 12px -3px color-mix(in oklab, var(--pv-action) 38%, transparent);
+      }
+    }
   }
   .button--secondary,
   .button--tertiary {
@@ -277,19 +325,49 @@
     --button-bg-hover: var(--pv-secondary-hover);
     --button-bg-pressed: var(--pv-secondary-hover);
     --button-fg: var(--pv-secondary-fg);
+    border: 1px solid transparent;
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pv-fg) 7%, transparent);
   }
   .button--outline {
     --button-bg: var(--pv-surface);
     --button-bg-hover: var(--pv-hover);
-    --button-bg-pressed: var(--pv-hover);
+    --button-bg-pressed: var(--pv-secondary-hover);
     --button-fg: var(--pv-fg);
-    border: 1px solid var(--pv-line-control);
+    border: 1px solid var(--pv-control-border);
+    box-shadow:
+      0 1px 2px oklch(0 0 0 / 0.05),
+      inset 0 -1px 0 oklch(0 0 0 / 0.025);
+    @media (hover: hover) {
+      &:hover,
+      &[data-hovered="true"] {
+        border-color: var(--pv-control-border-hover);
+        box-shadow: 0 2px 6px -1px oklch(0 0 0 / 0.08);
+      }
+    }
+  }
+  .dark .button--outline {
+    --button-bg: color-mix(in oklab, var(--pv-surface-raised) 82%, transparent);
+    --button-bg-hover: var(--pv-hover);
+    border-color: oklch(1 0 0 / 0.14);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.07),
+      0 1px 2px oklch(0 0 0 / 0.34);
+    @media (hover: hover) {
+      &:hover,
+      &[data-hovered="true"] {
+        border-color: oklch(1 0 0 / 0.24);
+        box-shadow:
+          inset 0 1px 0 oklch(1 0 0 / 0.11),
+          0 3px 8px -2px oklch(0 0 0 / 0.45);
+      }
+    }
   }
   .button--ghost {
     --button-bg: transparent;
     --button-bg-hover: var(--pv-hover);
-    --button-bg-pressed: var(--pv-hover);
+    --button-bg-pressed: var(--pv-secondary-hover);
     --button-fg: var(--pv-fg-muted);
+    border: 1px solid transparent;
     &:hover,
     &[data-hovered="true"] {
       color: var(--pv-fg);
@@ -299,21 +377,32 @@
     --button-bg: var(--pv-failed);
     --button-bg-hover: color-mix(in oklab, var(--pv-failed) 88%, var(--pv-fg-inverse));
     --button-fg: var(--pv-fg-inverse);
+    border: 1px solid transparent;
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.16),
+      0 1px 2px oklch(0 0 0 / 0.14);
   }
-  /* The one action that carries out a confirmed change (confirmation is its own job). */
+  /* The one action that carries out a confirmed change (DESIGN.md: 确认 is its own job). */
   .button.button--confirm {
     --button-bg: var(--pv-confirm);
     --button-bg-hover: color-mix(in oklab, var(--pv-confirm) 88%, var(--pv-confirm-fg));
     --button-bg-pressed: color-mix(in oklab, var(--pv-confirm) 82%, var(--pv-confirm-fg));
     --button-fg: var(--pv-confirm-fg);
     border: 0;
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.18),
+      0 1px 2px oklch(0 0 0 / 0.14);
   }
   .button:disabled,
   .button[aria-disabled="true"] {
-    opacity: 1;
+    opacity: 0.72;
     --button-bg: var(--pv-secondary);
     --button-fg: var(--pv-fg-disabled);
     border-color: var(--pv-line);
+    box-shadow: none;
+  }
+  [data-secure-surface="host"] .button--outline {
+    border-color: var(--pv-line-control);
   }
   [data-secure-surface] {
     /* Rebind the component aliases here: inherited aliases resolve at their declaring element. */
@@ -417,6 +506,8 @@
     border-radius: var(--pv-radius-chip);
     font-size: var(--pv-text-xs);
     font-weight: var(--pv-weight-medium);
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .tooltip {
@@ -449,21 +540,39 @@
     border-radius: calc(var(--pv-radius-panel) + 2px);
     border: 1px solid var(--pv-line);
   }
+  .drawer__dialog .drawer__header + .drawer__body {
+    margin-top: 0;
+  }
   .menu-item,
   .list-box-item {
-    border-radius: calc(var(--pv-radius-panel) * 0.5 + 2px);
-    font-size: var(--pv-text-sm);
+    min-height: 2rem;
+    padding: 0.375rem 0.625rem;
+    border-radius: calc(var(--pv-radius-control) - 1px);
+    font-size: 0.8125rem;
+    gap: 0.5rem;
   }
 
   .input,
   .search-field__group,
   .input-group {
-    min-height: var(--pv-control-h);
+    min-height: var(--pv-btn-h);
     border-radius: var(--pv-radius-field);
+    border-color: var(--pv-control-border);
     font-size: var(--pv-text-sm);
+    box-shadow: inset 0 1px 1px oklch(0 0 0 / 0.03);
+  }
+  .input {
+    height: var(--pv-btn-h);
+    padding-block: 0;
+  }
+  .dark .input,
+  .dark .search-field__group,
+  .dark .input-group {
+    border-color: oklch(1 0 0 / 0.14);
   }
   .textarea {
     border-radius: var(--pv-radius-field);
+    border-color: var(--pv-control-border);
     font-size: var(--pv-text-sm);
     resize: vertical;
   }
@@ -695,36 +804,73 @@
 @layer components {
   .pv-segmented {
     display: inline-flex;
+    align-items: center;
     gap: 2px;
+    min-height: var(--pv-btn-h);
     padding: 3px;
     border-radius: var(--pv-radius-control);
-    background: var(--pv-surface-sunken);
+    border: 1px solid color-mix(in oklab, var(--pv-fg) 9%, transparent);
+    background: color-mix(in oklab, var(--pv-surface-sunken) 94%, transparent);
   }
-  .pv-segmented .toggle-button {
-    height: calc(var(--pv-control-h) - 4px);
+  .dark .pv-segmented {
+    border-color: oklch(1 0 0 / 0.08);
+    background: color-mix(in oklab, var(--pv-surface-sunken) 92%, transparent);
+  }
+  .pv-segmented .toggle-button,
+  .pv-segmented > button[role="tab"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(var(--pv-btn-h) - 8px);
     padding-inline: 0.75rem;
     gap: 0.375rem;
-    border-radius: var(--pv-radius-control);
-    font-size: var(--pv-text-sm);
+    border-radius: calc(var(--pv-radius-control) - 2px);
+    font-size: 0.8125rem;
     font-weight: var(--pv-weight-medium);
+    white-space: nowrap;
+    cursor: pointer;
     color: var(--pv-fg-muted);
     background: transparent;
     border: 0;
     box-shadow: none;
+    transition:
+      background-color var(--pv-duration-fast) var(--pv-ease),
+      color var(--pv-duration-fast) var(--pv-ease),
+      box-shadow var(--pv-duration-fast) var(--pv-ease);
+    & svg {
+      width: 0.9375rem;
+      height: 0.9375rem;
+      flex-shrink: 0;
+    }
+    @media (hover: hover) {
+      &:hover:not([data-selected="true"]):not([aria-selected="true"]) {
+        color: var(--pv-fg);
+        background: color-mix(in oklab, var(--pv-fg) 5%, transparent);
+      }
+    }
   }
-  .pv-segmented .toggle-button[data-selected="true"] {
+  .pv-segmented .toggle-button[data-selected="true"],
+  .pv-segmented > button[role="tab"][aria-selected="true"] {
     background: var(--pv-surface-raised);
-    color: var(--pv-fg);
+    color: var(--pv-heading);
     font-weight: var(--pv-weight-strong);
-    box-shadow: var(--pv-shadow-raised);
+    box-shadow:
+      0 1px 3px oklch(0 0 0 / 0.11),
+      0 0 0 0.5px oklch(0 0 0 / 0.06);
+  }
+  .dark .pv-segmented .toggle-button[data-selected="true"],
+  .dark .pv-segmented > button[role="tab"][aria-selected="true"] {
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.12),
+      0 2px 6px oklch(0 0 0 / 0.42);
   }
   .pv-segmented .toggle-button-group__separator {
     display: none;
   }
   /* HeroUI rounds the outer ends of an attached group with its own radius; mixed with a pill
-     radius the corners scale down to square. Every segment keeps the skin's control radius. */
+     radius the corners scale down to square. Every segment keeps concentric control radius. */
   .pv-segmented.toggle-button-group .toggle-button:is(:first-child, :last-child) {
-    border-radius: var(--pv-radius-control);
+    border-radius: calc(var(--pv-radius-control) - 2px);
   }
 }
 
@@ -860,24 +1006,32 @@
   }
 
   :where(.pv-field) {
-    height: var(--pv-control-h);
+    height: var(--pv-btn-h);
     border-radius: var(--pv-radius-field);
-    border: 1px solid var(--pv-line-control);
+    border: 1px solid var(--pv-control-border);
     background-color: var(--pv-field);
     color: var(--pv-fg);
     padding-inline: 0.75rem;
     font-size: var(--pv-text-sm);
     line-height: 1.25;
+    box-shadow: inset 0 1px 1px oklch(0 0 0 / 0.03);
     transition:
       border-color var(--pv-duration-fast) var(--pv-ease),
       background-color var(--pv-duration-fast) var(--pv-ease),
       box-shadow var(--pv-duration-fast) var(--pv-ease);
   }
+  .dark :where(.pv-field) {
+    border-color: oklch(1 0 0 / 0.14);
+    box-shadow: inset 0 1px 2px oklch(0 0 0 / 0.25);
+  }
   :where(.pv-field)::placeholder {
     color: var(--pv-fg-subtle);
   }
   :where(.pv-field):hover:not(:disabled) {
-    border-color: color-mix(in oklab, var(--pv-line-control) 72%, var(--pv-fg) 28%);
+    border-color: var(--pv-control-border-hover);
+  }
+  .dark :where(.pv-field):hover:not(:disabled) {
+    border-color: oklch(1 0 0 / 0.24);
   }
   :where(.pv-field):focus-visible {
     outline: none;
@@ -888,30 +1042,34 @@
     border-color: var(--pv-failed);
   }
   :where(.pv-field.pv-field--sm) {
-    height: var(--pv-control-h-sm);
+    height: var(--pv-btn-h-sm);
     padding-inline: 0.625rem;
-    font-size: var(--pv-text-xs);
+    font-size: 0.8125rem;
   }
 
   :where(.pv-textarea) {
     width: 100%;
     border-radius: var(--pv-radius-field);
-    border: 1px solid var(--pv-line-control);
+    border: 1px solid var(--pv-control-border);
     background-color: var(--pv-field);
     color: var(--pv-fg);
     padding: 0.625rem 0.75rem;
     font-size: var(--pv-text-sm);
     line-height: var(--pv-leading);
     resize: vertical;
+    box-shadow: inset 0 1px 1px oklch(0 0 0 / 0.03);
     transition:
       border-color var(--pv-duration-fast) var(--pv-ease),
       box-shadow var(--pv-duration-fast) var(--pv-ease);
+  }
+  .dark :where(.pv-textarea) {
+    border-color: oklch(1 0 0 / 0.14);
   }
   :where(.pv-textarea)::placeholder {
     color: var(--pv-fg-subtle);
   }
   :where(.pv-textarea):hover:not(:disabled) {
-    border-color: color-mix(in oklab, var(--pv-line-control) 72%, var(--pv-fg) 28%);
+    border-color: var(--pv-control-border-hover);
   }
   :where(.pv-textarea):focus-visible {
     outline: none;
@@ -922,13 +1080,43 @@
     border-color: var(--pv-failed);
   }
 
+  /* Brand-consistent native checkbox with @supports not fallback for older browsers */
+  :where(.pv-checkbox) {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    border-radius: 4px;
+    accent-color: var(--pv-selected);
+    cursor: pointer;
+  }
+  @supports not (accent-color: auto) {
+    :where(.pv-checkbox) {
+      appearance: none;
+      border: 1.5px solid var(--pv-line-control);
+      background-color: var(--pv-field);
+      display: inline-grid;
+      place-items: center;
+    }
+    :where(.pv-checkbox):checked {
+      background-color: var(--pv-selected);
+      border-color: var(--pv-selected);
+    }
+    :where(.pv-checkbox):checked::after {
+      content: "✓";
+      color: var(--pv-selected-fg);
+      font-size: 0.75rem;
+      line-height: 1;
+      font-weight: 700;
+    }
+  }
+
   :where(.pv-select) {
     display: inline-flex;
     align-items: center;
-    height: var(--pv-control-h);
+    height: var(--pv-btn-h);
     max-inline-size: 100%;
     border-radius: var(--pv-radius-field);
-    border: 1px solid var(--pv-line-control);
+    border: 1px solid var(--pv-control-border);
     background-color: var(--pv-field);
     color: var(--pv-fg);
     padding-block: 0;
@@ -936,13 +1124,21 @@
     font-size: var(--pv-text-sm);
     line-height: 1.2;
     cursor: pointer;
+    box-shadow: 0 1px 2px oklch(0 0 0 / 0.04);
     transition:
       border-color var(--pv-duration-fast) var(--pv-ease),
       background-color var(--pv-duration-fast) var(--pv-ease),
       box-shadow var(--pv-duration-fast) var(--pv-ease);
   }
+  .dark :where(.pv-select) {
+    border-color: oklch(1 0 0 / 0.14);
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.06), 0 1px 2px oklch(0 0 0 / 0.3);
+  }
   :where(.pv-select):hover:not(:disabled) {
-    border-color: color-mix(in oklab, var(--pv-line-control) 72%, var(--pv-fg) 28%);
+    border-color: var(--pv-control-border-hover);
+  }
+  .dark :where(.pv-select):hover:not(:disabled) {
+    border-color: oklch(1 0 0 / 0.24);
   }
   :where(.pv-select):focus-visible {
     outline: none;
@@ -954,11 +1150,12 @@
     color: var(--pv-fg-disabled);
     background-color: var(--pv-surface-sunken);
     border-color: var(--pv-line);
+    box-shadow: none;
   }
   :where(.pv-select.pv-select--sm) {
-    height: var(--pv-control-h-sm);
+    height: var(--pv-btn-h-sm);
     padding-inline: 0.625rem;
-    font-size: var(--pv-text-xs);
+    font-size: 0.8125rem;
   }
 
   @supports (appearance: base-select) {
@@ -1037,111 +1234,295 @@
       var(--pv-shadow-raised);
   }
 
-  /* ---------------------------------------------------------------- modern skin material profiles */
+  /* Default floating toolbar layout (overridden cleanly by flush studio chrome in the same cascade layer) */
+  .pv-shell-toolbar-wrap {
+    padding-top: 0.75rem;
+  }
+  .pv-shell-toolbar-inner {
+    margin-inline: auto;
+    width: 100%;
+    max-width: var(--pv-layout-max);
+    padding-inline: var(--pv-layout-gutter);
+  }
+  .pv-shell-toolbar {
+    height: 3.25rem;
+    border-radius: 1rem;
+    padding-inline: 1rem;
+  }
 
-  /* Studio Craft (Codex / Linear / Raycast): razor-sharp hairlines, clean studio canvas, zero decorative noise */
+  /* ---------------------------------------------------------------- modern skin architectural & material profiles
+   * Layered with [data-skin=...] broad fallback + progressive @container style(--pv-aesthetic: ...)
+   * so each built-in skin delivers a genuinely distinct modern layout chrome, surface material, and control feel.
+   */
+
+  /* 1. STUDIO CRAFT (Codex / Linear / Vercel): flush hairline workstation, matte solid cards, zero blur/blobs */
   :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-ambient-canvas,
+  .dark:is([data-skin="studio"], [data-skin-scope="studio"]) .pv-ambient-canvas,
+  :is([data-skin="studio"], [data-skin-scope="studio"]).dark .pv-ambient-canvas,
   .pv-ambient-canvas:is([data-skin="studio"], [data-skin-scope="studio"]) {
     background-color: var(--pv-bg);
-    background-image: radial-gradient(ellipse 72% 38% at 50% -10%, color-mix(in oklab, var(--pv-fg) 5%, transparent), transparent 68%);
-    background-attachment: fixed;
+    background-image: none;
   }
-  :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-glass-panel {
+  :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-glass-panel,
+  .dark:is([data-skin="studio"], [data-skin-scope="studio"]) .pv-glass-panel,
+  :is([data-skin="studio"], [data-skin-scope="studio"]).dark .pv-glass-panel {
     background: var(--pv-surface);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     border-color: var(--pv-line);
     box-shadow: var(--pv-shadow-panel);
   }
-  :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-glass-shell {
+  :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-glass-shell,
+  .dark:is([data-skin="studio"], [data-skin-scope="studio"]) .pv-glass-shell,
+  :is([data-skin="studio"], [data-skin-scope="studio"]).dark .pv-glass-shell {
     background: var(--pv-shell);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     border-color: var(--pv-shell-line);
   }
-  :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-glass-toolbar {
-    background: color-mix(in oklab, var(--pv-surface) 92%, transparent);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid var(--pv-line);
-    box-shadow: var(--pv-shadow-panel);
+  :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-shell-toolbar-wrap {
+    padding-top: 0;
   }
-  :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-nav-pill-active {
+  :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-shell-toolbar-inner {
+    max-width: none;
+    padding-inline: 0;
+  }
+  :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-shell-toolbar,
+  .dark:is([data-skin="studio"], [data-skin-scope="studio"]) .pv-shell-toolbar,
+  :is([data-skin="studio"], [data-skin-scope="studio"]).dark .pv-shell-toolbar {
+    height: var(--pv-shell-h);
+    border-radius: 0;
+    border-inline: 0;
+    border-top: 0;
+    border-bottom: 1px solid var(--pv-line);
+    background: color-mix(in oklab, var(--pv-bg) 94%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: none;
+    padding-inline: var(--pv-layout-gutter);
+  }
+  :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-nav-pill-active,
+  .dark:is([data-skin="studio"], [data-skin-scope="studio"]) .pv-nav-pill-active,
+  :is([data-skin="studio"], [data-skin-scope="studio"]).dark .pv-nav-pill-active {
     background: var(--pv-nav-active);
     color: var(--pv-nav-active-fg);
-    border: 1px solid var(--pv-line-strong);
-    box-shadow: none;
+    border: 1px solid color-mix(in oklab, var(--pv-fg) 10%, transparent);
+    box-shadow: 0 1px 2px oklch(0 0 0 / 0.05);
+  }
+  :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-nav-pill-active::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0;
+    top: 22%;
+    bottom: 22%;
+    width: 2.5px;
+    border-radius: 999px;
+    background: var(--pv-nav-indicator);
+  }
+  :is([data-skin="studio"], [data-skin-scope="studio"]) :is(.pv-glow-amber, .pv-glow-sky, .pv-glow-blue, .pv-glow-emerald, .pv-glow-orange),
+  .dark:is([data-skin="studio"], [data-skin-scope="studio"]) :is(.pv-glow-amber, .pv-glow-sky, .pv-glow-blue, .pv-glow-emerald, .pv-glow-orange) {
+    background-image: none;
+  }
+  @container style(--pv-aesthetic: studio) {
+    .pv-ambient-canvas {
+      background-color: var(--pv-bg);
+      background-image: none;
+    }
+    .pv-glass-panel {
+      background: var(--pv-surface);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border-color: var(--pv-line);
+      box-shadow: var(--pv-shadow-panel);
+    }
+    .pv-shell-toolbar-wrap {
+      padding-top: 0;
+    }
+    .pv-shell-toolbar-inner {
+      max-width: none;
+      padding-inline: 0;
+    }
+    .pv-shell-toolbar {
+      height: var(--pv-shell-h);
+      border-radius: 0;
+      border-inline: 0;
+      border-top: 0;
+      border-bottom: 1px solid var(--pv-line);
+      background: color-mix(in oklab, var(--pv-bg) 92%, transparent);
+      box-shadow: none;
+      padding-inline: var(--pv-layout-gutter);
+    }
+    .pv-nav-pill-active {
+      background: var(--pv-nav-active);
+      color: var(--pv-nav-active-fg);
+      border: 1px solid color-mix(in oklab, var(--pv-fg) 10%, transparent);
+      box-shadow: 0 1px 2px oklch(0 0 0 / 0.05);
+    }
+    .pv-nav-pill-active::before {
+      content: "";
+      position: absolute;
+      inset-inline-start: 0;
+      top: 22%;
+      bottom: 22%;
+      width: 2.5px;
+      border-radius: 999px;
+      background: var(--pv-nav-indicator);
+    }
   }
 
-  /* Sonic Stage (Suno / Udio): warm amber-ember stage glow, lush glass & capsule rhythm */
+  /* 2. SONIC STAGE (Suno / Udio): floating Bento stage dock, warm ember glow & full-capsule amber-coral CTAs */
   :is([data-skin="sonic"], [data-skin-scope="sonic"]) .pv-ambient-canvas,
   .pv-ambient-canvas:is([data-skin="sonic"], [data-skin-scope="sonic"]) {
     background-color: var(--pv-bg);
     background-image:
-      radial-gradient(ellipse 68% 48% at 14% -8%, oklch(0.84 0.095 56 / 0.30), transparent 64%),
-      radial-gradient(ellipse 56% 44% at 90% 8%, oklch(0.84 0.085 32 / 0.22), transparent 60%),
-      radial-gradient(ellipse 50% 42% at 50% 108%, oklch(0.88 0.06 82 / 0.18), transparent 62%);
+      radial-gradient(ellipse 70% 50% at 12% -6%, oklch(0.84 0.115 54 / 0.34), transparent 64%),
+      radial-gradient(ellipse 58% 46% at 92% 6%, oklch(0.82 0.105 32 / 0.26), transparent 60%),
+      radial-gradient(ellipse 50% 42% at 50% 108%, oklch(0.88 0.075 80 / 0.22), transparent 62%);
     background-attachment: fixed;
   }
   .dark:is([data-skin="sonic"], [data-skin-scope="sonic"]) .pv-ambient-canvas,
   :is([data-skin="sonic"], [data-skin-scope="sonic"]).dark .pv-ambient-canvas {
     background-image:
-      radial-gradient(ellipse 64% 48% at 14% -8%, oklch(0.56 0.16 48 / 0.26), transparent 62%),
-      radial-gradient(ellipse 54% 42% at 88% 8%, oklch(0.52 0.145 28 / 0.20), transparent 58%),
-      radial-gradient(ellipse 46% 38% at 50% 106%, oklch(0.54 0.10 78 / 0.11), transparent 60%);
+      radial-gradient(ellipse 68% 50% at 12% -6%, oklch(0.56 0.175 46 / 0.30), transparent 62%),
+      radial-gradient(ellipse 56% 44% at 90% 8%, oklch(0.50 0.16 26 / 0.22), transparent 58%),
+      radial-gradient(ellipse 46% 38% at 50% 106%, oklch(0.54 0.115 76 / 0.13), transparent 60%);
+  }
+  @media (min-width: 768px) {
+    :is([data-skin="sonic"]) .pv-shell-frame {
+      gap: 0.75rem;
+      padding: 0.75rem;
+    }
+    :is([data-skin="sonic"]) .pv-shell-sidebar {
+      border-radius: 1.375rem;
+      border: 1px solid color-mix(in oklab, var(--pv-shell-line) 85%, transparent);
+      box-shadow: var(--pv-shadow-raised);
+    }
+    :is([data-skin="sonic"]) .pv-shell-main {
+      border-radius: 1.375rem;
+      border: 1px solid color-mix(in oklab, var(--pv-line) 72%, transparent);
+      background: color-mix(in oklab, var(--pv-bg) 72%, transparent);
+    }
+  }
+  :is([data-skin-scope="sonic"]) .pv-shell-frame {
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+  :is([data-skin-scope="sonic"]) .pv-shell-sidebar {
+    border-radius: 1.125rem;
+    border: 1px solid var(--pv-shell-line);
+  }
+  :is([data-skin-scope="sonic"]) .pv-shell-main {
+    border-radius: 1.125rem;
+    border: 1px solid var(--pv-line);
+    background: color-mix(in oklab, var(--pv-bg) 78%, transparent);
   }
   :is([data-skin="sonic"], [data-skin-scope="sonic"]) .pv-nav-pill-active {
-    background: linear-gradient(135deg, oklch(0.54 0.175 44), oklch(0.60 0.165 60));
+    background: linear-gradient(135deg, oklch(0.52 0.185 38), oklch(0.60 0.175 58));
     color: oklch(0.99 0 0);
     box-shadow:
-      inset 0 1px 0 oklch(1 0 0 / 0.24),
-      0 6px 20px -6px oklch(0.56 0.17 44 / 0.52);
+      inset 0 1px 0 oklch(1 0 0 / 0.26),
+      0 6px 20px -5px oklch(0.55 0.18 42 / 0.52);
   }
   .dark:is([data-skin="sonic"], [data-skin-scope="sonic"]) .pv-nav-pill-active,
   :is([data-skin="sonic"], [data-skin-scope="sonic"]).dark .pv-nav-pill-active {
-    background: linear-gradient(135deg, oklch(0.72 0.165 54), oklch(0.66 0.175 36));
+    background: linear-gradient(135deg, oklch(0.76 0.165 56), oklch(0.68 0.18 34));
     color: oklch(0.14 0.015 40);
     box-shadow:
-      inset 0 1px 0 oklch(1 0 0 / 0.28),
-      0 8px 24px -6px oklch(0.68 0.17 46 / 0.45);
+      inset 0 1px 0 oklch(1 0 0 / 0.30),
+      0 8px 24px -5px oklch(0.72 0.17 48 / 0.48);
+  }
+  :is([data-skin="sonic"], [data-skin-scope="sonic"]) .button--primary {
+    background-image: linear-gradient(135deg, oklch(0.51 0.185 38), oklch(0.58 0.175 54));
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.26),
+      0 6px 18px -5px oklch(0.54 0.18 44 / 0.48);
+  }
+  .dark:is([data-skin="sonic"], [data-skin-scope="sonic"]) .button--primary,
+  :is([data-skin="sonic"], [data-skin-scope="sonic"]).dark .button--primary {
+    background-image: linear-gradient(135deg, oklch(0.78 0.165 58), oklch(0.70 0.18 36));
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.34),
+      0 6px 20px -5px oklch(0.74 0.17 50 / 0.42);
+  }
+  @container style(--pv-aesthetic: sonic) {
+    .button--primary {
+      background-image: linear-gradient(135deg, var(--pv-action), color-mix(in oklab, var(--pv-action) 78%, var(--pv-chart-2)));
+    }
+    .pv-glass-panel:hover {
+      border-color: color-mix(in oklab, var(--pv-action) 34%, var(--pv-line));
+    }
   }
 
-  /* Cinema Canvas (Runway / Sora / Kling): deep obsidian vignette, whisper-thin edge-lit gallery chrome */
+  /* 3. CINEMA CANVAS (Runway / Sora / Apple TV+): widescreen frosted obsidian topbar, specular glass & glacier-cyan */
   :is([data-skin="cinema"], [data-skin-scope="cinema"]) .pv-ambient-canvas,
   .pv-ambient-canvas:is([data-skin="cinema"], [data-skin-scope="cinema"]) {
     background-color: var(--pv-bg);
     background-image:
-      radial-gradient(ellipse 70% 44% at 50% -12%, oklch(0.84 0.065 206 / 0.24), transparent 64%),
-      radial-gradient(ellipse 54% 40% at 92% 100%, oklch(0.86 0.055 232 / 0.16), transparent 60%);
+      radial-gradient(ellipse 76% 44% at 50% -12%, oklch(0.84 0.08 206 / 0.28), transparent 64%),
+      radial-gradient(ellipse 54% 40% at 92% 100%, oklch(0.86 0.065 232 / 0.18), transparent 60%);
     background-attachment: fixed;
   }
   .dark:is([data-skin="cinema"], [data-skin-scope="cinema"]) .pv-ambient-canvas,
   :is([data-skin="cinema"], [data-skin-scope="cinema"]).dark .pv-ambient-canvas {
     background-image:
-      radial-gradient(ellipse 76% 42% at 50% -14%, oklch(0.54 0.125 206 / 0.22), transparent 62%),
-      radial-gradient(ellipse 48% 36% at 88% 106%, oklch(0.42 0.095 230 / 0.14), transparent 60%);
+      radial-gradient(ellipse 80% 42% at 50% -14%, oklch(0.56 0.14 204 / 0.26), transparent 62%),
+      radial-gradient(ellipse 52% 38% at 88% 106%, oklch(0.42 0.105 228 / 0.16), transparent 60%);
+  }
+  :is([data-skin="cinema"], [data-skin-scope="cinema"]) .pv-shell-topbar,
+  .dark:is([data-skin="cinema"], [data-skin-scope="cinema"]) .pv-shell-topbar {
+    background: color-mix(in oklab, var(--pv-shell) 72%, transparent);
+    backdrop-filter: blur(28px) saturate(170%);
+    -webkit-backdrop-filter: blur(28px) saturate(170%);
+    border-bottom-color: color-mix(in oklab, var(--pv-action) 20%, var(--pv-shell-line));
+    box-shadow: 0 8px 28px -12px oklch(0 0 0 / 0.25);
   }
   :is([data-skin="cinema"], [data-skin-scope="cinema"]) .pv-glass-panel {
-    background: color-mix(in oklab, var(--pv-surface) 84%, transparent);
-    backdrop-filter: blur(18px) saturate(135%);
-    -webkit-backdrop-filter: blur(18px) saturate(135%);
-    border-color: color-mix(in oklab, var(--pv-line) 85%, transparent);
-    box-shadow: var(--pv-shadow-panel);
+    background: color-mix(in oklab, var(--pv-surface) 74%, transparent);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border-color: color-mix(in oklab, var(--pv-fg) 11%, transparent);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.78),
+      0 12px 32px -14px oklch(0.16 0.02 224 / 0.14);
+  }
+  .dark:is([data-skin="cinema"], [data-skin-scope="cinema"]) .pv-glass-panel,
+  :is([data-skin="cinema"], [data-skin-scope="cinema"]).dark .pv-glass-panel {
+    background: color-mix(in oklab, var(--pv-surface) 66%, transparent);
+    border-color: oklch(1 0 0 / 0.11);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.14),
+      0 18px 44px -14px oklch(0 0 0 / 0.72);
+  }
+  :is([data-skin="cinema"], [data-skin-scope="cinema"]) .button--outline,
+  .dark:is([data-skin="cinema"], [data-skin-scope="cinema"]) .button--outline {
+    background: color-mix(in oklab, var(--pv-surface) 62%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
   :is([data-skin="cinema"], [data-skin-scope="cinema"]) .pv-nav-pill-active {
-    background: linear-gradient(135deg, oklch(0.46 0.13 206), oklch(0.50 0.125 224));
+    background: linear-gradient(135deg, oklch(0.46 0.135 206), oklch(0.50 0.13 224));
     color: oklch(0.99 0 0);
     box-shadow:
-      inset 0 1px 0 oklch(1 0 0 / 0.22),
-      0 6px 20px -6px oklch(0.48 0.13 210 / 0.50);
+      inset 0 1px 0 oklch(1 0 0 / 0.26),
+      0 6px 20px -6px oklch(0.48 0.135 210 / 0.54);
   }
   .dark:is([data-skin="cinema"], [data-skin-scope="cinema"]) .pv-nav-pill-active,
   :is([data-skin="cinema"], [data-skin-scope="cinema"]).dark .pv-nav-pill-active {
-    background: linear-gradient(135deg, oklch(0.76 0.135 204), oklch(0.70 0.13 222));
+    background: linear-gradient(135deg, oklch(0.78 0.135 204), oklch(0.70 0.135 222));
     color: oklch(0.11 0.015 220);
     box-shadow:
-      inset 0 1px 0 oklch(1 0 0 / 0.3),
-      0 8px 24px -6px oklch(0.72 0.135 208 / 0.45);
+      inset 0 1px 0 oklch(1 0 0 / 0.34),
+      0 8px 24px -6px oklch(0.74 0.14 208 / 0.50);
+  }
+  @container style(--pv-aesthetic: cinema) {
+    .pv-glass-panel {
+      backdrop-filter: blur(24px) saturate(160%);
+      -webkit-backdrop-filter: blur(24px) saturate(160%);
+    }
+    .button--outline {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
   }
 
   /* Forced Colors Mode (Windows High Contrast) fallback for glass, gradient, and custom controls */
@@ -1149,6 +1530,7 @@
     .pv-glass-panel,
     .pv-glass-shell,
     .pv-glass-toolbar,
+    .pv-shell-topbar,
     .pv-surface-card,
     .pv-select,
     .pv-field,
@@ -1159,8 +1541,10 @@
       box-shadow: none;
       backdrop-filter: none;
     }
-    .pv-nav-pill-active {
+    .pv-nav-pill-active,
+    .button--primary {
       background: Highlight;
+      background-image: none;
       color: HighlightText;
       border: 1px solid Highlight;
       box-shadow: none;

@@ -44,59 +44,79 @@ export function MusicClientAccess({ user }: { user: User }) {
   }
 
   const permission = (
-    <label className="flex items-center gap-2 text-sm text-fg">
-      <input type="checkbox" checked={personal} disabled={busy} onChange={(event) => setPersonal(event.target.checked)} />
-      {t("musicClients.grantPersonal")}
+    <label className="flex cursor-pointer items-center gap-2.5 text-sm text-fg">
+      <input
+        type="checkbox"
+        className="pv-checkbox"
+        checked={personal}
+        disabled={busy}
+        onChange={(event) => setPersonal(event.target.checked)}
+      />
+      <span>{t("musicClients.grantPersonal")}</span>
     </label>
   );
   return (
-    <li {...secure} className={cn("grid gap-2 py-3.5", inset)}>
-      <span className="text-base text-fg">{t("musicClients.title")}</span>
-      <span className="text-sm text-fg-muted">{t("musicClients.hint")}</span>
-      {status.isPending ? <Spinner size="sm" /> : status.isError ? (
+    <li {...secure} className={cn("grid gap-2.5 py-3.5", inset)}>
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
+        <div className="grid min-w-0 gap-0.5">
+          <span className="text-sm font-mid text-fg">{t("musicClients.title")}</span>
+          <span className="text-xs text-fg-muted">{t("musicClients.hint")}</span>
+        </div>
+        {!status.isPending && !status.isError && !issued && !confirm ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              isPending={busy}
+              onPress={() => {
+                if (status.data.enabled) {
+                  setPersonal(status.data.personal);
+                  setConfirm("replace");
+                } else {
+                  void apply("replace");
+                }
+              }}
+            >
+              {t(status.data.enabled ? "musicClients.replace" : "musicClients.create")}
+            </Button>
+            {status.data.enabled ? (
+              <Button size="sm" variant="outline" onPress={() => setConfirm("revoke")}>
+                {t("musicClients.revoke")}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      {status.isPending ? (
+        <Spinner size="sm" />
+      ) : status.isError ? (
         <ErrorState compact error={status.error} onRetry={() => void status.refetch()} />
       ) : issued ? (
-        <div className="grid gap-2">
-          <p role="status">{t("musicClients.shown")}</p>
+        <div className="grid gap-2.5 rounded-tile border border-line bg-sunken/70 p-3.5">
+          <p role="status" className="text-sm font-mid text-fg">{t("musicClients.shown")}</p>
           {[[t("musicClients.address"), window.location.origin], [t("musicClients.username"), issued.username],
             [t("musicClients.password"), issued.password]].map(([label, value]) => (
-            <label key={label} className="grid gap-1 text-sm text-fg-muted">{label}
-              <Input readOnly value={value} aria-label={label} onFocus={(e) => e.currentTarget.select()} />
+            <label key={label} className="grid gap-1 text-xs font-mid text-fg-muted">{label}
+              <Input readOnly value={value} aria-label={label} onFocus={(e) => e.currentTarget.select()} className="font-mono text-xs" />
             </label>
           ))}
           <Button size="sm" variant="outline" className="w-fit" onPress={() => setIssued(null)}>{t("a11y.close")}</Button>
         </div>
       ) : confirm ? (
-        <div className="grid gap-2">
-          <p>{t(confirm === "revoke" ? "musicClients.confirmRevoke" : "musicClients.confirmReplace")}</p>
+        <div className="grid gap-2.5 rounded-tile border border-line bg-sunken/70 p-3.5">
+          <p className="text-sm text-fg">{t(confirm === "revoke" ? "musicClients.confirmRevoke" : "musicClients.confirmReplace")}</p>
           {confirm === "replace" && permission}
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" isDisabled={busy} onPress={() => setConfirm(null)}>{t("common.cancel")}</Button>
-            <Button size="sm" isPending={busy} onPress={() => void apply(confirm)}>{t(confirm === "revoke" ? "musicClients.revoke" : "musicClients.replace")}</Button>
+            <Button size="sm" variant="primary" isPending={busy} onPress={() => void apply(confirm)}>{t(confirm === "revoke" ? "musicClients.revoke" : "musicClients.replace")}</Button>
           </div>
         </div>
+      ) : status.data.enabled ? (
+        <span className="text-xs text-fg-muted">{t(status.data.personal ? "musicClients.personalEnabled" : "musicClients.browseOnly")}</span>
       ) : (
-        <div className="grid gap-2">
-          {status.data.enabled
-            ? <span className="text-sm text-fg-muted">{t(status.data.personal ? "musicClients.personalEnabled" : "musicClients.browseOnly")}</span>
-            : permission}
-          <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" isPending={busy}
-            onPress={() => {
-              if (status.data.enabled) {
-                setPersonal(status.data.personal);
-                setConfirm("replace");
-              } else {
-                void apply("replace");
-              }
-            }}>
-            {t(status.data.enabled ? "musicClients.replace" : "musicClients.create")}
-          </Button>
-          {status.data.enabled && <Button size="sm" variant="outline" onPress={() => setConfirm("revoke")}>{t("musicClients.revoke")}</Button>}
-          </div>
-        </div>
+        permission
       )}
-      {error != null && <p role="alert">{errorText(t, error)}</p>}
+      {error != null && <p role="alert" className="text-xs text-failed">{errorText(t, error)}</p>}
     </li>
   );
 }

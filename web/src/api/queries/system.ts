@@ -33,10 +33,11 @@ export function useRefreshHardware() {
   });
 }
 
-export function useRuntimeSettings() {
+export function useRuntimeSettings(enabled = true) {
   return useQuery({
     queryKey: queryKeys.system.settings,
     queryFn: ({ signal }) => api.system.settings(signal),
+    enabled,
   });
 }
 

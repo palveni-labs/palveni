@@ -2,14 +2,17 @@ import { Button, buttonVariants, Chip, Input, toast } from "@heroui/react";
 import { Link } from "@tanstack/react-router";
 import {
   CheckCircle2,
+  Database,
   Download,
   FileCode2,
   History,
   LayoutGrid,
+  Palette,
   Puzzle,
   Settings2,
   ShieldAlert,
   ShieldCheck,
+  Subtitles,
   Trash2,
   X,
   type LucideIcon,
@@ -24,7 +27,7 @@ import {
   useUninstallPlugin,
   useUpdatePlugin,
 } from "@/api/queries/plugins";
-import { useInstalledSkins } from "@/api/queries/skins";
+import { useInstalledSkins, useSkinRegistry } from "@/api/queries/skins";
 import type {
   InstalledSkin,
   Plugin,
@@ -44,7 +47,7 @@ import { Section, SectionRows, useRowInset } from "@/ui/section";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import { OfficialSkinCatalog, UploadSkinButton } from "./themes-page";
 
-/** How isolated each runtime is, in words. */
+/** How isolated each runtime is, in words (docs/plugins.md §2). */
 const RUNTIME_ICON: Record<PluginRuntimeKind, LucideIcon> = {
   none: ShieldCheck,
   recipe: FileCode2,
@@ -77,6 +80,29 @@ const KNOWN_POINTS = new Set([
   "widget",
 ]);
 
+type PluginCategory = "all" | "metadata" | "mediaEnhance" | "widget" | "skin" | "other";
+
+const CATEGORY_ICON: Record<Exclude<PluginCategory, "all">, LucideIcon> = {
+  metadata: Database,
+  mediaEnhance: Subtitles,
+  widget: LayoutGrid,
+  skin: Palette,
+  other: Puzzle,
+};
+
+function classifyPluginCategory(
+  provides: readonly string[],
+  runtime?: PluginRuntimeKind,
+): Exclude<PluginCategory, "all"> {
+  if (provides.includes("skin")) return "skin";
+  if (provides.includes("widget") || runtime === "widget") return "widget";
+  if (provides.some((point) => point === "metadata" || point === "content")) return "metadata";
+  if (provides.some((point) => point === "lyrics" || point === "subtitles" || point === "danmaku")) {
+    return "mediaEnhance";
+  }
+  return "other";
+}
+
 function RiskBadge({ level }: { level: PluginRiskLevel }) {
   const { t } = useTranslation();
   const styles: Record<PluginRiskLevel, string> = {
@@ -88,14 +114,14 @@ function RiskBadge({ level }: { level: PluginRiskLevel }) {
     <span
       data-risk={level}
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-strong",
+        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs leading-none font-strong whitespace-nowrap",
         styles[level],
       )}
     >
       {level === "low" ? (
-        <ShieldCheck className="size-3.5" aria-hidden />
+        <ShieldCheck className="size-3.5 shrink-0" aria-hidden />
       ) : (
-        <ShieldAlert className="size-3.5" aria-hidden />
+        <ShieldAlert className="size-3.5 shrink-0" aria-hidden />
       )}
       {t(`plugins.risk.${level}`)}
     </span>
@@ -207,7 +233,7 @@ function PluginInstallReviewModal({
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => togglePermission(perm)}
-                        className="size-4 accent-(--pv-accent)"
+                        className="pv-checkbox"
                       />
                       <span className="font-mono text-xs text-fg">{perm}</span>
                     </label>
@@ -324,7 +350,7 @@ function PluginSettingsDrawer({
                         type="checkbox"
                         checked={Boolean(val)}
                         onChange={(e) => setValues((prev) => ({ ...prev, [key]: e.target.checked }))}
-                        className="size-4 accent-(--pv-accent)"
+                        className="pv-checkbox"
                       />
                     </label>
                   );
@@ -427,30 +453,33 @@ function PluginRow({
   const rollback = useRollbackPlugin();
   const uninstall = useUninstallPlugin();
   const RuntimeIcon = RUNTIME_ICON[plugin.runtime] ?? Puzzle;
+  const CategoryIcon = CATEGORY_ICON[classifyPluginCategory(plugin.provides, plugin.runtime)];
   const isManaged = Boolean(plugin.managed);
   const desc = localizedDescription(plugin.description);
 
   return (
     <li className={cn("grid gap-x-6 gap-y-3 py-4 md:grid-cols-[minmax(0,22rem)_minmax(0,1fr)_auto] md:items-start", inset)}>
-      <div className="flex min-w-0 items-start gap-3">
+      <div className="flex min-w-0 items-start gap-3 overflow-hidden">
         <span className="grid size-9 shrink-0 place-items-center rounded-tile bg-sunken text-icon">
-          <Puzzle className="size-[1.125rem]" strokeWidth={1.8} aria-hidden />
+          <CategoryIcon className="size-[1.125rem]" strokeWidth={1.8} aria-hidden />
         </span>
-        <div className="grid min-w-0 gap-0.5">
-          <h3 className="flex flex-wrap items-baseline gap-x-2 text-md font-strong text-fg">
-            <span className="min-w-0 truncate">{skin ? localized(skin.name, currentLanguage()) : plugin.name}</span>
-            <span className="text-sm font-body text-fg-muted tabular-nums">
+        <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] gap-1">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <h3 className="min-w-0 max-w-full break-words text-[0.9375rem] leading-snug font-strong text-heading">
+              {skin ? localized(skin.name, currentLanguage()) : plugin.name}
+            </h3>
+            <span className="shrink-0 text-xs font-body whitespace-nowrap text-fg-muted tabular-nums">
               {t("plugins.version", { version: plugin.version })}
             </span>
-          </h3>
+          </div>
           {skin ? (
             <p className="text-sm text-fg-muted">
               {t(skin.source === "upload" ? "appearance.unverified" : "plugins.official")}
             </p>
           ) : desc ? (
-            <p className="text-sm text-fg-muted">{desc}</p>
+            <p className="break-words text-sm leading-relaxed text-fg-muted">{desc}</p>
           ) : null}
-          <p className="truncate font-mono text-sm text-fg-muted" title={plugin.id}>
+          <p className="truncate font-mono text-xs text-fg-subtle" title={plugin.id}>
             {plugin.id}
           </p>
         </div>
@@ -577,17 +606,78 @@ function PluginRow({
   );
 }
 
+function PluginCategoryFilter({
+  value,
+  onChange,
+  counts,
+  showSkin,
+}: {
+  value: PluginCategory;
+  onChange: (next: PluginCategory) => void;
+  counts: Record<PluginCategory, number>;
+  showSkin: boolean;
+}) {
+  const { t } = useTranslation();
+  const options: PluginCategory[] = ["all", "metadata", "mediaEnhance", "widget"];
+  if (showSkin) options.push("skin");
+  if (counts.other > 0 || value === "other") options.push("other");
+
+  return (
+    <div
+      role="group"
+      aria-label={t("plugins.categoryLabel")}
+      className="flex flex-wrap items-center gap-2"
+    >
+      {options.map((cat) => {
+        const active = value === cat;
+        const Icon = cat === "all" ? null : CATEGORY_ICON[cat];
+        return (
+          <button
+            key={cat}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(cat)}
+            className={cn(
+              "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-mid whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-(--pv-focus)",
+              active
+                ? "border-transparent bg-action font-strong text-action-fg shadow-xs"
+                : "border-line bg-surface text-fg-muted hover:border-line-strong hover:text-fg",
+            )}
+          >
+            {Icon ? <Icon className="size-3.5 shrink-0" aria-hidden /> : null}
+            <span>{t(`plugins.categories.${cat}`)}</span>
+            <span
+              data-num
+              className={cn(
+                "rounded-full px-1.5 py-0.5 text-[0.6875rem] leading-none tabular-nums",
+                active ? "bg-current/15 text-current" : "bg-sunken text-fg-subtle",
+              )}
+            >
+              {counts[cat]}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function RecipeStoreSection({
   search,
+  category,
   onSelectInstall,
 }: {
   search: string;
+  category: PluginCategory;
   onSelectInstall: (entry: PluginCatalogEntry) => void;
 }) {
   const { t } = useTranslation();
   const catalog = usePluginCatalog(true);
   const all = catalog.data?.plugins ?? [];
   const filtered = all.filter((entry) => {
+    if (category !== "all" && classifyPluginCategory(entry.provides, entry.runtime) !== category) {
+      return false;
+    }
     if (!search) return true;
     const fields = [
       entry.name,
@@ -596,6 +686,9 @@ function RecipeStoreSection({
       ...entry.permissions,
       ...Object.values(entry.description),
     ];
+    for (const point of entry.provides) {
+      if (KNOWN_POINTS.has(point)) fields.push(t(`plugins.points.${point}` as "plugins.points.storage"));
+    }
     return fields.some((f) => f.toLocaleLowerCase().includes(search));
   });
 
@@ -608,44 +701,54 @@ function RecipeStoreSection({
       ) : filtered.length === 0 ? (
         <EmptyState compact icon={Puzzle} title={t("plugins.noMatches")} />
       ) : (
-        <div className="pv-grid-card p-4">
+        <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((entry) => {
             const RuntimeIcon = RUNTIME_ICON[entry.runtime] ?? Puzzle;
+            const CategoryIcon = CATEGORY_ICON[classifyPluginCategory(entry.provides, entry.runtime)];
             const desc = localizedDescription(entry.description);
             return (
               <article
                 key={entry.id}
-                className="flex flex-col justify-between gap-3 rounded-panel border border-line bg-surface p-4 transition-colors hover:border-line-strong"
+                className="flex min-w-0 flex-col justify-between gap-3.5 rounded-panel border border-line bg-surface p-4 transition-colors hover:border-line-strong"
               >
-                <div className="grid gap-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="grid min-w-0 gap-0.5">
-                      <h3 className="truncate text-base font-strong text-fg">{entry.name}</h3>
-                      <p className="truncate font-mono text-xs text-fg-muted">{entry.id}</p>
+                <div className="grid min-w-0 gap-2.5">
+                  <div className="flex items-start justify-between gap-2.5">
+                    <div className="flex min-w-0 flex-1 items-start gap-2.5">
+                      <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-tile bg-sunken text-icon">
+                        <CategoryIcon className="size-4" aria-hidden />
+                      </span>
+                      <div className="grid min-w-0 flex-1 gap-0.5">
+                        <h3 className="line-clamp-2 text-[0.9375rem] leading-snug font-strong text-heading">
+                          {entry.name}
+                        </h3>
+                        <p className="truncate font-mono text-xs text-fg-subtle" title={entry.id}>
+                          {entry.id}
+                        </p>
+                      </div>
                     </div>
                     <RiskBadge level={entry.riskLevel} />
                   </div>
 
-                  {desc ? <p className="text-sm text-fg-muted">{desc}</p> : null}
+                  {desc ? <p className="text-sm leading-relaxed text-fg-muted">{desc}</p> : null}
 
-                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-fg-muted">
-                    <span className="inline-flex items-center gap-1 font-mid text-fg">
-                      <RuntimeIcon className="size-3.5 text-icon" aria-hidden />
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-fg-muted">
+                    <span className="inline-flex shrink-0 items-center gap-1 font-mid whitespace-nowrap text-fg">
+                      <RuntimeIcon className="size-3.5 shrink-0 text-icon" aria-hidden />
                       {t(`plugins.runtimes.${entry.runtime}`)}
                     </span>
-                    <span>·</span>
-                    <span className="tabular-nums">v{entry.version}</span>
-                    <span>·</span>
-                    <span>
+                    <span aria-hidden>·</span>
+                    <span className="shrink-0 whitespace-nowrap tabular-nums">v{entry.version}</span>
+                    <span aria-hidden>·</span>
+                    <span className="whitespace-nowrap">
                       {entry.permissions.length === 0
                         ? t("plugins.store.noPermissions")
                         : t("plugins.store.permissionsCount", { count: entry.permissions.length })}
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {entry.provides.map((point) => (
-                      <Chip key={point} size="sm" variant="soft" className="bg-sunken text-fg">
+                      <Chip key={point} size="sm" variant="soft" className="shrink-0 whitespace-nowrap bg-sunken text-fg">
                         {KNOWN_POINTS.has(point)
                           ? t(`plugins.points.${point}` as "plugins.points.storage")
                           : point}
@@ -656,17 +759,20 @@ function RecipeStoreSection({
 
                 <div className="flex items-center justify-between gap-2 border-t border-line pt-3">
                   {entry.installed ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-strong text-emerald-700 dark:text-emerald-300">
-                      <CheckCircle2 className="size-4" aria-hidden />
-                      {t("plugins.store.installedVersion", {
-                        version: entry.installedVersion ?? entry.version,
-                      })}
+                    <span className="inline-flex min-w-0 items-center gap-1.5 text-xs font-strong whitespace-nowrap text-emerald-700 dark:text-emerald-300">
+                      <CheckCircle2 className="size-4 shrink-0" aria-hidden />
+                      <span className="truncate">
+                        {t("plugins.store.installedVersion", {
+                          version: entry.installedVersion ?? entry.version,
+                        })}
+                      </span>
                     </span>
                   ) : (
-                    <span className="text-xs text-fg-muted">{t("plugins.official")}</span>
+                    <span className="truncate text-xs text-fg-muted">{t("plugins.official")}</span>
                   )}
                   <Button
                     size="sm"
+                    className="shrink-0"
                     variant={entry.installed ? "outline" : "primary"}
                     onPress={() => onSelectInstall(entry)}
                   >
@@ -696,8 +802,11 @@ export function PluginsPage() {
   const skins = new Map((installed.data?.skins ?? []).map((skin) => [skin.pluginId, skin]));
   const [input, setInput] = useState("");
   const [tab, setTab] = useState<"installed" | "store">("installed");
+  const [category, setCategory] = useState<PluginCategory>("all");
   const [reviewEntry, setReviewEntry] = useState<PluginCatalogEntry | null>(null);
   const [settingsPlugin, setSettingsPlugin] = useState<Plugin | null>(null);
+  const storeCatalog = usePluginCatalog(tab === "store");
+  const skinRegistry = useSkinRegistry(tab === "store" && skinsEnabled);
 
   const search = input.trim().toLocaleLowerCase();
   const installedPlugins = new Map((query.data?.plugins ?? []).map((plugin) => [plugin.id, plugin]));
@@ -714,7 +823,7 @@ export function PluginsPage() {
     }
   }
   const plugins = Array.from(installedPlugins.values());
-  const matches = plugins.filter((plugin) => {
+  const searchMatches = plugins.filter((plugin) => {
     const skin = skins.get(plugin.id);
     const fields = [plugin.name, plugin.id, ...plugin.provides, ...(skin ? Object.values(skin.name) : [])];
     for (const point of plugin.provides) {
@@ -722,7 +831,65 @@ export function PluginsPage() {
     }
     return fields.some((field) => field.toLocaleLowerCase().includes(search));
   });
+  const matches =
+    category === "all"
+      ? searchMatches
+      : searchMatches.filter((plugin) => classifyPluginCategory(plugin.provides, plugin.runtime) === category);
+
+  const installedCounts: Record<PluginCategory, number> = {
+    all: searchMatches.length,
+    metadata: 0,
+    mediaEnhance: 0,
+    widget: 0,
+    skin: 0,
+    other: 0,
+  };
+  for (const plugin of searchMatches) {
+    installedCounts[classifyPluginCategory(plugin.provides, plugin.runtime)] += 1;
+  }
+
+  const storeEntries = (storeCatalog.data?.plugins ?? []).filter((entry) => {
+    if (!search) return true;
+    const fields = [
+      entry.name,
+      entry.id,
+      ...entry.provides,
+      ...entry.permissions,
+      ...Object.values(entry.description),
+    ];
+    for (const point of entry.provides) {
+      if (KNOWN_POINTS.has(point)) fields.push(t(`plugins.points.${point}` as "plugins.points.storage"));
+    }
+    return fields.some((field) => field.toLocaleLowerCase().includes(search));
+  });
+  const storeSkinsCount = (skinRegistry.data?.skins ?? []).filter((skin) => {
+    if (skin.installed) return false;
+    const fields = [
+      skin.id,
+      skin.pluginId,
+      ...Object.values(skin.name),
+      ...Object.values(skin.description),
+      t("plugins.points.skin"),
+    ];
+    return fields.some((field) => field.toLocaleLowerCase().includes(search));
+  }).length;
+  const storeCounts: Record<PluginCategory, number> = {
+    all: storeEntries.length + storeSkinsCount,
+    metadata: 0,
+    mediaEnhance: 0,
+    widget: 0,
+    skin: storeSkinsCount,
+    other: 0,
+  };
+  for (const entry of storeEntries) {
+    storeCounts[classifyPluginCategory(entry.provides, entry.runtime)] += 1;
+  }
+
   const enabled = plugins.filter((plugin) => plugin.enabled).length;
+  const switchTab = (next: "installed" | "store") => {
+    setTab(next);
+    setCategory("all");
+  };
 
   return (
     <PageFrame>
@@ -732,51 +899,54 @@ export function PluginsPage() {
         summary={query.data && plugins.length > 0 ? t("plugins.summary", { count: plugins.length, enabled }) : undefined}
       />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div role="tablist" aria-label={t("plugins.tabs.label")} className="inline-flex gap-1 rounded-control border border-line bg-sunken p-1">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "installed"}
-            onClick={() => setTab("installed")}
-            className={cn(
-              "rounded-control px-3 py-1.5 text-sm font-mid transition-colors focus-visible:outline-2 focus-visible:outline-(--pv-focus)",
-              tab === "installed" ? "bg-surface font-strong text-fg shadow-xs" : "text-fg-muted hover:text-fg",
-            )}
+      <div className="grid gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div role="tablist" aria-label={t("plugins.tabs.label")} className="pv-segmented">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "installed"}
+              onClick={() => switchTab("installed")}
+            >
+              {t("plugins.tabs.installed")}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "store"}
+              onClick={() => switchTab("store")}
+            >
+              {t("plugins.tabs.store")}
+            </button>
+          </div>
+
+          <Input
+            type="search"
+            aria-label={t("plugins.search")}
+            placeholder={t("plugins.search")}
+            className="w-full sm:max-w-sm"
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+          />
+
+          <a
+            className="text-sm font-mid text-link underline"
+            href="https://github.com/palveni-labs/plugins#submit-a-plugin"
+            target="_blank"
+            rel="noreferrer"
           >
-            {t("plugins.tabs.installed")}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "store"}
-            onClick={() => setTab("store")}
-            className={cn(
-              "rounded-control px-3 py-1.5 text-sm font-mid transition-colors focus-visible:outline-2 focus-visible:outline-(--pv-focus)",
-              tab === "store" ? "bg-surface font-strong text-fg shadow-xs" : "text-fg-muted hover:text-fg",
-            )}
-          >
-            {t("plugins.tabs.store")}
-          </button>
+            {t("plugins.contribute")}
+          </a>
         </div>
 
-        <Input
-          type="search"
-          aria-label={t("plugins.search")}
-          placeholder={t("plugins.search")}
-          className="w-full sm:max-w-sm"
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-        />
-
-        <a
-          className="text-sm font-mid text-link underline"
-          href="https://github.com/palveni-labs/plugins#submit-a-plugin"
-          target="_blank"
-          rel="noreferrer"
-        >
-          {t("plugins.contribute")}
-        </a>
+        {tab === "store" || plugins.length > 0 ? (
+          <PluginCategoryFilter
+            value={category}
+            onChange={setCategory}
+            counts={tab === "store" ? storeCounts : installedCounts}
+            showSkin={skinsEnabled || installedCounts.skin > 0}
+          />
+        ) : null}
       </div>
 
       {tab === "installed" ? (
@@ -785,7 +955,7 @@ export function PluginsPage() {
             <LoadingPlugins />
           ) : query.isError ? (
             <ErrorState compact error={query.error} onRetry={() => void query.refetch()} />
-          ) : matches.length === 0 && search ? (
+          ) : matches.length === 0 && (search || category !== "all") ? (
             <EmptyState compact icon={Puzzle} title={t("plugins.noMatches")} />
           ) : plugins.length === 0 ? (
             <EmptyState
@@ -795,7 +965,7 @@ export function PluginsPage() {
               detail={t("plugins.emptyDetail")}
               action={
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button size="sm" variant="primary" onPress={() => setTab("store")}>
+                  <Button size="sm" variant="primary" onPress={() => switchTab("store")}>
                     {t("plugins.store.browseStore")}
                   </Button>
                   <Link to="/apps/themes" className={buttonVariants({ variant: "outline", size: "sm" })}>
@@ -819,8 +989,12 @@ export function PluginsPage() {
         </Section>
       ) : (
         <div className="grid gap-6">
-          <RecipeStoreSection search={search} onSelectInstall={setReviewEntry} />
-          <OfficialSkinCatalog enabled={skinsEnabled} search={search} store />
+          {category !== "skin" ? (
+            <RecipeStoreSection search={search} category={category} onSelectInstall={setReviewEntry} />
+          ) : null}
+          {category === "all" || category === "skin" ? (
+            <OfficialSkinCatalog enabled={skinsEnabled} search={search} store />
+          ) : null}
         </div>
       )}
 
