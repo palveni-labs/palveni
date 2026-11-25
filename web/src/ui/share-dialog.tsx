@@ -8,6 +8,7 @@ import {
   type ShareTargetKind,
 } from "@/api/queries/shares-collections";
 import { errorText } from "@/lib/errors";
+import { FieldInput, Select } from "@/ui/controls";
 
 export interface ShareDialogProps {
   isOpen: boolean;
@@ -160,14 +161,13 @@ export function ShareDialog({
               <label htmlFor="share-title-input" className="text-sm font-mid text-fg">
                 {t("sharesApp.shareTitleLabel")}
               </label>
-              <input
+              <FieldInput
                 id="share-title-input"
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={255}
                 required
-                className="h-9 rounded-control border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
               />
             </div>
 
@@ -175,13 +175,12 @@ export function ShareDialog({
               <label htmlFor="share-password-input" className="text-sm font-mid text-fg">
                 {t("sharesApp.passwordLabel")}
               </label>
-              <input
+              <FieldInput
                 id="share-password-input"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t("sharesApp.passwordPlaceholder")}
-                className="h-9 rounded-control border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
               />
             </div>
 
@@ -190,24 +189,24 @@ export function ShareDialog({
                 <label htmlFor="share-expiry-select" className="text-sm font-mid text-fg">
                   {t("sharesApp.expiryLabel")}
                 </label>
-                <select
+                <Select
                   id="share-expiry-select"
                   value={expiryHours}
                   onChange={(e) => setExpiryHours(e.target.value)}
-                  className="h-9 rounded-control border border-line-strong bg-surface px-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                  className="w-full"
                 >
                   <option value="24">{t("sharesApp.expiry24h")}</option>
                   <option value="168">{t("sharesApp.expiry7d")}</option>
                   <option value="720">{t("sharesApp.expiry30d")}</option>
                   <option value="never">{t("sharesApp.expiryNever")}</option>
-                </select>
+                </Select>
               </div>
 
               <div className="grid gap-1.5">
                 <label htmlFor="share-max-views" className="text-sm font-mid text-fg">
                   {t("sharesApp.maxViewsLabel")}
                 </label>
-                <input
+                <FieldInput
                   id="share-max-views"
                   type="number"
                   min={1}
@@ -215,27 +214,27 @@ export function ShareDialog({
                   value={maxViews}
                   onChange={(e) => setMaxViews(e.target.value)}
                   placeholder={t("sharesApp.maxViewsPlaceholder")}
-                  className="h-9 rounded-control border border-line-strong bg-surface px-3 text-sm text-fg tabular-nums focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                  className="tabular-nums"
                 />
               </div>
             </div>
 
-            <label className="flex cursor-pointer items-center gap-2.5 rounded-control border border-line bg-sunken/60 px-3 py-2 text-sm text-fg">
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-field border border-line bg-sunken/60 px-3 py-2 text-sm text-fg">
               <input
                 type="checkbox"
                 checked={stripGps}
                 onChange={(e) => setStripGps(e.target.checked)}
-                className="size-4 accent-neutral-800"
+                className="size-4"
               />
               <span>{t("sharesApp.stripGpsLabel")}</span>
             </label>
 
-            <label className="flex cursor-pointer items-center gap-2.5 rounded-control border border-line bg-sunken/60 px-3 py-2 text-sm text-fg">
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-field border border-line bg-sunken/60 px-3 py-2 text-sm text-fg">
               <input
                 type="checkbox"
                 checked={allowDownload}
                 onChange={(e) => setAllowDownload(e.target.checked)}
-                className="size-4 accent-neutral-800"
+                className="size-4"
               />
               <span>{t("sharesApp.allowDownloadLabel")}</span>
             </label>

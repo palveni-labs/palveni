@@ -82,7 +82,7 @@ export function VideoFavoritesPage() {
             aria-label={t("videoApp.home.libraries")}
             value={libraryId}
             onChange={(e) => setLibraryId(e.target.value)}
-            className="h-(--pv-control-h-sm) rounded-control border border-line bg-surface px-2.5 text-xs text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+            className="pv-select pv-select--sm"
           >
             <option value="">{t("videoApp.search.allLibraries")}</option>
             {videoLibraries.map((lib) => (

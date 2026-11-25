@@ -2,9 +2,12 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import cinema from "./builtin/cinema";
+import sonic from "./builtin/sonic";
+import studio from "./builtin/studio";
 import workcolor from "./builtin/workcolor";
 import { contrast, isPurple } from "./color";
-import { BUILTIN_SKIN, DEFAULT_SKIN_ID } from "./registry";
+import { BUILTIN_SKIN, BUILTIN_SKINS, DEFAULT_SKIN_ID } from "./registry";
 import { COLOR_TOKENS, parseSkin, SLOT_NAMES, type SkinManifest } from "./schema";
 import { checkSkin, describeIssue } from "./validate";
 import { secureSurfaceProps } from "./secure";
@@ -14,25 +17,33 @@ const packages = readdirSync(PLUGINS)
   .filter((name) => name.startsWith("skin-"))
   .map((name) => ({ name, manifest: JSON.parse(readFileSync(path.join(PLUGINS, name, "skin.json"), "utf8")) as unknown, dir: path.join(PLUGINS, name) }));
 
-/** skin design rules */
+/** Slot contract per built-in and official plugin skin. */
 const SLOT_TABLE: Record<string, Partial<SkinManifest["slots"]>> = {
+  studio: { nav: "sidebar", navPhone: "bottom-bar", status: "inline", progress: "bar", attention: "tint", section: "panel", itemColor: "on", measure: "mono", pageTitle: "content", summary: "cells" },
+  sonic: { nav: "sidebar", navPhone: "bottom-bar", status: "inline", progress: "row-fill", attention: "thumbs", section: "panel", itemColor: "on", measure: "sans", pageTitle: "content", summary: "inline" },
+  cinema: { nav: "sidebar", navPhone: "bottom-bar", status: "inline", progress: "bar", attention: "thumbs", section: "panel", itemColor: "on", measure: "sans", pageTitle: "content", summary: "inline" },
   workcolor: { nav: "sidebar", navPhone: "bottom-bar", status: "inline", progress: "row-fill", attention: "thumbs", section: "panel", itemColor: "on", measure: "sans", pageTitle: "content", summary: "inline" },
   native: { nav: "sidebar", navPhone: "bottom-bar", status: "activity-window", progress: "bar", attention: "tint", section: "plain", itemColor: "off", measure: "sans", pageTitle: "toolbar", summary: "cells" },
   ink: { nav: "topbar", navPhone: "bottom-bar", status: "inline", progress: "bar", attention: "seal", section: "rule", itemColor: "off", measure: "sans", pageTitle: "content", summary: "inline" },
   gear: { nav: "topbar", navPhone: "top-scroll", status: "inline", progress: "separator", attention: "lamp", section: "rule", itemColor: "off", measure: "mono", pageTitle: "content", summary: "cells" },
 };
 
-describe("the built-in skin", () => {
-  it("is work colour, the default, and passes every rule", () => {
-    expect(DEFAULT_SKIN_ID).toBe("workcolor");
-    expect(BUILTIN_SKIN.manifest.id).toBe("workcolor");
-    expect(checkSkin(parseSkin(workcolor.manifest, "builtin")).map(describeIssue)).toEqual([]);
+describe("the built-in skins", () => {
+  it("default to studio and pass every validation rule", () => {
+    expect(DEFAULT_SKIN_ID).toBe("studio");
+    expect(BUILTIN_SKIN.manifest.id).toBe("studio");
+    expect(BUILTIN_SKINS.map((entry) => entry.manifest.id)).toEqual(["studio", "sonic", "cinema", "workcolor"]);
+    for (const raw of [studio, sonic, cinema, workcolor]) {
+      expect(checkSkin(parseSkin(raw.manifest, "builtin")).map(describeIssue)).toEqual([]);
+    }
   });
 
-  it("ships its fonts from this origin", async () => {
-    const fonts = await BUILTIN_SKIN.loadFonts();
-    expect(fonts.length).toBeGreaterThan(0);
-    for (const font of fonts) expect(font.src).toMatch(/^\/(?!\/)/);
+  it("ship all built-in fonts from this origin", async () => {
+    for (const entry of BUILTIN_SKINS) {
+      const fonts = await entry.loadFonts();
+      expect(fonts.length).toBeGreaterThan(0);
+      for (const font of fonts) expect(font.src).toMatch(/^\/(?!\/)/);
+    }
   });
 });
 
@@ -58,8 +69,8 @@ describe("the official skin plugins", () => {
   });
 });
 
-describe("all four skins", () => {
-  const all = [BUILTIN_SKIN.manifest, ...packages.map((entry) => parseSkin(entry.manifest))];
+describe("all built-in and official skins", () => {
+  const all = [...BUILTIN_SKINS.map((entry) => entry.manifest), ...packages.map((entry) => parseSkin(entry.manifest))];
 
   it.each(all)("keeps $id styled in both modes, including readable button states and focus rings", (skin) => {
     for (const mode of ["light", "dark"] as const) {

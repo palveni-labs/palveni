@@ -165,7 +165,7 @@ export function CollectionsPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder={t("collectionsApp.namePlaceholder")}
-                  className="h-9 rounded-control border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                  className="pv-field w-full"
                 />
               </div>
 
@@ -180,7 +180,7 @@ export function CollectionsPage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder={t("collectionsApp.descPlaceholder")}
-                  className="rounded-control border border-line-strong bg-surface p-3 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                  className="pv-textarea"
                 />
               </div>
 

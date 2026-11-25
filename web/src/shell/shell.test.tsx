@@ -19,7 +19,7 @@ describe("shell", () => {
     await renderLoadedApp("/");
     const navs = await screen.findAllByRole("navigation", { name: "导航" });
     expect(navs.length).toBeGreaterThan(0);
-    expect(document.documentElement.dataset.skin).toBe("workcolor");
+    expect(document.documentElement.dataset.skin).toBe("studio");
     expect(document.documentElement.getAttribute("data-slot-nav")).toBe("sidebar");
     expect(document.documentElement.getAttribute("data-slot-page-title")).toBe("content");
     expect(screen.getAllByText(/^(已连接|正在连接|连接中断，正在重连)$/).length).toBeGreaterThan(0);

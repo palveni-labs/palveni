@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowDownAZ, ArrowUpAZ, BookOpen, FolderOpen, Heart, Layers, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { FieldInput, Select } from "@/ui/controls";
 import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
@@ -141,7 +142,7 @@ export function ReadingShelfPage({
             className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-subtle"
             aria-hidden
           />
-          <input
+          <FieldInput
             type="search"
             value={searchInput}
             onChange={(e) => {
@@ -150,16 +151,15 @@ export function ReadingShelfPage({
             }}
             placeholder={t("readingApp.search.placeholder")}
             aria-label={t("readingApp.search.placeholder")}
-            className="h-9 w-full rounded-control border border-line bg-surface ps-9 pe-3 text-sm text-fg placeholder:text-fg-muted focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+            className="w-full ps-9"
           />
         </div>
 
         {libraries.length > 1 ? (
-          <select
+          <Select
             value={effectiveLibrary}
             onChange={(e) => setSelectedLibrary(e.target.value)}
             aria-label={t("readingApp.shelf.allLibraries")}
-            className="h-9 rounded-control border border-line bg-surface px-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
           >
             <option value="">{t("readingApp.shelf.allLibraries")}</option>
             {libraries.map((lib) => (
@@ -167,27 +167,25 @@ export function ReadingShelfPage({
                 {lib.name}
               </option>
             ))}
-          </select>
+          </Select>
         ) : null}
 
         {!fixedKind ? (
-          <select
+          <Select
             value={kindFilter}
             onChange={(e) => setKindFilter(e.target.value as "" | ReadingKind)}
             aria-label={t("readingApp.search.allKinds")}
-            className="h-9 rounded-control border border-line bg-surface px-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
           >
             <option value="">{t("readingApp.search.allKinds")}</option>
             <option value="book">{t("readingApp.search.onlyBooks")}</option>
             <option value="comic">{t("readingApp.search.onlyComics")}</option>
-          </select>
+          </Select>
         ) : null}
 
-        <select
+        <Select
           value={formatFilter}
           onChange={(e) => setFormatFilter(e.target.value)}
           aria-label={t("readingApp.shelf.allFormats")}
-          className="h-9 rounded-control border border-line bg-surface px-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
         >
           <option value="">{t("readingApp.shelf.allFormats")}</option>
           {formats.map((fmt) => (
@@ -195,20 +193,19 @@ export function ReadingShelfPage({
               {fmt.toUpperCase()}
             </option>
           ))}
-        </select>
+        </Select>
 
-        <select
+        <Select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as "all" | "reading" | "completed")}
           aria-label={t("readingApp.shelf.allStatus")}
-          className="h-9 rounded-control border border-line bg-surface px-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
         >
           <option value="all">{t("readingApp.shelf.allStatus")}</option>
           <option value="reading">{t("readingApp.shelf.statusReading")}</option>
           <option value="completed">{t("readingApp.shelf.statusCompleted")}</option>
-        </select>
+        </Select>
 
-        <select
+        <Select
           value={sort}
           onChange={(e) => {
             const next = e.target.value as ReadingSort;
@@ -216,18 +213,17 @@ export function ReadingShelfPage({
             setDir(next === "added" ? "desc" : "asc");
           }}
           aria-label={t("readingApp.shelf.sortTitle")}
-          className="h-9 rounded-control border border-line bg-surface px-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
         >
           <option value="added">{t("readingApp.shelf.sortAdded")}</option>
           <option value="title">{t("readingApp.shelf.sortTitle")}</option>
           <option value="series">{t("readingApp.shelf.sortSeries")}</option>
-        </select>
+        </Select>
 
         <button
           type="button"
           onClick={() => setDir((d) => (d === "asc" ? "desc" : "asc"))}
           aria-label={dir === "asc" ? t("readingApp.shelf.sortAsc") : t("readingApp.shelf.sortDesc")}
-          className="inline-flex size-9 items-center justify-center rounded-control border border-line bg-surface text-fg transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+          className="inline-flex size-(--pv-control-h) items-center justify-center rounded-field border border-line-control bg-surface text-fg transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
         >
           {dir === "asc" ? <ArrowUpAZ className="size-4" aria-hidden /> : <ArrowDownAZ className="size-4" aria-hidden />}
         </button>

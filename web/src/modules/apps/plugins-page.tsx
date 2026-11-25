@@ -340,7 +340,7 @@ function PluginSettingsDrawer({
                         id={inputId}
                         value={stringifySetting(val)}
                         onChange={(e) => setValues((prev) => ({ ...prev, [key]: e.target.value }))}
-                        className="h-9 rounded-control border border-line-strong bg-surface px-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                        className="pv-select w-full"
                       >
                         {spec.enum.map((opt) => (
                           <option key={String(opt)} value={String(opt)}>
@@ -370,7 +370,7 @@ function PluginSettingsDrawer({
                             [key]: spec.type === "integer" ? parseInt(e.target.value, 10) : Number(e.target.value),
                           }))
                         }
-                        className="h-9 rounded-control border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                        className="pv-field w-full tabular-nums"
                       />
                     </div>
                   );
@@ -388,7 +388,7 @@ function PluginSettingsDrawer({
                       minLength={spec.minLength}
                       maxLength={spec.maxLength}
                       onChange={(e) => setValues((prev) => ({ ...prev, [key]: e.target.value }))}
-                      className="h-9 rounded-control border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                      className="pv-field w-full"
                     />
                   </div>
                 );

@@ -22,7 +22,7 @@ export function SpokenChapters({ id, disabled, onSeek }: Props) {
   if (!query.data.chapters.length) return null;
   return <select aria-label={t("spoken.jumpToChapter")} disabled={disabled} value="" onChange={(event) => {
     if (event.target.value !== "") onSeek(Number(event.target.value));
-  }} className="w-fit min-w-0 max-w-full rounded-control border border-line bg-surface px-2 py-1.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)">
+  }} className="pv-select pv-select--sm w-fit min-w-0 max-w-full">
     <option disabled value="">{t("spoken.jumpToChapter")}</option>
     {query.data.chapters.map((chapter, index) => <option key={chapter.startMs} value={chapter.startMs}>
       {chapter.title ?? t("spoken.numberedChapter", { number: index + 1 })}

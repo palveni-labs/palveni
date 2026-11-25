@@ -82,7 +82,7 @@ export function VideoSubtitles({ id, media }: { id: string; media: Media }) {
   return <>
     <label className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-fg">
       {t("videoSubtitles.label")}
-      <select className="min-w-0 max-w-full rounded-control border border-line bg-surface px-2 py-1.5 text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+      <select className="pv-select pv-select--sm min-w-0 max-w-full"
         value={current?.id ?? ""} onChange={(event) => setSelected(event.target.value)}>
         <option value="">{t("videoSubtitles.off")}</option>
         {query.data.tracks.map((track) => <option key={track.id} value={track.id}>{label(track)}</option>)}

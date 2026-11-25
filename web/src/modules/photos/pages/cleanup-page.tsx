@@ -119,14 +119,14 @@ export function PhotoCleanupPage() {
         }
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-line/75 bg-surface px-4 py-3 shadow-panel">
+      <div className="pv-surface-card flex flex-wrap items-center justify-between gap-3 px-4 py-3">
         <label className="inline-flex items-center gap-2.5 text-sm font-mid text-fg-muted">
           <span>{t("photosApp.cleanup.thresholdLabel")}</span>
           <select
             aria-label={t("photosApp.cleanup.thresholdLabel")}
             value={threshold}
             onChange={(e) => setThreshold(Number(e.target.value))}
-            className="h-9 rounded-control border border-line-control bg-field px-3 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+            className="pv-select"
           >
             {THRESHOLD_OPTIONS.map((value) => (
               <option key={value} value={value}>

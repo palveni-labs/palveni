@@ -1,9 +1,13 @@
 /**
- * Skin entries: the one built-in skin (`workcolor`, compiled into the app with its fonts) and
- * skins installed on the server as plugins, fetched at runtime (see loader.ts).
+ * Skin entries: the built-in modern skins (`studio`, `sonic`, `cinema`, `workcolor`, compiled into
+ * the app with their bundled fonts) and skins installed on the server as plugins, fetched at
+ * runtime (see loader.ts).
  *
  * Every manifest — built-in or installed — goes through the same parser and rules.
  */
+import cinema from "./builtin/cinema";
+import sonic from "./builtin/sonic";
+import studio from "./builtin/studio";
 import workcolor from "./builtin/workcolor";
 import { parseFontAsset, parseSkin, SkinError, type FontAsset, type FontSource, type SkinManifest } from "./schema";
 import { checkSkin, describeIssue } from "./validate";
@@ -41,7 +45,21 @@ function builtin({ manifest, fonts }: BuiltinSkin): SkinEntry {
   };
 }
 
-export const DEFAULT_SKIN_ID = "workcolor";
+export const DEFAULT_SKIN_ID = "studio";
 
-/** The only skin in the app bundle. */
-export const BUILTIN_SKIN: SkinEntry = builtin(workcolor);
+/** Built-in skins shipped in the app bundle (default first). */
+export const BUILTIN_SKINS: readonly SkinEntry[] = [
+  builtin(studio),
+  builtin(sonic),
+  builtin(cinema),
+  builtin(workcolor),
+];
+
+const BUILTIN_BY_ID = new Map<string, SkinEntry>(BUILTIN_SKINS.map((entry) => [entry.manifest.id, entry]));
+
+export function findBuiltinSkin(id: string): SkinEntry | undefined {
+  return BUILTIN_BY_ID.get(id);
+}
+
+/** The default built-in skin (`studio`). */
+export const BUILTIN_SKIN: SkinEntry = BUILTIN_SKINS[0]!;

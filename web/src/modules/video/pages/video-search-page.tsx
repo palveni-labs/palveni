@@ -100,11 +100,11 @@ export function VideoSearchPage() {
             }}
             aria-label={t("videoApp.search.placeholder")}
             placeholder={t("videoApp.search.placeholder")}
-            className="h-(--pv-control-h) w-full rounded-field border border-line bg-surface ps-9 pe-3 text-sm text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+            className="pv-field w-full ps-9"
           />
         </form>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="pv-filter-bar">
           <div className="pv-segmented w-fit">
             {([
               [undefined, "all"],
@@ -134,7 +134,7 @@ export function VideoSearchPage() {
               aria-label={t("videoApp.home.libraries")}
               value={search.libraryId ?? ""}
               onChange={(e) => updateSearch({ libraryId: e.target.value || undefined })}
-              className="h-(--pv-control-h-sm) rounded-control border border-line bg-surface px-2.5 text-xs text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+              className="pv-select pv-select--sm"
             >
               <option value="">{t("videoApp.search.allLibraries")}</option>
               {videoLibraries.map((lib) => (

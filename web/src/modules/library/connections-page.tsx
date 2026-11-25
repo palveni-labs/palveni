@@ -16,7 +16,6 @@ type Schema = components["schemas"];
 type Connection = Schema["ConnectionSummary"];
 type Entry = Schema["ConnectionEntry"];
 const protocols = { smb: "SMB", webdav: "WebDAV", jellyfin: "Jellyfin", emby: "Emby", plex: "Plex" } as const;
-const fields = "rounded-control border border-line-control bg-surface px-3 py-2 text-fg";
 
 function AddConnection({ done, close }: { done: (source: Connection) => void; close: () => void }) {
   const { t } = useTranslation();
@@ -48,7 +47,7 @@ function AddConnection({ done, close }: { done: (source: Connection) => void; cl
         <label className="grid gap-1">
           <span>{t("connections.protocol")}</span>
           <select
-            className={fields}
+            className="pv-select w-full"
             value={kind}
             onChange={(e) => {
               setKind(e.target.value as Connection["kind"]);

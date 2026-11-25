@@ -281,7 +281,7 @@ export function VideoLibraryPage() {
           onChange={(e) => {
             void navigate({ to: "/video/$libraryId", params: { libraryId: e.target.value }, search: {} });
           }}
-          className="h-8 rounded-control border border-line bg-surface px-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+          className="pv-select pv-select--sm"
         >
           {videoLibraries.map((lib) => (
             <option key={lib.id} value={lib.id}>
@@ -359,7 +359,7 @@ export function VideoLibraryPage() {
                 }}
                 aria-label={t("videoApp.library.searchPlaceholder")}
                 placeholder={t("videoApp.library.searchPlaceholder")}
-                className="h-(--pv-control-h) w-full rounded-field border border-line bg-surface ps-8 pe-3 text-sm text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                className="pv-field w-full ps-8"
               />
             </form>
           ) : null}
@@ -379,7 +379,7 @@ export function VideoLibraryPage() {
                       seed: nextOrder === "random" ? Date.now() % 10_000 : undefined,
                     });
                   }}
-                  className="h-(--pv-control-h-sm) rounded-control border border-line bg-surface px-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                  className="pv-select pv-select--sm"
                 >
                   {SORT_ORDERS.map((o) => (
                     <option key={o} value={o}>
@@ -415,7 +415,7 @@ export function VideoLibraryPage() {
 
         {/* Secondary filter strip */}
         {tab !== "genres" ? (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="pv-filter-bar">
             {/* Played / Unplayed */}
             <div className="inline-flex items-center rounded-control border border-line bg-surface p-0.5">
               {([
@@ -463,7 +463,7 @@ export function VideoLibraryPage() {
                 aria-label={t("videoApp.library.filter.allGenres")}
                 value={search.genre ?? ""}
                 onChange={(e) => updateSearch({ genre: e.target.value || undefined })}
-                className="h-(--pv-control-h-sm) rounded-control border border-line bg-surface px-2.5 text-xs text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                className="pv-select pv-select--sm"
               >
                 <option value="">{t("videoApp.library.filter.allGenres")}</option>
                 {genres.map((g) => (
@@ -505,7 +505,7 @@ export function VideoLibraryPage() {
                     const n = Number(e.target.value);
                     updateSearch({ yearFrom: Number.isInteger(n) && n >= 1900 ? n : undefined });
                   }}
-                  className="h-(--pv-control-h-sm) w-20 rounded-field border border-line bg-surface px-2 text-xs text-fg tabular-nums"
+                  className="pv-field pv-field--sm w-20 tabular-nums"
                 />
                 <span className="text-xs text-fg-muted">–</span>
                 <input
@@ -519,7 +519,7 @@ export function VideoLibraryPage() {
                     const n = Number(e.target.value);
                     updateSearch({ yearTo: Number.isInteger(n) && n >= 1900 ? n : undefined });
                   }}
-                  className="h-(--pv-control-h-sm) w-20 rounded-field border border-line bg-surface px-2 text-xs text-fg tabular-nums"
+                  className="pv-field pv-field--sm w-20 tabular-nums"
                 />
               </div>
             ) : null}

@@ -30,7 +30,7 @@ export function MountPicker({ onPick }: { onPick: (path: string) => void }) {
       <div className="flex flex-wrap items-center gap-2">
         <select
           aria-label={t("mounts.mount")}
-          className="max-w-full rounded-control border border-line bg-surface px-2 py-1.5 text-sm text-fg"
+          className="pv-select"
           value={mount}
           onChange={(event) => {
             setMount(event.target.value);
@@ -75,7 +75,7 @@ export function MountPicker({ onPick }: { onPick: (path: string) => void }) {
             <select
               aria-label={t("mounts.directory")}
               value=""
-              className="max-w-full rounded-control border border-line bg-surface px-2 py-1.5 text-sm text-fg"
+              className="pv-select"
               onChange={(event) => {
                 const chosen = event.target.value;
                 if (chosen) setFolder(folder ? `${folder}/${chosen}` : chosen);

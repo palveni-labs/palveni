@@ -287,7 +287,7 @@ export function PhotoPeoplePage() {
                 placeholder={t("photosApp.people.namePlaceholder")}
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
-                className="h-9 rounded-control border border-line-strong bg-surface px-3 text-sm text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                className="pv-field w-full"
               />
             </div>
 

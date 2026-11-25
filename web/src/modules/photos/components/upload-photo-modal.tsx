@@ -124,7 +124,7 @@ function UploadPhotoDialog({
                 id="photo-upload-library"
                 value={libraryId}
                 onChange={(e) => setLibraryId(e.target.value)}
-                className="h-9 rounded-control border border-line-strong bg-surface px-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                className="pv-select w-full"
               >
                 {photoLibraries.map((lib) => (
                   <option key={lib.id} value={lib.id}>

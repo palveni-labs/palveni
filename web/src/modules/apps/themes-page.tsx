@@ -21,7 +21,7 @@ import { MAX_SKIN_BYTES, useInstallSkin, useInstalledSkins, useSkinRegistry, use
 import type { InstalledSkin, RegistrySkin, SkinPackageInfo } from "@/api/types";
 import { FeatureUnavailable } from "@/shell/feature-gate";
 import { SkinLoadError, type SkinLoadFailure } from "@/skins/loader";
-import { BUILTIN_SKIN } from "@/skins/registry";
+import { BUILTIN_SKIN, BUILTIN_SKINS, type SkinEntry } from "@/skins/registry";
 import { localized } from "@/skins/schema";
 import { useSkin } from "@/skins/store";
 import { PageFrame } from "@/ui/frame";
@@ -118,9 +118,9 @@ function SkinRow({
   return (
     <li
       aria-current={current ? "true" : undefined}
+      data-selected={current ? "true" : undefined}
       className={cn(
-        "flex min-w-0 flex-col gap-3.5 rounded-panel border bg-surface p-4 transition-colors",
-        current ? "border-focus shadow-raised" : "border-line",
+        "pv-surface-card pv-surface-card--interactive flex min-w-0 flex-col gap-3.5 rounded-panel p-4",
       )}
     >
       <div className="min-w-0">{preview}</div>
@@ -227,11 +227,11 @@ function useReasons() {
 
 /* ---------------------------------------------------------------- rows */
 
-function BuiltinRow({ applyState }: { applyState: ApplyState }) {
+function BuiltinRow({ entry, applyState }: { entry: SkinEntry; applyState: ApplyState }) {
   const { t } = useTranslation();
   const language = currentLanguage();
   const { active, status, skinId } = useSkin();
-  const manifest = BUILTIN_SKIN.manifest;
+  const manifest = entry.manifest;
   const name = localized(manifest.name, language);
   const current = active.manifest.id === manifest.id;
   return (
@@ -240,7 +240,7 @@ function BuiltinRow({ applyState }: { applyState: ApplyState }) {
       name={name}
       description={localized(manifest.description, language)}
       meta={<Meta parts={[t("appearance.builtin")]} />}
-      preview={<SkinPreviewPair entry={BUILTIN_SKIN} />}
+      preview={<SkinPreviewPair entry={entry} />}
       actions={<ApplyAction id={manifest.id} name={name} current={current} pending={status === "loading" && skinId === manifest.id} onApply={applyState.apply} />}
     />
   );
@@ -511,14 +511,16 @@ export function AppearancePage() {
         </Section>
       </div>
 
-      <Section title={t("appearance.skins.title")} count={1 + installedSkins.length} unframed aria-busy={installed.isFetching || undefined}>
+      <Section title={t("appearance.skins.title")} count={BUILTIN_SKINS.length + installedSkins.length} unframed aria-busy={installed.isFetching || undefined}>
         {status === "fallback" && !applyState.failed ? (
           <Inset className="pb-2">
             <FallbackNotice builtinName={builtinName} skinsEnabled={skinsEnabled} />
           </Inset>
         ) : null}
         <SkinGrid>
-          <BuiltinRow applyState={applyState} />
+          {BUILTIN_SKINS.map((entry) => (
+            <BuiltinRow key={entry.manifest.id} entry={entry} applyState={applyState} />
+          ))}
           {installedSkins.map((info) => (
             <InstalledRow key={info.id} info={info} applyState={applyState} onUninstall={isAdmin ? openUninstall : undefined} />
           ))}

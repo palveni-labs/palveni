@@ -51,8 +51,7 @@ export interface MqttTestResponse {
   error?: string | null;
 }
 
-const SELECT_CLASS =
-  "h-9 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60";
+const SELECT_CLASS = "pv-select w-full";
 
 export function MqttSection({
   open,

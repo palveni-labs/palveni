@@ -9,6 +9,7 @@ import {
   type AddMediaCollectionItemRequest,
 } from "@/api/queries/shares-collections";
 import { errorText } from "@/lib/errors";
+import { FieldInput } from "@/ui/controls";
 
 export interface AddToCollectionDialogProps {
   isOpen: boolean;
@@ -108,12 +109,12 @@ export function AddToCollectionDialog({ isOpen, onClose, item }: AddToCollection
         ) : null}
 
         <form onSubmit={handleCreateAndAdd} className="flex items-center gap-2 border-t border-line pt-3">
-          <input
+          <FieldInput
             type="text"
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             placeholder={t("collectionsApp.namePlaceholder")}
-            className="h-9 min-w-0 flex-1 rounded-control border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+            className="min-w-0 flex-1"
           />
           <Button
             type="submit"

@@ -34,7 +34,7 @@ describe("bootstrap and auth guard", () => {
     expect(db.users[0]?.role).toBe("admin");
     expect(getToken()).not.toBeNull();
     // Appearance: the built-in skin and the light/dark choice, applied at once.
-    expect(screen.getByText("作品色")).toBeInTheDocument();
+    expect(screen.getByText("精密工坊")).toBeInTheDocument();
     await user.click(screen.getByRole("radio", { name: "深色" }));
     expect(document.documentElement.dataset.theme).toBe("dark");
     await user.click(screen.getByRole("button", { name: /继续/ }));

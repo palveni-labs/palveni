@@ -158,7 +158,7 @@ export function ApiKeysCard() {
                     aria-label={t("apiKeys.kindLabel")}
                     value={clientKind}
                     onChange={(e) => setClientKind(e.target.value as ClientApiKeyKind)}
-                    className="h-9 rounded-control border border-line bg-surface px-3 text-sm text-fg"
+                    className="pv-select"
                   >
                     {CLIENT_KINDS.map((kind) => (
                       <option key={kind} value={kind}>

@@ -349,7 +349,7 @@ function VideoLibraryView({
               onChange={(event) => void navigate({
                 search: { ...workSearch, order: event.target.value === "title" ? "title" : undefined },
               })}
-              className="rounded-control border border-line bg-surface px-2 py-1 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+              className="pv-select pv-select--sm"
             >
               <option value="poster">{t("video.posterFirst")}</option>
               <option value="title">{t("video.byTitle")}</option>
@@ -360,7 +360,7 @@ function VideoLibraryView({
             <form
               role="search"
               aria-label={t("video.findTitle")}
-              className="mb-4 flex flex-wrap items-center gap-2"
+              className="pv-filter-bar mb-4"
               onSubmit={(event) => {
                 event.preventDefault();
                 const input = new FormData(event.currentTarget).get("q");
@@ -376,7 +376,7 @@ function VideoLibraryView({
                 maxLength={128}
                 aria-label={t("video.findTitle")}
                 placeholder={t("video.findTitle")}
-                className="min-w-32 flex-1 rounded-control border border-line bg-surface px-3 py-1.5 text-sm text-fg placeholder:text-fg-muted focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                className="pv-field min-w-32 flex-1"
               />
               <Button size="sm" type="submit" variant="outline">{t("video.search")}</Button>
               <select
@@ -386,7 +386,7 @@ function VideoLibraryView({
                   const value = event.target.value;
                   void navigate({ search: { ...workSearch, kind: value === "movie" || value === "series" ? value : undefined } });
                 }}
-                className="rounded-control border border-line bg-surface px-2 py-1 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                className="pv-select pv-select--sm"
               >
                 <option value="">{t("video.allKinds")}</option>
                 <option value="movie">{t("video.movie")}</option>

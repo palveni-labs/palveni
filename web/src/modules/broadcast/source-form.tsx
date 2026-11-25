@@ -2,12 +2,12 @@ import { Button } from "@heroui/react";
 import { useMutation } from "@tanstack/react-query";
 import { useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { FieldTextarea } from "@/ui/controls";
 import { Section } from "@/ui/section";
 import { ErrorState } from "@/ui/states";
 import { broadcastApi, newSourceId, type BroadcastKind, type BroadcastSource } from "./api";
 
-export const fieldClass =
-  "w-full rounded-control border border-line bg-surface px-3 py-2 text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)";
+export const fieldClass = "pv-field w-full";
 const sizeLimit = 1024 * 1024;
 function ContentField({
   label,
@@ -40,13 +40,12 @@ function ContentField({
     <div className="grid gap-2">
       <label className="grid gap-1 text-sm text-fg">
         {label}
-        <textarea
+        <FieldTextarea
           value={value}
           onChange={(event) => {
             sequence.current++;
             onChange(event.target.value);
           }}
-          className={fieldClass}
           rows={3}
         />
       </label>

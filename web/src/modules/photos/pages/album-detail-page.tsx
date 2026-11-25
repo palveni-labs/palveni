@@ -276,7 +276,7 @@ export function PhotoAlbumDetailPage() {
                   onChange={(e) => setEditTitle(e.target.value)}
                   maxLength={128}
                   required
-                  className="h-9 rounded-control border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                  className="pv-field w-full"
                 />
               </div>
               <div className="grid gap-1.5">
@@ -289,7 +289,7 @@ export function PhotoAlbumDetailPage() {
                   value={editDesc}
                   onChange={(e) => setEditDesc(e.target.value)}
                   maxLength={1024}
-                  className="rounded-control border border-line-strong bg-surface p-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                  className="pv-textarea"
                 />
               </div>
               <div className="flex justify-end gap-2">

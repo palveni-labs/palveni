@@ -12,7 +12,7 @@ import { PageHeader } from "@/ui/page";
 import { Section } from "@/ui/section";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import { broadcastApi, type BroadcastEntry, type BroadcastKind, type BroadcastSource } from "./api";
-import { fieldClass, SourceForm } from "./source-form";
+import { SourceForm } from "./source-form";
 
 const kinds = ["radio", "podcast", "iptv"] as const;
 function isPlayableUrl(value: string) {
@@ -80,7 +80,7 @@ function Player({
         {streams.length > 1 && (
           <select
             aria-label={t("broadcast.chooseLine")}
-            className="rounded-control border border-line bg-surface px-2 text-sm"
+            className="pv-select pv-select--sm"
             value={line}
             onChange={(e) => {
               setError(false);
@@ -337,7 +337,7 @@ export function BroadcastPage({ kind = "radio" }: { kind?: BroadcastKind }) {
               <span className="sr-only">{t("broadcast.sources")}</span>
               <select
                 value={selected.id}
-                className={fieldClass}
+                className="pv-select w-full"
                 onChange={(e) => select(e.target.value)}
               >
                 {list.map((s) => (

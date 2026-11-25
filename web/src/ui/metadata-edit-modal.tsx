@@ -13,6 +13,7 @@ import type {
 } from "@/api/types";
 import { cn } from "@/lib/cn";
 import { errorText } from "@/lib/errors";
+import { FieldTextarea, Select } from "@/ui/controls";
 
 export interface MetadataEditInitialValues {
   title: string;
@@ -277,34 +278,32 @@ function MetadataEditDialogBody({
               <div className="flex flex-wrap items-center gap-2.5">
                 <label className="grid gap-1 text-xs font-mid text-fg-muted">
                   <span>{t("metadataModal.providerLabel")}</span>
-                  <select
+                  <Select
                     aria-label={t("metadataModal.providerLabel")}
                     value={provider}
                     onChange={(e) => setProvider(e.target.value as (typeof ONLINE_PROVIDERS)[number])}
-                    className="h-9 rounded-control border border-line bg-surface px-2.5 text-sm text-fg"
                   >
                     {ONLINE_PROVIDERS.map((p) => (
                       <option key={p} value={p}>
                         {t(`metadataModal.providers.${p}`)}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
 
                 <label className="grid gap-1 text-xs font-mid text-fg-muted">
                   <span>{t("metadataModal.mediaTypeLabel")}</span>
-                  <select
+                  <Select
                     aria-label={t("metadataModal.mediaTypeLabel")}
                     value={mediaType}
                     onChange={(e) => setMediaType(e.target.value as MetadataSearchMediaType)}
-                    className="h-9 rounded-control border border-line bg-surface px-2.5 text-sm text-fg"
                   >
                     {MEDIA_TYPES.map((m) => (
                       <option key={m} value={m}>
                         {t(`metadataModal.mediaTypes.${m}`)}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
 
                 <label className="grid min-w-44 flex-1 gap-1 text-xs font-mid text-fg-muted">
@@ -483,12 +482,11 @@ function MetadataEditDialogBody({
 
             <label className="grid gap-1 text-xs font-mid text-fg-muted">
               <span>{t("metadataModal.fieldOverview")}</span>
-              <textarea
+              <FieldTextarea
                 aria-label={t("metadataModal.fieldOverview")}
                 rows={4}
                 value={draft.overview}
                 onChange={(e) => setDraft((d) => ({ ...d, overview: e.target.value }))}
-                className="w-full rounded-control border border-line bg-surface p-2.5 text-sm text-fg focus:outline-none focus-visible:ring-2 focus-visible:ring-(--pv-focus)"
               />
             </label>
 

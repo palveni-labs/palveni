@@ -18,6 +18,7 @@ import { useLibraries } from "@/api/queries/libraries";
 import { currentLanguage } from "@/i18n";
 import { cn } from "@/lib/cn";
 import { errorText } from "@/lib/errors";
+import { FieldInput, FilterBar, Select } from "@/ui/controls";
 import { PageFrame } from "@/ui/frame";
 import { PageHeader } from "@/ui/page";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
@@ -307,27 +308,26 @@ export function PhotosTimelinePage() {
       />
 
       <div className="grid gap-2.5">
-        <div className="flex flex-wrap items-center gap-2">
+        <FilterBar>
           <div className="relative min-w-56 flex-1 sm:max-w-md">
             <Search
               className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-fg-subtle"
               aria-hidden
             />
-            <input
+            <FieldInput
               type="search"
               aria-label={t("photosApp.search.placeholder")}
               value={search.q ?? ""}
               onChange={(e) => updateSearch({ q: e.target.value || undefined })}
               placeholder={t("photosApp.search.placeholder")}
-              className="h-9 w-full rounded-control border border-line-strong bg-surface ps-8 pe-3 text-sm text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+              className="w-full ps-8"
             />
           </div>
 
-          <select
+          <Select
             aria-label={t("photosApp.timeline.allLibraries")}
             value={search.libraryId ?? ""}
             onChange={(e) => updateSearch({ libraryId: e.target.value || undefined })}
-            className="h-9 rounded-control border border-line-strong bg-surface px-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
           >
             <option value="">{t("photosApp.timeline.allLibraries")}</option>
             {photoLibraries.map((lib) => (
@@ -335,13 +335,13 @@ export function PhotosTimelinePage() {
                 {lib.name}
               </option>
             ))}
-          </select>
+          </Select>
 
-          <select
+          <Select
             aria-label={t("photosApp.timeline.allCameras")}
             value={search.camera ?? ""}
             onChange={(e) => updateSearch({ camera: e.target.value || undefined })}
-            className="h-9 max-w-56 rounded-control border border-line-strong bg-surface px-2.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+            className="max-w-56"
           >
             <option value="">{t("photosApp.timeline.allCameras")}</option>
             {(memories?.cameras ?? []).map((cam) => (
@@ -349,7 +349,7 @@ export function PhotosTimelinePage() {
                 {cam.name} ({cam.count})
               </option>
             ))}
-          </select>
+          </Select>
 
           {hasActiveFilter ? (
             <Button
@@ -368,7 +368,7 @@ export function PhotosTimelinePage() {
               {t("photosApp.search.clear")}
             </Button>
           ) : null}
-        </div>
+        </FilterBar>
 
         <div
           aria-label={t("photosApp.search.suggestionsLabel")}

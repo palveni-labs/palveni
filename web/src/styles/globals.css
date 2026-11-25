@@ -100,6 +100,7 @@
 
   --radius-check: var(--pv-radius-sm);
   --radius-control: var(--pv-radius-control);
+  --radius-field: var(--pv-radius-field);
   --radius-chip: var(--pv-radius-chip);
   --radius-tile: var(--pv-radius-tile);
   --radius-panel: var(--pv-radius-panel);
@@ -119,6 +120,8 @@
     color: var(--pv-fg);
     font-family: var(--pv-font-ui);
     font-size: 100%;
+    accent-color: var(--pv-action);
+    scrollbar-color: color-mix(in oklab, var(--pv-fg) 26%, transparent) transparent;
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
     text-rendering: optimizeLegibility;
@@ -185,25 +188,6 @@
   select option {
     background-color: var(--pv-surface-raised);
     color: var(--pv-fg);
-  }
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: color-mix(in oklab, var(--pv-fg) 20%, transparent) transparent;
-  }
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: color-mix(in oklab, var(--pv-fg) 18%, transparent);
-    border-radius: 999px;
-    border: 2px solid transparent;
-    background-clip: padding-box;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in oklab, var(--pv-fg) 32%, transparent);
-    border: 2px solid transparent;
-    background-clip: padding-box;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -316,7 +300,7 @@
     --button-bg-hover: color-mix(in oklab, var(--pv-failed) 88%, var(--pv-fg-inverse));
     --button-fg: var(--pv-fg-inverse);
   }
- /* The one action that carries out a confirmed change (: 确认 is its own job). */
+  /* The one action that carries out a confirmed change (confirmation is its own job). */
   .button.button--confirm {
     --button-bg: var(--pv-confirm);
     --button-bg-hover: color-mix(in oklab, var(--pv-confirm) 88%, var(--pv-confirm-fg));
@@ -457,6 +441,8 @@
     background: var(--pv-surface-raised);
     color: var(--pv-fg);
     box-shadow: var(--pv-shadow-overlay);
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
   }
   .modal__dialog,
   .alert-dialog__dialog {
@@ -470,11 +456,16 @@
   }
 
   .input,
-  .textarea,
   .search-field__group,
   .input-group {
+    min-height: var(--pv-control-h);
     border-radius: var(--pv-radius-field);
-    font-size: var(--pv-text-base);
+    font-size: var(--pv-text-sm);
+  }
+  .textarea {
+    border-radius: var(--pv-radius-field);
+    font-size: var(--pv-text-sm);
+    resize: vertical;
   }
 
   .tabs__tab {
@@ -848,5 +839,331 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, clamp(6.75rem, 11.5cqi, 11.25rem)), 1fr));
     gap: clamp(0.375rem, 0.55cqi, 0.625rem);
+  }
+
+  /* Subgrid alignment for uniform card rows (same-cascade fallback before subgrid) */
+  .pv-subgrid-card {
+    display: grid;
+    grid-row: span 3;
+    grid-template-rows: auto 1fr auto;
+    grid-template-rows: subgrid;
+  }
+
+  /* ---------------------------------------------------------------- unified control & card primitives */
+
+  :where(.pv-filter-bar) {
+    display: flex;
+    flex-wrap: wrap;
+    flex-wrap: balance;
+    align-items: safe center;
+    gap: 0.5rem;
+  }
+
+  :where(.pv-field) {
+    height: var(--pv-control-h);
+    border-radius: var(--pv-radius-field);
+    border: 1px solid var(--pv-line-control);
+    background-color: var(--pv-field);
+    color: var(--pv-fg);
+    padding-inline: 0.75rem;
+    font-size: var(--pv-text-sm);
+    line-height: 1.25;
+    transition:
+      border-color var(--pv-duration-fast) var(--pv-ease),
+      background-color var(--pv-duration-fast) var(--pv-ease),
+      box-shadow var(--pv-duration-fast) var(--pv-ease);
+  }
+  :where(.pv-field)::placeholder {
+    color: var(--pv-fg-subtle);
+  }
+  :where(.pv-field):hover:not(:disabled) {
+    border-color: color-mix(in oklab, var(--pv-line-control) 72%, var(--pv-fg) 28%);
+  }
+  :where(.pv-field):focus-visible {
+    outline: none;
+    border-color: var(--pv-focus);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--pv-focus) 26%, transparent);
+  }
+  :where(.pv-field:not([type="range"])):user-invalid {
+    border-color: var(--pv-failed);
+  }
+  :where(.pv-field.pv-field--sm) {
+    height: var(--pv-control-h-sm);
+    padding-inline: 0.625rem;
+    font-size: var(--pv-text-xs);
+  }
+
+  :where(.pv-textarea) {
+    width: 100%;
+    border-radius: var(--pv-radius-field);
+    border: 1px solid var(--pv-line-control);
+    background-color: var(--pv-field);
+    color: var(--pv-fg);
+    padding: 0.625rem 0.75rem;
+    font-size: var(--pv-text-sm);
+    line-height: var(--pv-leading);
+    resize: vertical;
+    transition:
+      border-color var(--pv-duration-fast) var(--pv-ease),
+      box-shadow var(--pv-duration-fast) var(--pv-ease);
+  }
+  :where(.pv-textarea)::placeholder {
+    color: var(--pv-fg-subtle);
+  }
+  :where(.pv-textarea):hover:not(:disabled) {
+    border-color: color-mix(in oklab, var(--pv-line-control) 72%, var(--pv-fg) 28%);
+  }
+  :where(.pv-textarea):focus-visible {
+    outline: none;
+    border-color: var(--pv-focus);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--pv-focus) 26%, transparent);
+  }
+  :where(.pv-textarea):user-invalid {
+    border-color: var(--pv-failed);
+  }
+
+  :where(.pv-select) {
+    display: inline-flex;
+    align-items: center;
+    height: var(--pv-control-h);
+    max-inline-size: 100%;
+    border-radius: var(--pv-radius-field);
+    border: 1px solid var(--pv-line-control);
+    background-color: var(--pv-field);
+    color: var(--pv-fg);
+    padding-block: 0;
+    padding-inline: 0.75rem;
+    font-size: var(--pv-text-sm);
+    line-height: 1.2;
+    cursor: pointer;
+    transition:
+      border-color var(--pv-duration-fast) var(--pv-ease),
+      background-color var(--pv-duration-fast) var(--pv-ease),
+      box-shadow var(--pv-duration-fast) var(--pv-ease);
+  }
+  :where(.pv-select):hover:not(:disabled) {
+    border-color: color-mix(in oklab, var(--pv-line-control) 72%, var(--pv-fg) 28%);
+  }
+  :where(.pv-select):focus-visible {
+    outline: none;
+    border-color: var(--pv-focus);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--pv-focus) 26%, transparent);
+  }
+  :where(.pv-select):disabled {
+    cursor: not-allowed;
+    color: var(--pv-fg-disabled);
+    background-color: var(--pv-surface-sunken);
+    border-color: var(--pv-line);
+  }
+  :where(.pv-select.pv-select--sm) {
+    height: var(--pv-control-h-sm);
+    padding-inline: 0.625rem;
+    font-size: var(--pv-text-xs);
+  }
+
+  @supports (appearance: base-select) {
+    :where(.pv-select),
+    :where(.pv-select)::picker(select) {
+      appearance: base-select;
+    }
+    :where(.pv-select) {
+      min-inline-size: 7.5rem;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    :where(.pv-select)::picker-icon {
+      color: var(--pv-fg-muted);
+      transition: transform var(--pv-duration-fast) var(--pv-ease);
+    }
+    :where(.pv-select):open::picker-icon {
+      transform: rotate(180deg);
+    }
+    :where(.pv-select)::picker(select) {
+      margin-block: 0.25rem;
+      padding: 0.25rem;
+      border-radius: calc(var(--pv-radius-panel) * 0.75 + 2px);
+      border: 1px solid var(--pv-line-strong);
+      background-color: var(--pv-surface-raised);
+      color: var(--pv-fg);
+      box-shadow: var(--pv-shadow-overlay);
+    }
+    :where(.pv-select) option {
+      padding: 0.4375rem 0.625rem;
+      border-radius: var(--pv-radius-sm);
+      color: var(--pv-fg);
+      font-size: var(--pv-text-sm);
+      cursor: pointer;
+    }
+    :where(.pv-select) option:hover,
+    :where(.pv-select) option:focus-visible {
+      background-color: var(--pv-hover);
+    }
+    :where(.pv-select) option:checked {
+      background-color: var(--pv-active-soft);
+      color: var(--pv-fg);
+      font-weight: var(--pv-weight-medium);
+    }
+    :where(.pv-select) option::checkmark {
+      color: var(--pv-action);
+    }
+  }
+
+  :where(.pv-surface-card) {
+    border-radius: var(--pv-radius-tile);
+    border: 1px solid var(--pv-line);
+    background-color: var(--pv-surface);
+    color: var(--pv-fg);
+    box-shadow: var(--pv-shadow-panel);
+    overflow: clip;
+    transition:
+      border-color var(--pv-duration-fast) var(--pv-ease),
+      background-color var(--pv-duration-fast) var(--pv-ease),
+      box-shadow var(--pv-duration-fast) var(--pv-ease);
+  }
+  @supports (corner-shape: squircle) {
+    :where(.pv-surface-card),
+    .pv-glass-panel {
+      corner-shape: squircle;
+    }
+  }
+  :where(.pv-surface-card.pv-surface-card--interactive):hover {
+    border-color: var(--pv-line-strong);
+    box-shadow: var(--pv-shadow-raised);
+  }
+  :where(.pv-surface-card[data-selected="true"]) {
+    border-color: var(--pv-focus);
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--pv-focus) 38%, transparent),
+      var(--pv-shadow-raised);
+  }
+
+  /* ---------------------------------------------------------------- modern skin material profiles */
+
+  /* Studio Craft (Codex / Linear / Raycast): razor-sharp hairlines, clean studio canvas, zero decorative noise */
+  :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-ambient-canvas,
+  .pv-ambient-canvas:is([data-skin="studio"], [data-skin-scope="studio"]) {
+    background-color: var(--pv-bg);
+    background-image: radial-gradient(ellipse 72% 38% at 50% -10%, color-mix(in oklab, var(--pv-fg) 5%, transparent), transparent 68%);
+    background-attachment: fixed;
+  }
+  :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-glass-panel {
+    background: var(--pv-surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-color: var(--pv-line);
+    box-shadow: var(--pv-shadow-panel);
+  }
+  :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-glass-shell {
+    background: var(--pv-shell);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-color: var(--pv-shell-line);
+  }
+  :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-glass-toolbar {
+    background: color-mix(in oklab, var(--pv-surface) 92%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--pv-line);
+    box-shadow: var(--pv-shadow-panel);
+  }
+  :is([data-skin="studio"], [data-skin-scope="studio"]) .pv-nav-pill-active {
+    background: var(--pv-nav-active);
+    color: var(--pv-nav-active-fg);
+    border: 1px solid var(--pv-line-strong);
+    box-shadow: none;
+  }
+
+  /* Sonic Stage (Suno / Udio): warm amber-ember stage glow, lush glass & capsule rhythm */
+  :is([data-skin="sonic"], [data-skin-scope="sonic"]) .pv-ambient-canvas,
+  .pv-ambient-canvas:is([data-skin="sonic"], [data-skin-scope="sonic"]) {
+    background-color: var(--pv-bg);
+    background-image:
+      radial-gradient(ellipse 68% 48% at 14% -8%, oklch(0.84 0.095 56 / 0.30), transparent 64%),
+      radial-gradient(ellipse 56% 44% at 90% 8%, oklch(0.84 0.085 32 / 0.22), transparent 60%),
+      radial-gradient(ellipse 50% 42% at 50% 108%, oklch(0.88 0.06 82 / 0.18), transparent 62%);
+    background-attachment: fixed;
+  }
+  .dark:is([data-skin="sonic"], [data-skin-scope="sonic"]) .pv-ambient-canvas,
+  :is([data-skin="sonic"], [data-skin-scope="sonic"]).dark .pv-ambient-canvas {
+    background-image:
+      radial-gradient(ellipse 64% 48% at 14% -8%, oklch(0.56 0.16 48 / 0.26), transparent 62%),
+      radial-gradient(ellipse 54% 42% at 88% 8%, oklch(0.52 0.145 28 / 0.20), transparent 58%),
+      radial-gradient(ellipse 46% 38% at 50% 106%, oklch(0.54 0.10 78 / 0.11), transparent 60%);
+  }
+  :is([data-skin="sonic"], [data-skin-scope="sonic"]) .pv-nav-pill-active {
+    background: linear-gradient(135deg, oklch(0.54 0.175 44), oklch(0.60 0.165 60));
+    color: oklch(0.99 0 0);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.24),
+      0 6px 20px -6px oklch(0.56 0.17 44 / 0.52);
+  }
+  .dark:is([data-skin="sonic"], [data-skin-scope="sonic"]) .pv-nav-pill-active,
+  :is([data-skin="sonic"], [data-skin-scope="sonic"]).dark .pv-nav-pill-active {
+    background: linear-gradient(135deg, oklch(0.72 0.165 54), oklch(0.66 0.175 36));
+    color: oklch(0.14 0.015 40);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.28),
+      0 8px 24px -6px oklch(0.68 0.17 46 / 0.45);
+  }
+
+  /* Cinema Canvas (Runway / Sora / Kling): deep obsidian vignette, whisper-thin edge-lit gallery chrome */
+  :is([data-skin="cinema"], [data-skin-scope="cinema"]) .pv-ambient-canvas,
+  .pv-ambient-canvas:is([data-skin="cinema"], [data-skin-scope="cinema"]) {
+    background-color: var(--pv-bg);
+    background-image:
+      radial-gradient(ellipse 70% 44% at 50% -12%, oklch(0.84 0.065 206 / 0.24), transparent 64%),
+      radial-gradient(ellipse 54% 40% at 92% 100%, oklch(0.86 0.055 232 / 0.16), transparent 60%);
+    background-attachment: fixed;
+  }
+  .dark:is([data-skin="cinema"], [data-skin-scope="cinema"]) .pv-ambient-canvas,
+  :is([data-skin="cinema"], [data-skin-scope="cinema"]).dark .pv-ambient-canvas {
+    background-image:
+      radial-gradient(ellipse 76% 42% at 50% -14%, oklch(0.54 0.125 206 / 0.22), transparent 62%),
+      radial-gradient(ellipse 48% 36% at 88% 106%, oklch(0.42 0.095 230 / 0.14), transparent 60%);
+  }
+  :is([data-skin="cinema"], [data-skin-scope="cinema"]) .pv-glass-panel {
+    background: color-mix(in oklab, var(--pv-surface) 84%, transparent);
+    backdrop-filter: blur(18px) saturate(135%);
+    -webkit-backdrop-filter: blur(18px) saturate(135%);
+    border-color: color-mix(in oklab, var(--pv-line) 85%, transparent);
+    box-shadow: var(--pv-shadow-panel);
+  }
+  :is([data-skin="cinema"], [data-skin-scope="cinema"]) .pv-nav-pill-active {
+    background: linear-gradient(135deg, oklch(0.46 0.13 206), oklch(0.50 0.125 224));
+    color: oklch(0.99 0 0);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.22),
+      0 6px 20px -6px oklch(0.48 0.13 210 / 0.50);
+  }
+  .dark:is([data-skin="cinema"], [data-skin-scope="cinema"]) .pv-nav-pill-active,
+  :is([data-skin="cinema"], [data-skin-scope="cinema"]).dark .pv-nav-pill-active {
+    background: linear-gradient(135deg, oklch(0.76 0.135 204), oklch(0.70 0.13 222));
+    color: oklch(0.11 0.015 220);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.3),
+      0 8px 24px -6px oklch(0.72 0.135 208 / 0.45);
+  }
+
+  /* Forced Colors Mode (Windows High Contrast) fallback for glass, gradient, and custom controls */
+  @media (forced-colors: active) {
+    .pv-glass-panel,
+    .pv-glass-shell,
+    .pv-glass-toolbar,
+    .pv-surface-card,
+    .pv-select,
+    .pv-field,
+    .pv-textarea {
+      background: Canvas;
+      color: CanvasText;
+      border: 1px solid CanvasText;
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+    .pv-nav-pill-active {
+      background: Highlight;
+      color: HighlightText;
+      border: 1px solid Highlight;
+      box-shadow: none;
+    }
   }
 }

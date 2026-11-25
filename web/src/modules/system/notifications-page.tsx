@@ -55,8 +55,7 @@ const WEBHOOK_SOURCES: InboundWebhookSourceKind[] = [
   "custom",
 ];
 
-const selectClass =
-  "w-full rounded-control border border-line bg-surface px-3 py-2 text-sm text-fg focus-visible:outline-2 focus-visible:outline-(--pv-focus)";
+const selectClass = "pv-select w-full";
 
 async function copyText(value: string): Promise<boolean> {
   try {

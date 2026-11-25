@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import { useCurrentUser, useIsAdmin, useLogout } from "@/api/queries/auth";
 import { useRuntimeSettings, useSystemInfo, useUpdateRuntimeSettings } from "@/api/queries/system";
 import { currentLanguage, SUPPORTED_LANGUAGES } from "@/i18n";
+import { BUILTIN_SKINS } from "@/skins/registry";
 import { localized } from "@/skins/schema";
 import { useSkin } from "@/skins/store";
 import { UserAvatar } from "@/shell/user-menu";
@@ -41,8 +42,10 @@ function SettingRow({ label, hint, children, className }: { label: ReactNode; hi
 
 function Display() {
   const { t, i18n } = useTranslation();
-  const { entry } = useSkin();
+  const { entry, setSkin } = useSkin();
   const language = currentLanguage();
+  const resolvedLang = i18n.resolvedLanguage ?? "en";
+  const activeBuiltin = BUILTIN_SKINS.some((skin) => skin.manifest.id === entry.manifest.id);
   return (
     <Section title={t("settings.display")}>
       <SectionRows>
@@ -50,11 +53,29 @@ function Display() {
           <ModeSetting className="max-w-full" />
         </SettingRow>
         <SettingRow label={t("settings.skin")}>
-          <span className="text-base font-strong text-fg">{localized(entry.manifest.name, i18n.resolvedLanguage ?? "en")}</span>
-          <Link to="/apps/themes" className={buttonVariants({ variant: "outline", size: "sm" })}>
-            <Palette aria-hidden />
-            {t("settings.changeSkin")}
-          </Link>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <ToggleButtonGroup
+              aria-label={t("settings.skin")}
+              selectionMode="single"
+              disallowEmptySelection
+              selectedKeys={activeBuiltin ? [entry.manifest.id] : []}
+              onSelectionChange={(keys) => {
+                const next = [...keys][0];
+                if (typeof next === "string") void setSkin(next);
+              }}
+              className="pv-segmented max-w-full flex-wrap"
+            >
+              {BUILTIN_SKINS.map((skin) => (
+                <ToggleButton key={skin.manifest.id} id={skin.manifest.id}>
+                  {localized(skin.manifest.name, resolvedLang)}
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+            <Link to="/apps/themes" className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <Palette aria-hidden />
+              {t("settings.changeSkin")}
+            </Link>
+          </div>
         </SettingRow>
         <SettingRow label={t("language.label")}>
           <ToggleButtonGroup
@@ -137,7 +158,7 @@ function ServerControls({ name }: { name: string }) {
       </SettingRow>
       <SettingRow label={t("settings.perfTier")}>
         {draft ? (
-          <select aria-label={t("settings.perfTier")} className="rounded-control border border-line bg-surface px-3 py-2 text-fg"
+          <select aria-label={t("settings.perfTier")} className="pv-select"
             value={draft.perfTier ?? ""} onChange={(event) =>
               setDraft({ ...draft, perfTier: TIERS.find((tier) => tier === event.target.value) ?? null })}>
             <option value="">{t("settings.automatic")}</option>

@@ -15,7 +15,6 @@ import { ProgressBar } from "@/ui/progress";
 import { Section, SectionRows, useRowInset } from "@/ui/section";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 import { virtualTvApi, type VirtualChannel, type VirtualChannelGuide } from "./api";
-import { fieldClass } from "./source-form";
 
 const BROADCAST_KINDS = ["radio", "podcast", "iptv"] as const;
 
@@ -164,7 +163,7 @@ function CreateVirtualChannelModal({
                   {t("broadcast.virtualTv.videoLibrary")}
                   <select
                     aria-label={t("broadcast.virtualTv.videoLibrary")}
-                    className={fieldClass}
+                    className="pv-select w-full"
                     value={effectiveLibraryId}
                     onChange={(e) => setLibraryId(e.target.value)}
                   >

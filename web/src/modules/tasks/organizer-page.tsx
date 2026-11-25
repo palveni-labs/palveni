@@ -22,8 +22,7 @@ import { PageHeader } from "@/ui/page";
 import { Section, SectionRows, useRowInset } from "@/ui/section";
 import { EmptyState, ErrorState, LoadingRows } from "@/ui/states";
 
-const SELECT_CLASS =
-  "h-9 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60";
+const SELECT_CLASS = "pv-select w-full";
 
 const FALLBACK_PRESETS: OrganizePreset[] = [
   {

@@ -552,7 +552,7 @@ export function CollectionDetailPage() {
                   maxLength={255}
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="h-9 rounded-control border border-line-strong bg-surface px-3 text-sm text-fg"
+                  className="pv-field w-full"
                 />
               </div>
               <div className="grid gap-1.5">
@@ -565,7 +565,7 @@ export function CollectionDetailPage() {
                   maxLength={2000}
                   value={editDesc}
                   onChange={(e) => setEditDesc(e.target.value)}
-                  className="rounded-control border border-line-strong bg-surface p-3 text-sm text-fg"
+                  className="pv-textarea"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-1">

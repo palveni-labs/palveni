@@ -137,7 +137,7 @@ export function AddToAlbumModal({
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder={t("photosApp.albums.namePlaceholder")}
               maxLength={128}
-              className="h-9 min-w-0 flex-1 rounded-control border border-line-strong bg-surface px-3 text-sm text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+              className="pv-field min-w-0 flex-1"
             />
             <Button type="submit" size="sm" variant="primary" isDisabled={!newTitle.trim() || busy}>
               <FolderPlus className="size-4" aria-hidden />

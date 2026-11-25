@@ -31,27 +31,36 @@ describe("应用 › 外观", () => {
     expect(heading.textContent).toBe(`卸载「\u2068${name}\u2069」？`);
   });
 
-  it("lists the built-in skin as the one in use", async () => {
+  it("lists all built-in skins with studio active by default and switches instantly", async () => {
     const db = installMockDb();
     signIn(db, MOCK_ACCOUNTS.user.username);
+    const user = userEvent.setup();
     renderApp("/apps/themes");
     const skins = await skinsRegion();
     const rows = within(skins).getAllByRole("listitem");
-    expect(rows).toHaveLength(1);
-    expect(within(rows[0]!).getByRole("heading", { name: "作品色" })).toBeInTheDocument();
+    expect(rows).toHaveLength(4);
+    expect(within(rows[0]!).getByRole("heading", { name: "精密工坊" })).toBeInTheDocument();
     expect(within(rows[0]!).getByText("正在使用")).toBeInTheDocument();
     expect(rows[0]).toHaveAttribute("aria-current", "true");
     expect(within(rows[0]!).queryByRole("button", { name: /卸载/ })).not.toBeInTheDocument();
+
+    await user.click(within(skins).getByRole("button", { name: "应用「声景舞台」" }));
+    await waitFor(() => expect(getSkinState().active.manifest.id).toBe("sonic"));
+    expect(document.documentElement.dataset.skin).toBe("sonic");
+
+    await user.click(within(skins).getByRole("button", { name: "应用「影院画布」" }));
+    await waitFor(() => expect(getSkinState().active.manifest.id).toBe("cinema"));
+    expect(document.documentElement.dataset.skin).toBe("cinema");
   });
 
-  it("without the skins feature keeps only the built-in skin and light/dark, and says the catalogue is not enabled", async () => {
+  it("without the skins feature keeps only the built-in skins and light/dark, and says the catalogue is not enabled", async () => {
     const db = installMockDb({ features: M0_FEATURES.filter((feature) => feature !== "skins") });
     signIn(db, MOCK_ACCOUNTS.admin.username);
     const user = userEvent.setup();
     renderApp("/apps/themes");
 
     const skins = await skinsRegion();
-    expect(within(skins).getAllByRole("listitem")).toHaveLength(1);
+    expect(within(skins).getAllByRole("listitem")).toHaveLength(4);
     const catalog = screen.getByRole("region", { name: "可以安装的皮肤" });
     expect(within(catalog).getByText("此功能尚未启用")).toBeInTheDocument();
     expect(within(catalog).queryByRole("button")).not.toBeInTheDocument();
@@ -94,7 +103,7 @@ describe("应用 › 外观", () => {
     await waitFor(() => expect(getSkinState().active.manifest.id).toBe("ink"));
     expect(document.documentElement.dataset.skin).toBe("ink");
     expect(await within(skins).findByText("正在使用")).toBeInTheDocument();
-    expect(within(skins).getByRole("button", { name: "应用「作品色」" })).toBeInTheDocument();
+    expect(within(skins).getByRole("button", { name: "应用「精密工坊」" })).toBeInTheDocument();
   });
 
   it("explains a skin refused by validation in plain words and applies nothing of it", async () => {
@@ -114,7 +123,7 @@ describe("应用 › 外观", () => {
     expect(problem).toHaveTextContent("没有通过检查");
     expect(within(problem).getByText(/needs 4\.5:1/)).toBeInTheDocument();
     expect(within(skins).queryByRole("button", { name: "应用「器材」" })).not.toBeInTheDocument();
-    expect(getSkinState().active.manifest.id).toBe("workcolor");
+    expect(getSkinState().active.manifest.id).toBe("studio");
   });
 
   it("says when the chosen skin could not be loaded and the built-in one is in use", async () => {
@@ -126,7 +135,7 @@ describe("应用 › 外观", () => {
     renderApp("/apps/themes");
 
     const skins = await skinsRegion();
-    expect(await within(skins).findByText("正在使用内置的「作品色」")).toBeInTheDocument();
+    expect(await within(skins).findByText("正在使用内置的「精密工坊」")).toBeInTheDocument();
     expect(within(skins).getByText(/暂时连不上服务器/)).toBeInTheDocument();
     expect(within(skins).getByRole("button", { name: "重试" })).toBeInTheDocument();
   });

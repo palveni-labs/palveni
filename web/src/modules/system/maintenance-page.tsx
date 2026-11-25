@@ -376,7 +376,7 @@ function MetadataConfigSection() {
                   aria-label={t("maintenance.metadataConfig.preferredLanguage")}
                   value={preferredLanguage}
                   onChange={(e) => setLangOverride(e.target.value)}
-                  className="rounded-control border border-line bg-surface px-2.5 py-1.5 text-sm text-fg"
+                  className="pv-select"
                 >
                   {METADATA_LANGUAGES.map((lang) => (
                     <option key={lang} value={lang}>
@@ -783,7 +783,7 @@ function ImporterSection() {
             <span>{t("maintenance.importer.source")}</span>
             <select
               aria-label={t("maintenance.importer.source")}
-              className="rounded-control border border-line bg-surface px-3 py-1.5 text-sm text-fg"
+              className="pv-select"
               value={effectiveSource}
               onChange={(event) => {
                 const picked = availableSources.find((item) => item === event.target.value);
@@ -884,7 +884,7 @@ function ImporterSection() {
               setContent(event.target.value);
               setResult(null);
             }}
-            className="w-full rounded-control border border-line bg-surface p-3 font-mono text-sm text-fg placeholder:text-fg-subtle focus:outline-none"
+            className="pv-textarea font-mono"
           />
         )}
 
@@ -976,7 +976,7 @@ function AuditLogSection() {
       actions={
         <select
           aria-label={t("maintenance.audit.filterLabel")}
-          className="rounded-control border border-line bg-surface px-2.5 py-1 text-sm text-fg"
+          className="pv-select pv-select--sm"
           value={actionFilter}
           onChange={(event) => setActionFilter(event.target.value)}
         >

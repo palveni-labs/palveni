@@ -198,7 +198,7 @@ export function PhotoAlbumsPage() {
                   placeholder={t("photosApp.albums.namePlaceholder")}
                   maxLength={128}
                   required
-                  className="h-9 rounded-control border border-line-strong bg-surface px-3 text-sm text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                  className="pv-field w-full"
                 />
               </div>
 
@@ -213,7 +213,7 @@ export function PhotoAlbumsPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder={t("photosApp.albums.descriptionPlaceholder")}
                   maxLength={1024}
-                  className="rounded-control border border-line-strong bg-surface p-2.5 text-sm text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-(--pv-focus)"
+                  className="pv-textarea"
                 />
               </div>
 

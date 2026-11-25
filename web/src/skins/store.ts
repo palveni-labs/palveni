@@ -12,7 +12,7 @@ import { readLocal, removeLocal, writeLocal } from "@/lib/storage";
 import { skinVariables, slotAttributes } from "./css";
 import { retainFonts } from "./fonts";
 import { fetchInstalledSkin, SkinLoadError, type LoadOptions, type SkinLoadFailure } from "./loader";
-import { BUILTIN_SKIN, DEFAULT_SKIN_ID, type SkinEntry } from "./registry";
+import { BUILTIN_SKIN, DEFAULT_SKIN_ID, findBuiltinSkin, type SkinEntry } from "./registry";
 import type { Mode, SkinManifest, Slots } from "./schema";
 
 export type ModeSetting = "system" | "light" | "dark";
@@ -127,9 +127,10 @@ function cache(entry: SkinEntry) {
   if (entry.source === "installed") state = { ...state, installed: { ...state.installed, [entry.manifest.id]: entry } };
 }
 
-/** Loads an installed skin (or returns the cached one); never applies anything. */
+/** Loads a built-in or installed skin (or returns the cached one); never applies anything. */
 export async function loadSkin(id: string, options?: LoadOptions): Promise<SkinEntry> {
-  if (id === DEFAULT_SKIN_ID) return BUILTIN_SKIN;
+  const builtIn = findBuiltinSkin(id);
+  if (builtIn) return builtIn;
   const cached = state.installed[id];
   if (cached) return cached;
   const entry = await loader(id, options);
@@ -149,14 +150,20 @@ function fallBack(failure: SkinLoadFailure) {
 }
 
 /**
- * Applies a skin by id. Built-in applies at once; an installed skin is fetched and checked
- * first. Resolves to the applied entry; on failure the built-in skin applies and the error is
- * rethrown so the caller can say why.
+ * Applies a skin by id. Built-in skins apply synchronously; an installed skin is fetched and
+ * checked first. Resolves to the applied entry; on failure the default built-in skin applies and
+ * the error is rethrown so the caller can say why.
  */
 export async function setSkin(id: string): Promise<SkinEntry> {
-  state = { ...state, skinId: id, status: id === DEFAULT_SKIN_ID ? "ready" : "loading", failure: null };
+  const builtIn = findBuiltinSkin(id);
   if (id === DEFAULT_SKIN_ID) removeLocal(SKIN_KEY);
   else writeLocal(SKIN_KEY, id);
+  if (builtIn) {
+    state = { ...state, skinId: id, active: builtIn, status: "ready", failure: null };
+    apply();
+    return builtIn;
+  }
+  state = { ...state, skinId: id, status: "loading", failure: null };
   emit();
   try {
     const entry = await loadSkin(id);
@@ -175,19 +182,20 @@ export async function initSkin(): Promise<void> {
   const mode = readLocal(MODE_KEY);
   const stored = readLocal(SKIN_KEY);
   const nav = readLocal(NAV_KEY);
+  const initialBuiltin = stored ? findBuiltinSkin(stored) : undefined;
   state = {
     ...state,
     mode: mode === "light" || mode === "dark" || mode === "system" ? mode : "system",
     nav: nav === "sidebar" || nav === "topbar" || nav === "sidebar-right" || nav === "skin" ? nav : "skin",
     skinId: stored ?? DEFAULT_SKIN_ID,
-    active: BUILTIN_SKIN,
+    active: initialBuiltin ?? BUILTIN_SKIN,
   };
   media = typeof window !== "undefined" && typeof window.matchMedia === "function" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
   media?.addEventListener?.("change", () => {
     if (state.mode === "system") apply();
   });
   apply();
-  if (!stored || stored === DEFAULT_SKIN_ID) return;
+  if (!stored || initialBuiltin) return;
   const pending = setSkin(stored).then(
     () => undefined,
     () => undefined,
